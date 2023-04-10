@@ -3,8 +3,8 @@ This are de codes to create and manage the MySQL DataBase of my Master's Thesis.
 
 I'm currently working with Soil-Structure Models to see the behaviour of the reinforced concrete buildings near the San Ramon's Failure, in Santiago de Chile. 
 <p align="center">
-  <img src="https://i.imgur.com/8A7zQsV.png" />
-  <img src="https://i.imgur.com/aFduibC.png" /> 
+  <img src="https://i.imgur.com/8A7zQsV.png" width="400" />
+  <img src="https://i.imgur.com/aFduibC.png" width="400" /> 
 </p>
 
 | Structure | Foundations |
