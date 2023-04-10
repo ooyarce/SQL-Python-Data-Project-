@@ -13,14 +13,11 @@ Currently, I'm working Domain Reduction Method to study the response of reinforc
 </div>
 
 ## ShakerMaker
-I'm using the ShakerMakers framework to create a simulation of the seismic wave propagation into the buildings, and then using it as an input to create a DRM Box that I use in my soil structure models.
+I'm using the ShakerMakers framework to create a simulation of the seismic wave propagation into the buildings, and then using it as an input to create a DRM Box that I use in my soil structure models. I will use 10 stations located in different areas across the city of Santiago to evaluate the seismic performance of the buildings in various earthquake scenarios resulting from the San Ramon Fault.
 
 <p align="center">
     <img width="500" src="https://i.imgur.com/WTYuZ2U.png" alt="San Ramón's Failure simulated in ShakerMaker">
 </p>
-
-In this work, I will use 10 stations located in different areas across the city of Santiago to evaluate the seismic performance of the buildings in various earthquake scenarios resulting from the San Ramon Fault.
-
 <p align="center">
   <img width="500" src= "https://i.imgur.com/KNoeWVr.png">
 </p>
