@@ -1,4 +1,4 @@
-sh UpdateFiles.sh
+#sh UpdateFiles.sh
 for file in */ ; do
     cd "$file"
     for file2 in */ ;do
@@ -6,7 +6,7 @@ for file in */ ; do
         echo "\n|--------------------------------------------------------|"
         echo "|\t\tRunning case: $file$file2 \t\t |"
         echo "|--------------------------------------------------------|"
-        python3 ExportingResults.py
+        python3 exporting_results.py
         mv resultado_s0*.txt resultado_s0/
         mv resultado_s1*.txt resultado_s1/
         mv resultado_s2*.txt resultado_s2/
@@ -20,10 +20,8 @@ for file in */ ; do
 
         for file3 in */ ;do
             cd "$file3"
-            python3 Accelerations_writter_tcl_format.py
-            #python3 Definitions_Custom_Writter.py
-            #rm -r __pycache__
-            #rm definitions.tcl
+            python3 accelerations_writter_tcl_format.py
+            
             mv definitions.tcl definitions_old.tcl
             mv definitions2.tcl definitions.tcl
 
