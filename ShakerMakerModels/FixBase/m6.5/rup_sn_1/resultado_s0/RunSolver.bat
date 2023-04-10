@@ -1,0 +1,1 @@
+"C:\OpenSees-Solvers\opensees.bat" ".\main.tcl"  & pause
