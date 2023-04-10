@@ -4,8 +4,7 @@ This are de codes to create and manage the MySQL DataBase of my Master's Thesis.
 I'm currently working with Soil-Structure Models to see the behaviour of the reinforced concrete buildings near the San Ramon's Failure, in Santiago de Chile. 
 
 I'm using ShakerMakers framework to build up the simulation of the seismic wave propagation to the building and the using it as an input to create a DRM Box and using in my soil structure models.
-
-![San Ramón's Failure simulated in ShakerMaker](https://imgur.com/a/khi9i0y)
+![](https://imgur.com/a/khi9i0y)
 
 The soil structure models are build up with OpenSees and the software of ASDEA STKO (scientific toolkit for OpenSees). 
 
