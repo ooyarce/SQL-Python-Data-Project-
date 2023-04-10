@@ -5,9 +5,9 @@ I'm currently working with Soil-Structure Models to see the behaviour of the rei
 
 I'm using ShakerMakers framework to build up the simulation of the seismic wave propagation to the building and the using it as an input to create a DRM Box and using in my soil structure models.
 
-<div style="display: flex; justify-content: center; align-items: center;">
-  <img src="https://i.imgur.com/WTYuZ2U.png" alt="San Ramón's Failure simulated in ShakerMaker" style="width: 500px;">
-</div>
+<p align="center">
+    <img width="500" src="https://i.imgur.com/WTYuZ2U.png" alt="San Ramón's Failure simulated in ShakerMaker">
+</p>
 
 The soil structure models are build up with OpenSees and the software of ASDEA STKO (scientific toolkit for OpenSees). 
 
