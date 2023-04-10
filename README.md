@@ -3,12 +3,11 @@ This are de codes to create and manage the MySQL DataBase of my Master's Thesis.
 
 I'm currently working with Soil-Structure Models to see the behaviour of the reinforced concrete buildings near the San Ramon's Failure, in Santiago de Chile. 
 
-<div style="display: inline-block;">
+|<div style="display: inline-block;">
   <img src="https://i.imgur.com/8A7zQsV.png" width="400">
-</div>
-<div style="display: inline-block;">
+</div> |<div style="display: inline-block;">
   <img src="https://i.imgur.com/aFduibC.png" width="400">
-</div>
+</div>|
 
 I'm using ShakerMakers framework to build up the simulation of the seismic wave propagation to the building and the using it as an input to create a DRM Box and using in my soil structure models.
 
