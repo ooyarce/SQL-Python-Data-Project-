@@ -20,6 +20,8 @@ The soil structure models are build up with OpenSees and the software of ASDEA S
 In this work I'll use 10 stations located in different places along the city of Santiago to the the seismic perfomance of the buildings in different scenarios of an earthquake due the San Ramon's Failure.
 
 All the input and output data will be sorted in a MySQL DataBase that I designed acording the needs of the FondeCyT investigation leaded by José Antonio Abell. I'll run near 4000 cases of different scenarios.
-
+<div style="display: inline-block;">
+  <img src="https://i.imgur.com/Jc7UpO5.png" >
+</div>
 In the final steps I'll do a Statistical analysis to the results to identify problems and use Machine Learning to predict the results of interest.
 
