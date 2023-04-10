@@ -9,7 +9,7 @@ Currently, I'm working Domain Reduction Method to study the response of reinforc
   <img src="https://i.imgur.com/aFduibC.png" width="400" /> 
 </p>
 <p align="center">
-  <img src="https://i.imgur.com/a96kylX.png" width="400" /> >
+  <img src="https://i.imgur.com/a96kylX.png" width="800" /> >
 </p>
 
 ## ShakerMaker
