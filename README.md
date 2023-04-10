@@ -8,9 +8,9 @@ Currently, I'm working Domain Reduction Method to study the response of reinforc
   <img src="https://i.imgur.com/8A7zQsV.png" width="400" />
   <img src="https://i.imgur.com/aFduibC.png" width="400" /> 
 </p>
-<div style="display: inline-block;">
-  <img src="https://i.imgur.com/a96kylX.png" >
-</div>
+<p align="center">
+  <img src="https://i.imgur.com/a96kylX.png" width="400" /> >
+</p>
 
 ## ShakerMaker
 I'm using the ShakerMakers framework to create a simulation of the seismic wave propagation into the buildings, and then using it as an input to create a DRM Box that I use in my soil structure models. I will use 10 stations located in different areas across the city of Santiago to evaluate the seismic performance of the buildings in various earthquake scenarios resulting from the San Ramon Fault.
