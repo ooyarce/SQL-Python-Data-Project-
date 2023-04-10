@@ -6,7 +6,9 @@ I'm currently working with Soil-Structure Models to see the behaviour of the rei
   <img src="https://i.imgur.com/8A7zQsV.png" width="400" />
   <img src="https://i.imgur.com/aFduibC.png" width="400" /> 
 </p>
-
+<div style="display: inline-block;">
+  <img src="[Soil Structure Model"](https://i.imgur.com/a96kylX.png) >
+</div>
 I'm using ShakerMakers framework to build up the simulation of the seismic wave propagation to the building and the using it as an input to create a DRM Box and using in my soil structure models.
 
 <p align="center">
