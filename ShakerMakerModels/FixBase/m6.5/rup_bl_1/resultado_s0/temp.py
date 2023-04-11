@@ -18,7 +18,8 @@ for index, row in rel_displ[0].iterrows():
 	results_list.append(row.tolist())
 """
 from Results.check_nodes import *
-give_coords()
+coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+print(histories_nodes)
 """
 insert_query = 'INSERT INTO structure_base_shear (TimeSeries,ShearX,ShearY,ShearZ) VALUES (%s,%s,%s,%s)'
 values = (timeseries,base_shears[0],base_shears[1],base_shears[2])

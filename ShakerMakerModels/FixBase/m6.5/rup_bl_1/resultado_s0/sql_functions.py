@@ -186,8 +186,15 @@ def structure_max_base_shear():
 	print('structure_max_base_shear table updated correctly!\n')
 
 def structure_max_drift_per_floor():
-	return None
+	import pandas as pd 
+	import json
+	units = 'm'
 
+	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
+	sheet_name = list(displacements.keys)
+	
+	drift_corners = []
+	drift_centers = []
 def structure_relative_displacements():
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#THIS FILLS THE STRUCTURE_RELATIVE_DISPLACEMENT
