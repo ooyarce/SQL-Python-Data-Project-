@@ -1,15 +1,10 @@
 #-----------------------------------------------------------------------------------------------------------------------------------
 #THIS FILLS THE SQL DATABASE																										|	
 #-----------------------------------------------------------------------------------------------------------------------------------
-from SQL_functions import *
+from sql_functions import *
 
 #put into tables
-
-model_benchmark()
-structure_base_shear()
-structure_relative_displacements()
-structure_abs_acceleration()
-
+structure_max_drift_per_floor()
 #close sql
 cursor.close()
 cnx.close()

@@ -1,3 +1,4 @@
+from Results.check_nodes import *
 import mysql.connector
 cnx = mysql.connector.connect(user='root', password='g3drGvwkcmcq', host='localhost', database='stkodatabase')
 cursor = cnx.cursor()
@@ -186,15 +187,39 @@ def structure_max_base_shear():
 	print('structure_max_base_shear table updated correctly!\n')
 
 def structure_max_drift_per_floor():
+
 	import pandas as pd 
 	import json
+	import numpy as np
 	units = 'm'
+	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
 
 	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
-	sheet_name = list(displacements.keys)
-	
+	sheet_names = list(displacements.keys())
+
 	drift_corners = []
 	drift_centers = []
+	for sheet_name in sheet_names:
+		df = displacements[sheet_name].iloc[:,1:].dropna()
+		for idx, level in enumerate(list(histories_nodes)):
+			if idx <20:
+				for idy, nodo in enumerate(list(histories_nodes[level])):
+					if idy%3 == 0 and idy != 0:
+						"""
+						to check the nodes coordenates and see that drift is well calculated
+						print(f'Level {idx} - Level {idx+1} {heights[idx]=}')
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[0]],coordenates[list(histories_nodes[f'Level {idx+1}'])[0]])
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[1]],coordenates[list(histories_nodes[f'Level {idx+1}'])[1]])
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[2]],coordenates[list(histories_nodes[f'Level {idx+1}'])[2]])
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[3]],coordenates[list(histories_nodes[f'Level {idx+1}'])[3]],'\n')
+						"""
+						node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
+						node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
+						node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
+						node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
+						print(np.argmax((df[node1] - df[node5])/heights[idx]))
+					
+
 def structure_relative_displacements():
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#THIS FILLS THE STRUCTURE_RELATIVE_DISPLACEMENT

@@ -17,14 +17,14 @@ for file in */ ; do
         mv resultado_s7*.txt resultado_s7/
         mv resultado_s8*.txt resultado_s8/
         mv resultado_s9*.txt resultado_s9/
-
         for file3 in */ ;do
             cd "$file3"
             python3 accelerations_writter_tcl_format.py
-            
             mv definitions.tcl definitions_old.tcl
             mv definitions2.tcl definitions.tcl
-
+            rm tcl_format_east.tcl
+            rm tcl_format_north.tcl
+            rm tcl_format_vertical.tcl 
             cd ..
         done
         cd ..

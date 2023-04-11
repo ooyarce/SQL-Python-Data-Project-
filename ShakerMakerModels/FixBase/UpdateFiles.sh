@@ -1,6 +1,8 @@
 echo "|||||||||||||||||||||||||||||||||||||"
 echo "Using files from FixBase folder..."
 for file in */ ; do
+    #Iterates over the magnitude (file) and gets inside when 'cd'
+
     #cp run.sh "$file"
     #cp accelerations_writter_tcl_format.py "$file"
     #cp sort_results_into_xlsx.py "$file"
@@ -17,6 +19,8 @@ for file in */ ; do
 
     cd "$file"
     for file2 in */ ;do
+        #Iterates over the rupture type (file2) and gets inside when 'cd'
+
         #cp accelerations_writter_tcl_format.py "$file2"
         #cp sort_results_into_xlsx.py "$file2"
         #cp sql_functions.py "$file2"
@@ -32,6 +36,8 @@ for file in */ ; do
 
         cd "$file2"
         for file3 in */ ;do
+            #Iterates over the station and gets inside when 'cd'
+
             #cp accelerations_writter_tcl_format.py "$file3"
             #cp sort_results_into_xlsx.py "$file3"
             #cp sql_functions.py "$file3"
@@ -47,6 +53,7 @@ for file in */ ; do
             cd "$file3"
             #rm exporting_results.py
             #rm SQL_functions.py
+            
             cd ..
         done
 

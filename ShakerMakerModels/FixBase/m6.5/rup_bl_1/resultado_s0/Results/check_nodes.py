@@ -171,20 +171,20 @@ def give_coords_info():
 	for i in range(histories+subs+1):
 		i -= 4
 		if i < 0:
+			counter+=4
 			continue
 		histories_nodes[f'Level {i}'] = {}
-		print(sort_by_historie)
-		print(counter)
 		node1 = sort_by_historie[counter][0]
 		node2 = sort_by_historie[counter+1][0]
 		node3 = sort_by_historie[counter+2][0]
 		node4 = sort_by_historie[counter+3][0]
+		#print(node1,node2,node3,node4)
 		histories_nodes[f'Level {i}'][node1] = sort_by_historie[counter][1]
 		histories_nodes[f'Level {i}'][node2] = sort_by_historie[counter+1][1]
 		histories_nodes[f'Level {i}'][node3] = sort_by_historie[counter+2][1]
 		histories_nodes[f'Level {i}'][node4] = sort_by_historie[counter+3][1]
 		counter+=4
-	#print(coordenates[list(histories_nodes['Level 0'])[0]])
-	#heights.append(list(histories_nodes[0]))
+	heights.insert(0,(coordenates[list(histories_nodes["Level 1"])[0]]["coord z"] - coordenates[list(histories_nodes["Level 0"])[0]]["coord z"]))
 	return coordenates, drift_nodes,histories_nodes, histories, subs, heights
 
+coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
