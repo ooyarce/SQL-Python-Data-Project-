@@ -2,6 +2,9 @@ import subprocess
 import datetime
 import time
 
+# Definir la duración del intervalo entre commits (en segundos)
+intervalo = 3600
+
 while True:
     # Ejecutar el comando 'git add .'
     subprocess.run(['git', 'add', '.'])
@@ -19,5 +22,10 @@ while True:
     # Imprimir mensaje de confirmación
     print(f'Se ha realizado un commit a las {fecha_actual.strftime("%H:%M:%S")}')
 
-    # Esperar 1 hora antes de continuar
-    time.sleep(3600)
+    # Esperar hasta el siguiente intervalo
+    tiempo_restante = intervalo
+    while tiempo_restante > 0:
+        tiempo_espera = min(tiempo_restante, 600)  # Esperar un máximo de 10 minutos
+        tiempo_restante -= tiempo_espera
+        print(f'Faltan {tiempo_restante//60} minutos y {tiempo_restante%60} segundos para el siguiente commit')
+        time.sleep(tiempo_espera)
