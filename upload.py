@@ -1,3 +1,8 @@
+import logging
+
+logging.basicConfig(filename='github_uploads.log', level=logging.INFO)
+
+# Resto del código aquí
 import subprocess
 import datetime
 import time
