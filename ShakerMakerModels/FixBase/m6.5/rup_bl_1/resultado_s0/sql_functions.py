@@ -202,31 +202,26 @@ def structure_max_drift_per_floor():
 	for sheet_name in sheet_names:
 		df = displacements[sheet_name].iloc[:,1:].dropna()
 		for idx, level in enumerate(list(histories_nodes)):
-			if idx <20:
-				for idy, nodo in enumerate(list(histories_nodes[level])):
-					if idy%3 == 0 and idy != 0:
+			if idx == 20:
+				break
+			for idy, nodo in enumerate(list(histories_nodes[level])):
+				if idy%3 == 0 and idy != 0:
+					node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
+					node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
+					node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
+					node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
+					
+					drift1,drift2 = ((df[node5]/heights[idx] - df[node1]/heights[idx]).abs().max()),((df[node6]/heights[idx] - df[node2]/heights[idx]).abs().max())
+					drift3,drift4 = ((df[node7]/heights[idx] - df[node3]/heights[idx]).abs().max()),((df[node8]/heights[idx] - df[node4]/heights[idx]).abs().max())
+					max_corner = max(drift1,drift2,drift3,drift4)
 
-						"""
-						To check the nodes coordenates and see that drift is well calculated
-						print(f'Level {idx} - Level {idx+1} {heights[idx]=}')
-						print(coordenates[list(histories_nodes[f'Level {idx}'])[0]],coordenates[list(histories_nodes[f'Level {idx+1}'])[0]])
-						print(coordenates[list(histories_nodes[f'Level {idx}'])[1]],coordenates[list(histories_nodes[f'Level {idx+1}'])[1]])
-						print(coordenates[list(histories_nodes[f'Level {idx}'])[2]],coordenates[list(histories_nodes[f'Level {idx+1}'])[2]])
-						print(coordenates[list(histories_nodes[f'Level {idx}'])[3]],coordenates[list(histories_nodes[f'Level {idx+1}'])[3]],'\n')
-						"""
-						node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
-						node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
-						node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
-						node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
-						
-						drift1,drift2 = ((df[node5]/heights[idx] - df[node1]/heights[idx]).abs().max()),((df[node6]/heights[idx] - df[node2]/heights[idx]).abs().max())
-						drift3,drift4 = ((df[node7]/heights[idx] - df[node3]/heights[idx]).abs().max()),((df[node8]/heights[idx] - df[node4]/heights[idx]).abs().max())
-						max_corner = max(drift1,drift2,drift3,drift4)
+					print(idx)
+					mean_displ1 = df[[node5,node6,node7,node8]].mean(axis=1)
+					id_center = (mean_displ1.abs()).argmax()
+					mean_displ2 = sum([df[node1][id_center],df[node2][id_center],df[node3][id_center],df[node4][id_center]])/4
+					max_center = ((mean_displ2-mean_displ1.max())/heights[idx])
 
-						mean_displ1 = df[[node1,node2,node3,node4]].mean(axis=1)
-						id_center = (mean_displ1.abs()).argmax()
-						print(df[node5][id_center])
-						
+
 						#print(f'{sheet_name} {cornermax1} {cornermax2} {cornermax3} {cornermax4}')
 						#print(f'{sheet_name} Level {idx} {(df[node1]/heights[idx] - df[node5]/heights[idx]).abs().max()}')
 					
