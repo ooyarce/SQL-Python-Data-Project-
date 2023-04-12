@@ -4,7 +4,6 @@
 from sql_functions import *
 
 #put into tables
-sm_input_pga()
 structure_max_drift_per_floor()
 #close sql
 cursor.close()

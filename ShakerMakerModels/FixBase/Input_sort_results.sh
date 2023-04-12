@@ -24,7 +24,8 @@ for file in */ ; do
             mv definitions2.tcl definitions.tcl
             rm tcl_format_east.tcl
             rm tcl_format_north.tcl
-            rm tcl_format_vertical.tcl 
+            rm tcl_format_vertical.tcl
+            
             cd ..
         done
         cd ..

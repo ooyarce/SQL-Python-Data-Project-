@@ -4,15 +4,8 @@ from shakermaker.tools.plotting import ZENTPlot
 from scipy.integrate import cumulative_trapezoid
 import numpy as np 
 
-spectra = []
 nu = 0.05
 tmax = 50.
-dt = np.linspace(0,1,2000)
-w = np.zeros(len(dt))
-
-for i in range(len(dt)):
-    if dt[i] != 0:    
-        w[i] = 2*np.pi/dt[i]
 
 files = [
     "resultado_s0.npz",

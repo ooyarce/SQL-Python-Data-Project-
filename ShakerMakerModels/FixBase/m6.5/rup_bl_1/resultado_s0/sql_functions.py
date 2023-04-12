@@ -196,6 +196,7 @@ def structure_max_drift_per_floor():
 
 	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
 	sheet_names = list(displacements.keys())
+	sheet_names.pop(2)
 
 	drift_corners = []
 	drift_centers = []
@@ -213,11 +214,15 @@ def structure_max_drift_per_floor():
 						print(coordenates[list(histories_nodes[f'Level {idx}'])[2]],coordenates[list(histories_nodes[f'Level {idx+1}'])[2]])
 						print(coordenates[list(histories_nodes[f'Level {idx}'])[3]],coordenates[list(histories_nodes[f'Level {idx+1}'])[3]],'\n')
 						"""
+						#print(sheet_name)
 						node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
 						node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
 						node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
 						node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
-						print(np.argmax((df[node1]/heights[idx] - df[node5]/heights[idx]).abs()))
+						max_id = np.argmax((df[node1]/heights[idx] - df[node5]/heights[idx]).abs())
+
+						print(f'{sheet_name} Level {idx} {(df[node1])}')
+						print(f'{sheet_name} Level {idx} {(df[node1]/heights[idx] - df[node5]/heights[idx]).abs().max()}')
 					
 
 def structure_relative_displacements():
@@ -347,9 +352,9 @@ def sm_input_pga():
 	PGA_min_z = az.argmin()   
 	PGA_min_e = ae.argmin()
 	    
-	PGAx = json.dumps({'max':str(ae[PGA_max_e]),'min':str(ae[PGA_min_e])})
-	PGAy = json.dumps({'max':str(an[PGA_max_n]),'min':str(an[PGA_min_n])})
-	PGAz = json.dumps({'max':str(az[PGA_max_z]),'min':str(az[PGA_min_z])})
+	PGAx = json.dumps({'max':round(ae[PGA_max_e],2),'min':round(ae[PGA_min_e],2)})
+	PGAy = json.dumps({'max':round(an[PGA_max_n],2),'min':round(an[PGA_min_n],2)})
+	PGAz = json.dumps({'max':round(az[PGA_max_z],2),'min':round(az[PGA_min_z],2)})
 	
 	insert_query = 'INSERT INTO sm_input_pga (PGA_X, PGA_Y, PGA_Z, Units) VALUES(%s,%s,%s,%s)'
 	values = (PGAx, PGAy, PGAz, Units)

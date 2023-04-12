@@ -6,9 +6,10 @@ for file in */ ; do
     #cp run.sh "$file"
     #cp accelerations_writter_tcl_format.py "$file"
     #cp sort_results_into_xlsx.py "$file"
-    #cp sql_functions.py "$file"
     #cp definitions.tcl "$file"
+    #cp sql_functions.py "$file"
     #cp exporting_results.py "$file"
+    #cp check_nodes.py "$file"
 
     #cp analysis_steps.tcl "$file"
     #cp elements.tcl "$file"
@@ -23,9 +24,11 @@ for file in */ ; do
 
         #cp accelerations_writter_tcl_format.py "$file2"
         #cp sort_results_into_xlsx.py "$file2"
-        #cp sql_functions.py "$file2"
         #cp definitions.tcl "$file2"
+        #cp sql_functions.py "$file2"
         #cp exporting_results.py "$file2"
+        #cp check_nodes.py "$file2"
+
 
         #cp analysis_steps.tcl "$file2"
         #cp elements.tcl "$file2"
@@ -41,6 +44,7 @@ for file in */ ; do
             #cp accelerations_writter_tcl_format.py "$file3"
             #cp sort_results_into_xlsx.py "$file3"
             #cp sql_functions.py "$file3"
+            #cp check_nodes.py "$file3/Results/"
 
             #cp definitions.tcl "$file3"
             #cp elements.tcl "$file3"
@@ -51,16 +55,14 @@ for file in */ ; do
             #cp sections.tcl "$file3"
 
             cd "$file3"
-            #rm exporting_results.py
-            #rm SQL_functions.py
-            
+            #rm check_nodes.py
             cd ..
         done
 
-        #rm exporting_results.py
+        #rm check_nodes.py
+        #rm sql_functions.py 
         #rm accelerations_writter_tcl_format.py
         #rm sort_results_into_xlsx.py 
-        #rm sql_functions.py 
         #rm definitions.tcl 
 
         #rm analysis_steps.tcl 
@@ -73,11 +75,13 @@ for file in */ ; do
         cd ..
 
     done
+
     #rm accelerations_writter_tcl_format.py
     #rm sort_results_into_xlsx.py 
     #rm sql_functions.py 
-    #rm definitions.tcl
     #rm exporting_results.py
+    #rm check_nodes.py
+    #rm definitions.tcl
     #rm analysis_steps.tcl 
     #rm elements.tcl 
     #rm main.tcl 

@@ -11,7 +11,7 @@ Este comando mostrará el registro de systemd para el servicio upload.service, l
 
 # Configurar el registro de salida
 logging.basicConfig(filename='github_uploads.log', level=logging.INFO)
-
+logging.info('SESION INICIADA ')
 # Definir la duración del intervalo entre commits (en segundos)
 intervalo = 3600
 

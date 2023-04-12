@@ -8,15 +8,20 @@ import os
 from collections import Counter
 
 #access to folders
-path = 'D:/Universidad/Tesis/Bases de datos/TestFixBaseforSQL/Results/'
+path = os.path.dirname(os.path.abspath(__file__))
 folders = os.listdir(path)
-folders.remove('check_nodes.py')
 
 #access to folders files
-folder_acc = f'{path}{folders[0]}'
-folder_coord = f'{path}{folders[1]}'
-folder_disp = f'{path}{folders[2]}'
-folder_reaction = f'{path}{folders[3]}'
+for i in range(len(folders)):
+	if folders[i] == 'accel':
+		folder_acc = f'{path}/{folders[i]}'
+	elif folders[i] == 'coords':
+		folder_coord = f'{path}/{folders[i]}'
+	elif folders[i] == 'disp':
+		folder_disp = f'{path}/{folders[i]}'
+	elif folders[i] == 'reaction':
+		folder_reaction = f'{path}/{folders[i]}'
+
 
 #---------------------------------------------------------------------------
 #------------------------ACCELERATIONS--------------------------------------
@@ -158,21 +163,28 @@ def give_coords_info():
 		current_height = (float(drift_nodes['corner1'][data+1].split('|')[1])-float(drift_nodes['corner1'][data].split('|')[1]))
 		heights.append(current_height)
 
+	
 	#create dict with nodes per historie 
 	sort_by_historie = sorted(coordenates.items(), key = lambda x: (x[1]['coord z'],x[1]['coord x'], x[1]['coord y']))
 	histories_nodes = {}
 	counter = 0
 	for i in range(histories+subs+1):
-		histories_nodes[f'Level {i-subs}'] = {}
+		i -= 4
+		if i < 0:
+			counter+=4
+			continue
+		histories_nodes[f'Level {i}'] = {}
 		node1 = sort_by_historie[counter][0]
 		node2 = sort_by_historie[counter+1][0]
 		node3 = sort_by_historie[counter+2][0]
 		node4 = sort_by_historie[counter+3][0]
-		histories_nodes[f'Level {i-subs}'][node1] = sort_by_historie[counter][1]
-		histories_nodes[f'Level {i-subs}'][node2] = sort_by_historie[counter+1][1]
-		histories_nodes[f'Level {i-subs}'][node3] = sort_by_historie[counter+2][1]
-		histories_nodes[f'Level {i-subs}'][node4] = sort_by_historie[counter+3][1]
+		#print(node1,node2,node3,node4)
+		histories_nodes[f'Level {i}'][node1] = sort_by_historie[counter][1]
+		histories_nodes[f'Level {i}'][node2] = sort_by_historie[counter+1][1]
+		histories_nodes[f'Level {i}'][node3] = sort_by_historie[counter+2][1]
+		histories_nodes[f'Level {i}'][node4] = sort_by_historie[counter+3][1]
 		counter+=4
-
+	heights.insert(0,(coordenates[list(histories_nodes["Level 1"])[0]]["coord z"] - coordenates[list(histories_nodes["Level 0"])[0]]["coord z"]))
 	return coordenates, drift_nodes,histories_nodes, histories, subs, heights
 
+coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()

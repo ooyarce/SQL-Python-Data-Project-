@@ -1,3 +1,4 @@
+from Results.check_nodes import *
 import mysql.connector
 cnx = mysql.connector.connect(user='root', password='g3drGvwkcmcq', host='localhost', database='stkodatabase')
 cursor = cnx.cursor()
@@ -186,7 +187,38 @@ def structure_max_base_shear():
 	print('structure_max_base_shear table updated correctly!\n')
 
 def structure_max_drift_per_floor():
-	return None
+
+	import pandas as pd 
+	import json
+	import numpy as np
+	units = 'm'
+	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+
+	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
+	sheet_names = list(displacements.keys())
+
+	drift_corners = []
+	drift_centers = []
+	for sheet_name in sheet_names:
+		df = displacements[sheet_name].iloc[:,1:].dropna()
+		for idx, level in enumerate(list(histories_nodes)):
+			if idx <20:
+				for idy, nodo in enumerate(list(histories_nodes[level])):
+					if idy%3 == 0 and idy != 0:
+						"""
+						to check the nodes coordenates and see that drift is well calculated
+						print(f'Level {idx} - Level {idx+1} {heights[idx]=}')
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[0]],coordenates[list(histories_nodes[f'Level {idx+1}'])[0]])
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[1]],coordenates[list(histories_nodes[f'Level {idx+1}'])[1]])
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[2]],coordenates[list(histories_nodes[f'Level {idx+1}'])[2]])
+						print(coordenates[list(histories_nodes[f'Level {idx}'])[3]],coordenates[list(histories_nodes[f'Level {idx+1}'])[3]],'\n')
+						"""
+						node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
+						node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
+						node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
+						node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
+						print(np.argmax((df[node1]/heights[idx] - df[node5]/heights[idx]).abs()))
+					
 
 def structure_relative_displacements():
 	#------------------------------------------------------------------------------------------------------------------------------------
@@ -290,19 +322,11 @@ def sm_input_pga():
 	import os
 	import numpy as np 
 	import json
-	Units = 'g'
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
-
-	spectra = []
+	Units = 'g'
 	nu = 0.05
 	tmax = 50.
-	dt = np.linspace(0,1,2000)
-	w = np.zeros(len(dt))
-
-	for i in range(len(dt)):
-	    if dt[i] != 0:    
-	        w[i] = 2*np.pi/dt[i]
 
 	s = Station()
 	s.load(npz)
@@ -312,24 +336,20 @@ def sm_input_pga():
 	n = n[t<tmax]
 	t = t[t<tmax]
 
-
 	az = np.gradient(z,t)
 	ae = np.gradient(e,t)
 	an = np.gradient(n,t)
 
-
+	PGA_max_z = az.argmax()
 	PGA_max_e = ae.argmax()
-	PGA_min_e = ae.argmin()
-
 	PGA_max_n = an.argmax()
 	PGA_min_n = an.argmin()
-
-	PGA_max_z = az.argmax()
 	PGA_min_z = az.argmin()   
+	PGA_min_e = ae.argmin()
 	    
-	PGAx = json.dumps({'max':str(PGA_max_e),'min':str(PGA_min_e)})
-	PGAy = json.dumps({'max':str(PGA_max_n),'min':str(PGA_min_n)})
-	PGAz = json.dumps({'max':str(PGA_max_z),'min':str(PGA_min_z)})
+	PGAx = json.dumps({'max':str(ae[PGA_max_e]),'min':str(ae[PGA_min_e])})
+	PGAy = json.dumps({'max':str(an[PGA_max_n]),'min':str(an[PGA_min_n])})
+	PGAz = json.dumps({'max':str(az[PGA_max_z]),'min':str(az[PGA_min_z])})
 	
 	insert_query = 'INSERT INTO sm_input_pga (PGA_X, PGA_Y, PGA_Z, Units) VALUES(%s,%s,%s,%s)'
 	values = (PGAx, PGAy, PGAz, Units)
@@ -345,19 +365,10 @@ def sm_input_spectrum():
 	import os 
 	import json
 	Units = 'm/s/s'
-	nu = 0.05
-	tmax = 50.
-	dt = np.linspace(0,1.,2000)
-	dt = np.delete(dt,0)
-	w = np.zeros(len(dt))
-
-	for i in range(len(dt)):
-	    if dt[i] != 0.:    
-	        w[i] = 2*np.pi/dt[i]
-	    
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
-
+	nu = 0.05
+	tmax = 50.
 
 	#SPECTRUM VERTICAL
 	s = Station()
