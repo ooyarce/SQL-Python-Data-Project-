@@ -1,45 +1,22 @@
-#------------------------------------------------------------------------------------------------------------------------------------
-#THIS FILLS THE RESULTS TABLE (REACTIONS-RELATIVE DISPLACEMENTS - ABSOLUTE ACCELERATIONS)
-#------------------------------------------------------------------------------------------------------------------------------------
-"""
 import pandas as pd
-import json
-displacementes = pd.read_excel('displacements.xlsx', sheet_name = None)
-sheet_names = list(displacementes.keys())
-rel_displ = []
 
-for sheet_name in sheet_names:
-	df = displacementes[sheet_name].iloc[:10,1:10].dropna()
-	timeseries = json.dumps(displacementes[sheet_name].iloc[:,0].tolist())
-	rel_displ.append(df)
+# Crear un DataFrame de ejemplo con 5 filas y 10 columnas
+datos = pd.DataFrame({'col1': [1, 2, 3, 4, 5],
+                      'col2': [6, 7, 8, 9, 10],
+                      'col3': [11, 12, 13, 14, 15],
+                      'col4': [16, 17, 18, 19, 20],
+                      'col5': [21, 22, 23, 24, 25],
+                      'col6': [26, 27, 28, 29, 30],
+                      'col7': [31, 32, 33, 34, 35],
+                      'col8': [36, 37, 38, 39, 40],
+                      'col9': [41, 42, 43, 44, 45],
+                      'col10': [46, 47, 48, 49, 50]})
 
-results_list = []
-for index, row in rel_displ[0].iterrows():
-	results_list.append(row.tolist())
-"""
-from Results.check_nodes import *
+# Seleccionar las cuatro columnas de interés por su nombre
+cols_interes = ['col3', 'col4', 'col7', 'col9']
+datos_interes = datos[cols_interes]
 
-coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+# Calcular el promedio de los valores de las cuatro columnas para cada fila
+promedio_filas = datos_interes.mean(axis=1)
 
-for idx, level in enumerate(list(histories_nodes)):
-	if idx <20:
-		for idy, nodo in enumerate(list(histories_nodes[level])):
-			if idy%3 == 0 and idy != 0:
-
-				#to check the nodes coordenates and see that drift is well calculated
-				print(f'Level {idx} - Level {idx+1} {heights[idx]=}')
-				print(coordenates[list(histories_nodes[f'Level {idx}'])[0]],coordenates[list(histories_nodes[f'Level {idx+1}'])[0]])
-				print(coordenates[list(histories_nodes[f'Level {idx}'])[1]],coordenates[list(histories_nodes[f'Level {idx+1}'])[1]])
-				print(coordenates[list(histories_nodes[f'Level {idx}'])[2]],coordenates[list(histories_nodes[f'Level {idx+1}'])[2]])
-				print(coordenates[list(histories_nodes[f'Level {idx}'])[3]],coordenates[list(histories_nodes[f'Level {idx+1}'])[3]],'\n')
-
-
-"""
-insert_query = 'INSERT INTO structure_base_shear (TimeSeries,ShearX,ShearY,ShearZ) VALUES (%s,%s,%s,%s)'
-values = (timeseries,base_shears[0],base_shears[1],base_shears[2])
-#------------------------------------------------------------------------------------------------------------------------------------
-cursor.execute(insert_query, values)
-cnx.commit()		
-
-print('structure_base_shear table updated correctly!')
-"""
+print(promedio_filas)

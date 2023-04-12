@@ -190,7 +190,6 @@ def structure_max_drift_per_floor():
 
 	import pandas as pd 
 	import json
-	import numpy as np
 	units = 'm'
 	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
 
@@ -198,31 +197,38 @@ def structure_max_drift_per_floor():
 	sheet_names = list(displacements.keys())
 	sheet_names.pop(2)
 
-	drift_corners = []
-	drift_centers = []
+	max_corners = []
+	max_centers = []
 	for sheet_name in sheet_names:
 		df = displacements[sheet_name].iloc[:,1:].dropna()
 		for idx, level in enumerate(list(histories_nodes)):
 			if idx <20:
 				for idy, nodo in enumerate(list(histories_nodes[level])):
 					if idy%3 == 0 and idy != 0:
+
 						"""
-						to check the nodes coordenates and see that drift is well calculated
+						To check the nodes coordenates and see that drift is well calculated
 						print(f'Level {idx} - Level {idx+1} {heights[idx]=}')
 						print(coordenates[list(histories_nodes[f'Level {idx}'])[0]],coordenates[list(histories_nodes[f'Level {idx+1}'])[0]])
 						print(coordenates[list(histories_nodes[f'Level {idx}'])[1]],coordenates[list(histories_nodes[f'Level {idx+1}'])[1]])
 						print(coordenates[list(histories_nodes[f'Level {idx}'])[2]],coordenates[list(histories_nodes[f'Level {idx+1}'])[2]])
 						print(coordenates[list(histories_nodes[f'Level {idx}'])[3]],coordenates[list(histories_nodes[f'Level {idx+1}'])[3]],'\n')
 						"""
-						#print(sheet_name)
 						node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
 						node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
 						node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
 						node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
-						max_id = np.argmax((df[node1]/heights[idx] - df[node5]/heights[idx]).abs())
+						
+						drift1,drift2 = ((df[node5]/heights[idx] - df[node1]/heights[idx]).abs().max()),((df[node6]/heights[idx] - df[node2]/heights[idx]).abs().max())
+						drift3,drift4 = ((df[node7]/heights[idx] - df[node3]/heights[idx]).abs().max()),((df[node8]/heights[idx] - df[node4]/heights[idx]).abs().max())
+						max_corner = max(drift1,drift2,drift3,drift4)
 
-						print(f'{sheet_name} Level {idx} {(df[node1])}')
-						print(f'{sheet_name} Level {idx} {(df[node1]/heights[idx] - df[node5]/heights[idx]).abs().max()}')
+						mean_displ1 = df[[node1,node2,node3,node4]].mean(axis=1)
+						id_center = (mean_displ1.abs()).argmax()
+						print(df[node5][id_center])
+						
+						#print(f'{sheet_name} {cornermax1} {cornermax2} {cornermax3} {cornermax4}')
+						#print(f'{sheet_name} Level {idx} {(df[node1]/heights[idx] - df[node5]/heights[idx]).abs().max()}')
 					
 
 def structure_relative_displacements():
