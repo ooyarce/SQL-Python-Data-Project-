@@ -197,34 +197,43 @@ def structure_max_drift_per_floor():
 	sheet_names = list(displacements.keys())
 	sheet_names.pop(2)
 
-	max_corners = []
-	max_centers = []
+	drifts = []
 	for sheet_name in sheet_names:
 		df = displacements[sheet_name].iloc[:,1:].dropna()
+		sheet_corners = []
+		sheet_centers = []
 		for idx, level in enumerate(list(histories_nodes)):
 			if idx == 20:
 				break
 			for idy, nodo in enumerate(list(histories_nodes[level])):
 				if idy%3 == 0 and idy != 0:
+					#define nodes
 					node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
 					node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
 					node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
 					node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
 					
-					drift1,drift2 = ((df[node5]/heights[idx] - df[node1]/heights[idx]).abs().max()),((df[node6]/heights[idx] - df[node2]/heights[idx]).abs().max())
-					drift3,drift4 = ((df[node7]/heights[idx] - df[node3]/heights[idx]).abs().max()),((df[node8]/heights[idx] - df[node4]/heights[idx]).abs().max())
-					max_corner = max(drift1,drift2,drift3,drift4)
+					#corner drift
+					drift1,drift2 = ((df[node5] - df[node1])/heights[idx]).abs().max(),	((df[node6] - df[node2])/heights[idx]).abs().max()
+					drift3,drift4 = ((df[node7] - df[node3])/heights[idx]).abs().max(),	((df[node8] - df[node4])/heights[idx]).abs().max()
+					max_corner = (max((drift1),(drift2),(drift3),(drift4)))
 
-					print(idx)
+					#center drift
 					mean_displ1 = df[[node5,node6,node7,node8]].mean(axis=1)
 					id_center = (mean_displ1.abs()).argmax()
 					mean_displ2 = sum([df[node1][id_center],df[node2][id_center],df[node3][id_center],df[node4][id_center]])/4
 					max_center = ((mean_displ2-mean_displ1.max())/heights[idx])
 
+					#add to data
+					sheet_corners.append(max_corner)
+					sheet_centers.append(max_center)
 
-						#print(f'{sheet_name} {cornermax1} {cornermax2} {cornermax3} {cornermax4}')
-						#print(f'{sheet_name} Level {idx} {(df[node1]/heights[idx] - df[node5]/heights[idx]).abs().max()}')
-					
+		drifts.append(sheet_corners)
+		drifts.append(sheet_centers)			
+	print(drifts[0])
+	print(drifts[1])
+	print(drifts[2])
+	print(drifts[3])
 
 def structure_relative_displacements():
 	#------------------------------------------------------------------------------------------------------------------------------------
