@@ -217,7 +217,7 @@ def structure_max_drift_per_floor():
 						node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
 						node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
 						node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
-						print(np.argmax((df[node1] - df[node5])/heights[idx]))
+						print(np.argmax((df[node1]/heights[idx] - df[node5]/heights[idx])))
 					
 
 def structure_relative_displacements():
