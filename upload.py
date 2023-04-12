@@ -1,7 +1,11 @@
 import subprocess
 import datetime
 import time
-
+"""
+Puedes revisar los registros de systemd para ver las salidas del script. Puedes usar el siguiente comando para ver los registros de systemd:
+> journalctl -u upload.service
+Este comando mostrará el registro de systemd para el servicio upload.service, lo que incluirá las salidas del comando print() en el script.
+"""
 # Definir la duración del intervalo entre commits (en segundos)
 intervalo = 3600
 

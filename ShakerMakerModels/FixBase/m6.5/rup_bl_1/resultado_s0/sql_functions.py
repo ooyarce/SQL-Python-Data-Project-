@@ -217,7 +217,7 @@ def structure_max_drift_per_floor():
 						node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
 						node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
 						node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
-						print(np.argmax((df[node1]/heights[idx] - df[node5]/heights[idx])))
+						print(np.argmax((df[node1]/heights[idx] - df[node5]/heights[idx]).abs()))
 					
 
 def structure_relative_displacements():
@@ -322,19 +322,11 @@ def sm_input_pga():
 	import os
 	import numpy as np 
 	import json
-	Units = 'g'
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
-
-	spectra = []
+	Units = 'g'
 	nu = 0.05
 	tmax = 50.
-	dt = np.linspace(0,1,2000)
-	w = np.zeros(len(dt))
-
-	for i in range(len(dt)):
-	    if dt[i] != 0:    
-	        w[i] = 2*np.pi/dt[i]
 
 	s = Station()
 	s.load(npz)
@@ -344,24 +336,20 @@ def sm_input_pga():
 	n = n[t<tmax]
 	t = t[t<tmax]
 
-
 	az = np.gradient(z,t)
 	ae = np.gradient(e,t)
 	an = np.gradient(n,t)
 
-
+	PGA_max_z = az.argmax()
 	PGA_max_e = ae.argmax()
-	PGA_min_e = ae.argmin()
-
 	PGA_max_n = an.argmax()
 	PGA_min_n = an.argmin()
-
-	PGA_max_z = az.argmax()
 	PGA_min_z = az.argmin()   
+	PGA_min_e = ae.argmin()
 	    
-	PGAx = json.dumps({'max':str(PGA_max_e),'min':str(PGA_min_e)})
-	PGAy = json.dumps({'max':str(PGA_max_n),'min':str(PGA_min_n)})
-	PGAz = json.dumps({'max':str(PGA_max_z),'min':str(PGA_min_z)})
+	PGAx = json.dumps({'max':str(ae[PGA_max_e]),'min':str(ae[PGA_min_e])})
+	PGAy = json.dumps({'max':str(an[PGA_max_n]),'min':str(an[PGA_min_n])})
+	PGAz = json.dumps({'max':str(az[PGA_max_z]),'min':str(az[PGA_min_z])})
 	
 	insert_query = 'INSERT INTO sm_input_pga (PGA_X, PGA_Y, PGA_Z, Units) VALUES(%s,%s,%s,%s)'
 	values = (PGAx, PGAy, PGAz, Units)
@@ -377,19 +365,10 @@ def sm_input_spectrum():
 	import os 
 	import json
 	Units = 'm/s/s'
-	nu = 0.05
-	tmax = 50.
-	dt = np.linspace(0,1.,2000)
-	dt = np.delete(dt,0)
-	w = np.zeros(len(dt))
-
-	for i in range(len(dt)):
-	    if dt[i] != 0.:    
-	        w[i] = 2*np.pi/dt[i]
-	    
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
-
+	nu = 0.05
+	tmax = 50.
 
 	#SPECTRUM VERTICAL
 	s = Station()
