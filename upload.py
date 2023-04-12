@@ -25,7 +25,7 @@ while True:
     # Esperar hasta el siguiente intervalo
     tiempo_restante = intervalo
     while tiempo_restante > 0:
-        tiempo_espera = min(tiempo_restante, 600)  # Esperar un máximo de 10 minutos
-        tiempo_restante -= tiempo_espera
         print(f'Faltan {tiempo_restante//60} minutos y {tiempo_restante%60} segundos para el siguiente commit')
+        tiempo_espera = min(tiempo_restante, 600)  # Esperar un máximo de 10 minutos
         time.sleep(tiempo_espera)
+        tiempo_restante -= tiempo_espera
