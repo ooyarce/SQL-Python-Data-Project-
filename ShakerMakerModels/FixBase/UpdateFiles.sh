@@ -3,11 +3,11 @@ echo "Using files from FixBase folder..."
 for file in */ ; do
     #Iterates over the magnitude (file) and gets inside when 'cd'
 
+    cp sql_functions.py "$file"
     #cp run.sh "$file"
     #cp accelerations_writter_tcl_format.py "$file"
     #cp sort_results_into_xlsx.py "$file"
     #cp definitions.tcl "$file"
-    #cp sql_functions.py "$file"
     #cp exporting_results.py "$file"
     #cp check_nodes.py "$file"
 
@@ -22,10 +22,10 @@ for file in */ ; do
     for file2 in */ ;do
         #Iterates over the rupture type (file2) and gets inside when 'cd'
 
+        cp sql_functions.py "$file2"
         #cp accelerations_writter_tcl_format.py "$file2"
         #cp sort_results_into_xlsx.py "$file2"
         #cp definitions.tcl "$file2"
-        #cp sql_functions.py "$file2"
         #cp exporting_results.py "$file2"
         #cp check_nodes.py "$file2"
 
@@ -41,9 +41,9 @@ for file in */ ; do
         for file3 in */ ;do
             #Iterates over the station and gets inside when 'cd'
 
+            cp sql_functions.py "$file3"
             #cp accelerations_writter_tcl_format.py "$file3"
             #cp sort_results_into_xlsx.py "$file3"
-            #cp sql_functions.py "$file3"
             #cp check_nodes.py "$file3/Results/"
 
             #cp definitions.tcl "$file3"
@@ -59,8 +59,8 @@ for file in */ ; do
             cd ..
         done
 
+        rm sql_functions.py 
         #rm check_nodes.py
-        #rm sql_functions.py 
         #rm accelerations_writter_tcl_format.py
         #rm sort_results_into_xlsx.py 
         #rm definitions.tcl 
@@ -76,9 +76,9 @@ for file in */ ; do
 
     done
 
+    rm sql_functions.py 
     #rm accelerations_writter_tcl_format.py
     #rm sort_results_into_xlsx.py 
-    #rm sql_functions.py 
     #rm exporting_results.py
     #rm check_nodes.py
     #rm definitions.tcl
