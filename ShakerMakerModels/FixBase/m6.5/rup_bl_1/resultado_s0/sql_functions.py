@@ -59,7 +59,7 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
-def simulation_model(model_name = 'FixBaseV3', comments = 'Comments for simulation_model', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'Comments for model_structure_perfomance',  linearity = 1, specs_comments = 'Comments for model_specs_structure', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'Comments for model_benchmark'):
+def simulation_model(model_name = 'FixBaseV3', comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'Comments for model_structure_perfomance',  linearity = 1, specs_comments = 'Comments for model_specs_structure', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'Comments for model_benchmark'):
 	model_benchmark(clustername,bench_comments)
 	Benchmark = cursor.lastrowid
 	model_structure_perfomance(bs_units,abs_acc_units,rel_displ_units,max_bs_units,max_drift_units,perf_comments)
@@ -74,7 +74,7 @@ def simulation_model(model_name = 'FixBaseV3', comments = 'Comments for simulati
 	print('simulation_model table updated correctly!\n')
 
 
-def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
+def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'No comments' ):
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
 	#------------------------------------------------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	cnx.commit()	
 	print('model_benchmark table updated correctly!\n')
 
-def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', comments = 'Comments for model_structure_perfomance'):
+def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', comments = 'No comments'):
 	#fills base shear
 	structure_base_shear(bs_units)
 	BaseShear = cursor.lastrowid
@@ -183,7 +183,7 @@ def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_u
 	cnx.commit()		
 	print('model_structure_perfomance table updated correctly!\n')
 
-def model_specs_structure(linearity = 1, comments = 'Comments for model_specs_structure'):
+def model_specs_structure(linearity = 1, comments = 'No comments'):
 	if linearity < 1 or linearity > 2:
 		raise TypeError('The Linearity parameter can only take the values of 1 or 2.')  
 
