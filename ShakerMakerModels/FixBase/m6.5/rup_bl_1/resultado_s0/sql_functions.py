@@ -59,6 +59,7 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
+
 def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
@@ -135,6 +136,12 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	cursor.execute(insert_query, values)
 	cnx.commit()	
 	print('model_benchmark table updated correctly!\n')
+
+def model_structure_perfomance(bsunits = 'kN'):
+	#fills base shear
+	structure_base_shear(bsunits)
+	BaseShear = cursor.lastrowid
+	
 
 def structure_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)

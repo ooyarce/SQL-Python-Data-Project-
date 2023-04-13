@@ -9,7 +9,7 @@ clustername = 'Omar-Ubuntu'
 comments = 'Just testing model_benchmark function'
 model_benchmark(clustername,comments)
 """
-structure_max_drift_per_floor()
+model_structure_perfomance('unidad al azar')
 #close sql
 cursor.close()
 cnx.close()
