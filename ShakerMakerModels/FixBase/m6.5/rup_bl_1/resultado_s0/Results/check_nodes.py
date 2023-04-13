@@ -21,34 +21,31 @@ for i in range(len(folders)):
 		folder_disp = f'{path}/{folders[i]}'
 	elif folders[i] == 'reaction':
 		folder_reaction = f'{path}/{folders[i]}'
-
-
 #---------------------------------------------------------------------------
 #------------------------ACCELERATIONS--------------------------------------
 #---------------------------------------------------------------------------
+def give_accelerations()
+	#check nodes
+	files_accel = os.listdir(folder_acc)
+	files = [open(f'{folder_acc}/{file}','r') for file in files_accel]
 
-#check nodes
-files_accel = os.listdir(folder_acc)
-files = [open(f'{folder_acc}/{file}','r') for file in files_accel]
+	#create dictionary
+	accelerations = {}
+	for file in range(len(files)):
+		nodes = [[(num) for num in line.split('\n')] for line in files[file]]
+		file_id = str(files[file]).split('-')[1].split(' ')[0].split('.')[0]
+		accelerations[f'Partition {file_id}'] = {}
+		for nodei in range(len(nodes)):
+			accelerations[f'Partition {file_id}'][f'Node {nodei}'] = nodes[nodei][0]
 
-#create dictionary
-accelerations = {}
-for file in range(len(files)):
-	nodes = [[(num) for num in line.split('\n')] for line in files[file]]
-	file_id = str(files[file]).split('-')[1].split(' ')[0].split('.')[0]
-	accelerations[f'Partition {file_id}'] = {}
-	for nodei in range(len(nodes)):
-		accelerations[f'Partition {file_id}'][f'Node {nodei}'] = nodes[nodei][0]
+	#create list with nodes sorted
+	acce_nodes = []
+	for values in accelerations.values():
+		for node in values.values():
+			acce_nodes.append(int(node))
+	acce_nodes.sort()
 
-#create list with nodes sorted
-acce_nodes = []
-for values in accelerations.values():
-	for node in values.values():
-		acce_nodes.append(int(node))
-acce_nodes.sort()
-
-#print(acce_nodes) #this are all the nodes taking in count for the drift and accelerations
-
+	return accelerations,acce_nodes
 #---------------------------------------------------------------------------
 #------------------------DISPLACEMENTS--------------------------------------
 #---------------------------------------------------------------------------
@@ -75,8 +72,7 @@ def give_displacements():
 
 	displ_nodes.sort()
 
-#print(displacements) #this are all the nodes taking in count for the drift and accelerations
-#print('\n')
+	return displacements,displ_nodes
 #---------------------------------------------------------------------------
 #----------------------------REACTIONS--------------------------------------
 #---------------------------------------------------------------------------
@@ -102,8 +98,6 @@ def give_reactions():
 	reaction_nodes.sort()
 
 	return reactions,reaction_nodes
-	#print(len(reaction_nodes))
-
 #---------------------------------------------------------------------------
 #--------------------------COORDINATES--------------------------------------
 #---------------------------------------------------------------------------

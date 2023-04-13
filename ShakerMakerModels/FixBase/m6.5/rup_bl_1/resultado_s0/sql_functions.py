@@ -59,7 +59,6 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
-
 def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
@@ -158,14 +157,20 @@ def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_u
 	structure_max_drift_per_floor(max_drift_units)
 	MaxDriftPerFloor = cursor.lastrowid
 
+	#this is going to change in the future
 	mta = 'Not sure how to calculate this'
 	fas = 'Not sure how to calculate this'
 
+	#insert data into database
 	insert_query = 'INSERT INTO model_structure_perfomance (idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,FloorAccelerationSpectra,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
-	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments)
+	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments) #mta and fas vars has to change
 	cursor.execute(insert_query, values)
 	cnx.commit()		
 	print('model_structure_perfomance table updated correctly!\n')
+
+def model_specs_structure(Linearity = 1, comments = 'Just testing if this function works.'):
+	if Linearity < 1 or Linearity > 2:
+		raise TypeError('The Linearity parameter can only take the values of 1 or 2.')  
 
 
 def structure_base_shear(units = 'kN'):
