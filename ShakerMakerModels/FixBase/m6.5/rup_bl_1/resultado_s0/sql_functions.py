@@ -50,7 +50,7 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
-def model_benchmark():
+def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
 	#-------------------------------------------------------------------------------------------------------------------------------------
 	#THIS FILLS THE MODEL-BENCHMARK TABLE (JobName,SimulationTime,MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,Comments)|	
 	#-------------------------------------------------------------------------------------------------------------------------------------
@@ -80,11 +80,6 @@ def model_benchmark():
 		if 'Elapsed:' in row:
 			value = row.split(' ')[1]
 			time = (f'{value} seconds') #first value of query
-
-
-	#Write some comments
-	clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl'
-	comments = 'This is a test model for beta_0.0' #for query
 
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get MODEL-BENCHMARK from folder read																								|
@@ -196,8 +191,8 @@ def structure_max_drift_per_floor():
 	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
 	sheet_names = list(displacements.keys())
 	sheet_names.pop(2)
-
 	drifts = []
+
 	for sheet_name in sheet_names:
 		df = displacements[sheet_name].iloc[:,1:].dropna()
 		sheet_corners = []
@@ -231,8 +226,8 @@ def structure_max_drift_per_floor():
 		drifts.append(sheet_corners)
 		drifts.append(sheet_centers)	
 
-	insert_query = 'INSERT INTO structure_max_drift_per_floor (MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s)'
-	values = (max_shears[0], max_shears[1], max_shears[2],units)
+	insert_query = 'INSERT INTO structure_max_drift_per_floor (MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s,%s)'
+	values = (drifts[0], drifts[2], drifts[1], drifts[3], units)
 	cursor.execute(insert_query,values)
 	cnx.commit()
 	print('structure_max_drift_per_floor table updated correctly!\n')

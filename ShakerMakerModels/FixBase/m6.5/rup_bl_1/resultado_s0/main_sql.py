@@ -4,7 +4,7 @@
 from sql_functions import *
 
 #put into tables
-structure_max_drift_per_floor()
+model_benchmark()
 #close sql
 cursor.close()
 cnx.close()
