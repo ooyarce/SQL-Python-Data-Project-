@@ -183,7 +183,7 @@ def give_coords_info():
 	heights.insert(0,(coordenates[list(histories_nodes["Level 1"])[0]]["coord z"] - coordenates[list(histories_nodes["Level 0"])[0]]["coord z"]))
 	return coordenates, drift_nodes,histories_nodes, histories, subs, heights
 
-coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+#coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
 
 #--------------------------------------------------------------------------------------------------------------------------------------------------
 #-------------------------------------------------------------MODEL INFO---------------------------------------------------------------------------
@@ -193,8 +193,9 @@ def give_info():
 	files_info = os.listdir(folder_info)
 	file = open(f'{folder_info}/model_info.csv','r') 
 
+	#get number of nodes and number of elements
 	info = [[row for row in line.split(' ')] for line in file]
 	nnodes = (int(info[0][4]))
 	nelements = (int(info[1][4]))
-	print(nnodes,nelements)
-give_info()
+
+	return nnodes, nelements
