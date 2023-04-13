@@ -213,27 +213,29 @@ def structure_max_drift_per_floor():
 					node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
 					node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
 					
-					#corner drift
+					#corner drift absolute value
 					drift1,drift2 = ((df[node5] - df[node1])/heights[idx]).abs().max(),	((df[node6] - df[node2])/heights[idx]).abs().max()
 					drift3,drift4 = ((df[node7] - df[node3])/heights[idx]).abs().max(),	((df[node8] - df[node4])/heights[idx]).abs().max()
 					max_corner = (max((drift1),(drift2),(drift3),(drift4)))
 
-					#center drift
-					mean_displ1 = df[[node5,node6,node7,node8]].mean(axis=1)
-					id_center = (mean_displ1.abs()).argmax()
-					mean_displ2 = sum([df[node1][id_center],df[node2][id_center],df[node3][id_center],df[node4][id_center]])/4
-					max_center = ((mean_displ2-mean_displ1.max())/heights[idx])
+					#center drift absolute value
+					mean_displ2 = df[[node5,node6,node7,node8]].mean(axis=1)
+					id_center = (mean_displ2.abs()).argmax()
+					mean_displ1 = sum([df[node1][id_center],df[node2][id_center],df[node3][id_center],df[node4][id_center]])/4
+					max_center = abs(mean_displ2[id_center]- mean_displ1)/heights[idx]
 
 					#add to data
 					sheet_corners.append(max_corner)
 					sheet_centers.append(max_center)
 
 		drifts.append(sheet_corners)
-		drifts.append(sheet_centers)			
-	print(drifts[0])
-	print(drifts[1])
-	print(drifts[2])
-	print(drifts[3])
+		drifts.append(sheet_centers)	
+
+	insert_query = 'INSERT INTO structure_max_drift_per_floor (MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s)'
+	values = (max_shears[0], max_shears[1], max_shears[2],units)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('structure_max_drift_per_floor table updated correctly!\n')
 
 def structure_relative_displacements():
 	#------------------------------------------------------------------------------------------------------------------------------------
