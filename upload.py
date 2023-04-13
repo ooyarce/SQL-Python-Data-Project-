@@ -11,7 +11,7 @@ fecha_actual = datetime.datetime.now()
 logging.info(f'SESION INICIADA el {fecha_actual.strftime("%d/%m/%Y a las %H:%M:%S")}')
 
 # Definir la duración del intervalo entre commits (en segundos)
-intervalo = 3600
+intervalo = 600
 
 while True:
     # Ejecutar el comando 'git add .'
@@ -34,6 +34,6 @@ while True:
     tiempo_restante = intervalo
     while tiempo_restante > 0:
         logging.info(f'Faltan {tiempo_restante//60} minutos y {tiempo_restante%60} segundos para el siguiente commit')
-        tiempo_espera = min(tiempo_restante, 600)  # Esperar un máximo de 10 minutos
+        tiempo_espera = min(tiempo_restante, 60)  # Esperar un máximo de 1 minutos
         time.sleep(tiempo_espera)
         tiempo_restante -= tiempo_espera
