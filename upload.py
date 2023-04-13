@@ -33,7 +33,7 @@ while True:
     # Esperar hasta el siguiente intervalo
     tiempo_restante = intervalo
     while tiempo_restante > 0:
-        logging.info(f'Faltan {tiempo_restante//60} minutos y {tiempo_restante%60} segundos para el siguiente commit')
+        logging.info(f'Faltan {tiempo_restante//60} minutos para el siguiente commit')
         tiempo_espera = min(tiempo_restante, 60)  # Esperar un máximo de 1 minutos
         time.sleep(tiempo_espera)
         tiempo_restante -= tiempo_espera
