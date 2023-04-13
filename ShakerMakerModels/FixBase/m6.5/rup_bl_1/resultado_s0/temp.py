@@ -2,19 +2,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Valores de las variables
-sobrelendig = [100, 110, 120, 135, 155, 180, 210, 245, 290, 350]
-mercado_inmobiliario = [500, 550, 600, 700, 800, 1000, 1200, 1400, 1600, 1800]
-credito_hipotecario = [200, 220, 240, 270, 300, 350, 400, 450, 500, 550]
-derivados_financieros = [50, 70, 90, 120, 150, 200, 250, 300, 350, 400]
-regulacion = [60, 65, 70, 75, 80, 85, 90, 95, 100, 110]
-riesgo_crediticio = [20, 25, 30, 35, 40, 50, 60, 70, 80, 90]
-securitizacion = [30, 35, 40, 50, 60, 80, 100, 120, 140, 160]
-cdos = [10, 15, 20, 25, 30, 40, 50, 60, 70, 80]
-interes_bajo = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-crisis_financiera = [0, 0, 0, 0, 10, 50, 100, 150, 200, 300]
+sobrelendig = [4, 4, 4, 5, 5, 6, 7, 8, 9, 9, 9]
+mercado_inmobiliario = [6, 6, 7, 8, 8, 7, 6, 5, 4, 4, 5]
+credito_hipotecario = [8, 8, 7, 6, 6, 7, 8, 9, 10, 10, 9]
+derivados_financieros = [4, 4, 4, 5, 6, 7, 8, 9, 10, 10, 9]
+regulacion = [5, 5, 5, 5, 6, 7, 8, 8, 8, 9, 9]
+riesgo_crediticio = [8, 8, 8, 9, 9, 10, 10, 10, 9, 8, 8]
+securitizacion = [6, 6, 7, 8, 8, 7, 6, 5, 4, 4, 5]
+cdos = [7, 7, 8, 9, 9, 10, 10, 9, 8, 8, 9]
+interes_bajo = [1, 1, 1, 1, 1, 1, 1, 1, 1, 5.5, 5.5]
+crisis_financiera = [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
 
 # Tiempo
-time = np.arange(2001, 2011)
+time = np.arange(2001, 2012)
 
 # Gráfico
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
@@ -33,11 +33,15 @@ ax2.set_ylabel("Monto (en miles de dólares)")
 ax2.legend()
 
 # Variables de riesgo y regulación
-ax3.semilogy(time, derivados_financieros, label="Derivados Financieros")
-ax3.semilogy(time, regulacion, label="Regulación")
-ax3.semilogy(time, riesgo_crediticio, label="Riesgo Crediticio")
+ax3.plot(time, derivados_financieros, label="Derivados Financieros")
+ax3.plot(time, regulacion, label="Regulación")
+ax3.plot(time, riesgo_crediticio, label="Riesgo Crediticio")
+ax3.plot(time, securitizacion, label="Securitización")
+ax3.plot(time, cdos, label="CDOs")
+ax3.plot(time, interes_bajo, label="Interés Bajo")
+ax3.plot(time, crisis_financiera, label="Crisis Financiera")
 ax3.set_ylabel("Monto (logarítmico)")
 ax3.set_xlabel("Año")
-ax3.legend()
+ax3.legend(loc='upper right', bbox_to_anchor=(1, 1))
 
 plt.show()
