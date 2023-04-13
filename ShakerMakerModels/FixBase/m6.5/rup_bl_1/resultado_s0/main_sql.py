@@ -23,9 +23,7 @@ parameters = {
     'bench_comments' : 'Comments for model_benchmark',
     'linearity'      : 1
 }
-bsunits, absacc_units, rel_displ_units, maxbs_units, maxd_units = 'tonf', 'cm/hrs/hrs', 'in', 'kgf', 'km'
-model_structure_perfomance(bsunits, absacc_units, rel_displ_units, maxbs_units, maxd_units)
-
+simulation_model()
 #close sql
 cursor.close()
 cnx.close()

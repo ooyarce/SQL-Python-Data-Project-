@@ -59,10 +59,19 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
-def simulation_model('model_name = 'FixBaseV3', comments = 'Testing beta 0.1', 
-					  bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'Comments for model_structure_perfomance', 
-					  Linearity = 1, comments = 'Comments for model_specs_structure'):
-	return None
+def simulation_model(model_name = 'FixBaseV3', comments = 'Comments for simulation_model', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'Comments for model_structure_perfomance',  linearity = 1, specs_comments = 'Comments for model_specs_structure', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'Comments for model_benchmark'):
+	model_benchmark(clustername,bench_comments)
+	Benchmark = cursor.lastrowid
+	model_structure_perfomance(bs_units,abs_acc_units,rel_displ_units,max_bs_units,max_drift_units,perf_comments)
+	StructurePerfomance = cursor.lastrowid
+	model_specs_structure(linearity,specs_comments)
+	SpecsStructure = cursor.lastrowid
+
+	insert_query = 'INSERT INTO simulation_model(idBenchmark, idStructuralPerfomance, idSpecsStructure, ModelName, Comments) VALUES(%s,%s,%s,%s,%s)'
+	values = (Benchmark,StructurePerfomance,SpecsStructure,model_name,comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation_model table updated correctly!\n')
 
 
 def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
@@ -174,15 +183,15 @@ def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_u
 	cnx.commit()		
 	print('model_structure_perfomance table updated correctly!\n')
 
-def model_specs_structure(Linearity = 1, comments = 'Comments for model_specs_structure'):
-	if Linearity < 1 or Linearity > 2:
+def model_specs_structure(linearity = 1, comments = 'Comments for model_specs_structure'):
+	if linearity < 1 or linearity > 2:
 		raise TypeError('The Linearity parameter can only take the values of 1 or 2.')  
 
 	nnodes, nelements = give_info()
 	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
 
 	insert_query = 'INSERT INTO model_specs_structure (idLinearity, Nnodes, Nelements, Nhistories, Nsubs, InterstoryHeight, Comments) VALUES (%s,%s,%s,%s,%s,%s,%s)'
-	values = (Linearity, nnodes, nelements,histories,subs, json.dumps(heights), comments) #mta and fas vars has to change
+	values = (linearity, nnodes, nelements,histories,subs, json.dumps(heights), comments) #mta and fas vars has to change
 	cursor.execute(insert_query, values)
 	cnx.commit()		
 	print('model_specs_structure table updated correctly!\n')
