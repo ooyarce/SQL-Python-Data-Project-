@@ -137,6 +137,7 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	print('model_benchmark table updated correctly!\n')
 
 def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', comments = 'This is the first test.'):
+	print('Filling sub tables...\n')
 	#fills base shear
 	structure_base_shear(bs_units)
 	BaseShear = cursor.lastrowid
@@ -161,6 +162,7 @@ def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_u
 	mta = 'Not sure how to calculate this'
 	fas = 'Not sure how to calculate this'
 
+	print('End filling sub tables...')
 	#insert data into database
 	insert_query = 'INSERT INTO model_structure_perfomance (idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,FloorAccelerationSpectra,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
 	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments) #mta and fas vars has to change
@@ -172,6 +174,14 @@ def model_specs_structure(Linearity = 1, comments = 'Just testing if this functi
 	if Linearity < 1 or Linearity > 2:
 		raise TypeError('The Linearity parameter can only take the values of 1 or 2.')  
 
+	nnodes, nelements = give_info()
+	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+
+	insert_query = 'INSERT INTO model_specs_structure (idLinearity, Nnodes, Nelements, Nhistories, Nsubs, InterstoryHeight, Comments) VALUES (%s,%s,%s,%s,%s,%s,%s)'
+	values = (Linearity, nnodes, nelements,histories,subs, json.dumps(heights), comments) #mta and fas vars has to change
+	cursor.execute(insert_query, values)
+	cnx.commit()		
+	print('model_specs_structure table updated correctly!\n')
 
 def structure_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
