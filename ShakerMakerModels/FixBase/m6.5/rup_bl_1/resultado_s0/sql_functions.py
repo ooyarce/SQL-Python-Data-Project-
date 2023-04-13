@@ -1,11 +1,20 @@
+from shakermaker.tools.plotting import ZENTPlot,cumulative_trapezoid
+from shakermaker.station import Station
+from shakermaker import shakermaker
 from Results.check_nodes import *
+
 import mysql.connector
+import pandas as pd
+import numpy as np
+import json	
+import os
+
 cnx = mysql.connector.connect(user='root', password='g3drGvwkcmcq', host='localhost', database='stkodatabase')
 cursor = cnx.cursor()
 
 def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por el método de Trapecio
     #print("Piese wise linear")   
-    import numpy as np
+    
     #variables 
     h = 0.005
     u_t = [0.]
@@ -54,8 +63,10 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
 	#------------------------------------------------------------------------------------------------------------------------------------
+
 	data = open('run.sh')
 	counter = 0
+
 	for row in data:
 		#get job name
 		if counter == 1:
@@ -80,10 +91,6 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 			value = row.split(' ')[1]
 			time = (f'{value} seconds') #first value of query
 
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#Get MODEL-BENCHMARK from folder read																								|
-	#------------------------------------------------------------------------------------------------------------------------------------
-	import os
 	path1 = f'{os.path.dirname(__file__)}/Accelerations/'
 	path2 = f'{os.path.dirname(__file__)}/Displacements/'
 	path3 = f'{os.path.dirname(__file__)}/Reactions/'
@@ -123,22 +130,13 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	model_name = 'FixBaseV3.scd'
 	memory_by_model = f'{os.path.getsize(model_name)/(1024*1024):.2f} Mb' #this value goes for query
 
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#write query to put data in table
 	insert_query = 'INSERT INTO model_benchmark (JobName,SimulationTime,MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
 	values = (jobname,time,memory_by_results,memory_by_model,nodes,threads,clustername,comments)
 	cursor.execute(insert_query, values)
 	cnx.commit()	
 	print('model_benchmark table updated correctly!\n')
 
-	 
-	#------------------------------------------------------------------------------------------------------------------------------------
-
-def structure_base_shear():
-	import pandas as pd
-	import json
-	Units = 'kN'
-	#reactions
+def structure_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
 	sheet_names = list(reactions.keys())
 	base_shears = []
@@ -150,15 +148,12 @@ def structure_base_shear():
 		base_shears.append(summ)
 
 	insert_query = 'INSERT INTO structure_base_shear (TimeSeries, ShearX, ShearY, ShearZ, Units) VALUES (%s,%s,%s,%s,%s)'
-	values = (timeseries, base_shears[0], base_shears[1], base_shears[2], Units)
+	values = (timeseries, base_shears[0], base_shears[1], base_shears[2], units)
 	cursor.execute(insert_query, values)
 	cnx.commit()		
 	print('structure_base_shear table updated correctly!\n')
 
 def structure_max_base_shear(units = 'kN'):
-	import pandas as pd 
-	import json
-	#reactions
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
 	sheet_names = list(reactions.keys())
 	max_shears = []
@@ -177,9 +172,6 @@ def structure_max_base_shear(units = 'kN'):
 	print('structure_max_base_shear table updated correctly!\n')
 
 def structure_max_drift_per_floor(units = 'm'):
-	import pandas as pd 
-	import json
-
 	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
 	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
 	sheet_names = list(displacements.keys())
@@ -226,13 +218,10 @@ def structure_max_drift_per_floor(units = 'm'):
 	print('structure_max_drift_per_floor table updated correctly!\n')
 
 def structure_relative_displacements(units = 'm'):
-	import pandas as pd
-	import json
-
-	#displacements
 	displacements = pd.read_excel('displacements.xlsx',sheet_name = None)
 	sheet_names = list(displacements.keys())
 	matrixes = []
+
 	for sheet_name in sheet_names:
 		pd.options.display.float_format = '{:.2E}'.format
 		df = displacements[sheet_name].dropna()
@@ -254,15 +243,7 @@ def structure_relative_displacements(units = 'm'):
 	cnx.commit()		
 	print('structure_relative_displacements table updated correctly!\n')
  
-def structure_abs_acceleration():
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE RESULTS TABLE (REACTIONS-RELATIVE DISPLACEMENTS - ABSOLUTE ACCELERATIONS)
-	#------------------------------------------------------------------------------------------------------------------------------------
-	import pandas as pd 
-	import json
-	import os 
-	Units = 'm/s/s'
-	#accelerations
+def structure_abs_acceleration(units = 'm/s/s'):
 	accelerations = pd.read_excel('accelerations.xlsx',sheet_name = None)
 	sheet_names = list(accelerations.keys())
 	matrixes = []
@@ -312,21 +293,14 @@ def structure_abs_acceleration():
 			matrixes.append(json.dumps(df.to_dict()))
 
 	insert_query = 'INSERT INTO structure_abs_acceleration (TimeSeries, AbsAccX, AbsAccY, AbsAccZ, Units) VALUES(%s,%s,%s,%s,%s)'
-	values = (timeseries, matrixes[0], matrixes[1], matrixes[2], Units)
+	values = (timeseries, matrixes[0], matrixes[1], matrixes[2], units)
 	cursor.execute(insert_query, values)
 	cnx.commit()		
 	print('structure_abs_acceleration table updated correctly!\n')
 	
-def sm_input_pga():
-	from shakermaker import shakermaker
-	from shakermaker.station import Station
-	from shakermaker.tools.plotting import ZENTPlot,cumulative_trapezoid
-	import os
-	import numpy as np 
-	import json
+def sm_input_pga(units = 'g'):
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
-	Units = 'g'
 	nu = 0.05
 	tmax = 50.
 
@@ -354,19 +328,12 @@ def sm_input_pga():
 	PGAz = json.dumps({'max':round(az[PGA_max_z],2),'min':round(az[PGA_min_z],2)})
 	
 	insert_query = 'INSERT INTO sm_input_pga (PGA_X, PGA_Y, PGA_Z, Units) VALUES(%s,%s,%s,%s)'
-	values = (PGAx, PGAy, PGAz, Units)
+	values = (PGAx, PGAy, PGAz, units)
 	cursor.execute(insert_query, values)
 	cnx.commit()
 	print('sm_input_pga table updated correctly!\n')
 
-def sm_input_spectrum():
-	from shakermaker import shakermaker
-	from shakermaker.station import Station
-	from shakermaker.tools.plotting import ZENTPlot,cumulative_trapezoid
-	import numpy as np
-	import os 
-	import json
-	Units = 'm/s/s'
+def sm_input_spectrum(units = 'm/s/s'):
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
 	nu = 0.05
@@ -418,7 +385,7 @@ def sm_input_spectrum():
 	    Spn.append(San)
 
 	insert_query = 'INSERT INTO sm_input_spectrum(SpectrumX, SpectrumY, SpectrumZ, Units) VALUES (%s,%s,%s,%s)'
-	values = (json.dumps(Spe), json.dumps(Spn), json.dumps(Spaz), Units)
+	values = (json.dumps(Spe), json.dumps(Spn), json.dumps(Spaz), units)
 	cursor.execute(insert_query, values)
 	cnx.commit()
 	print('sm_input_spectrum table updated correctly!\n')
