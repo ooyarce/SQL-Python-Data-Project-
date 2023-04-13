@@ -59,6 +59,12 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
+def simulation_model('model_name = 'FixBaseV3', comments = 'Testing beta 0.1', 
+					  bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'Comments for model_structure_perfomance', 
+					  Linearity = 1, comments = 'Comments for model_specs_structure'):
+	return None
+
+
 def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
@@ -136,8 +142,7 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	cnx.commit()	
 	print('model_benchmark table updated correctly!\n')
 
-def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', comments = 'This is the first test.'):
-	print('Filling sub tables...\n')
+def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', comments = 'Comments for model_structure_perfomance'):
 	#fills base shear
 	structure_base_shear(bs_units)
 	BaseShear = cursor.lastrowid
@@ -162,7 +167,6 @@ def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_u
 	mta = 'Not sure how to calculate this'
 	fas = 'Not sure how to calculate this'
 
-	print('End filling sub tables...')
 	#insert data into database
 	insert_query = 'INSERT INTO model_structure_perfomance (idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,FloorAccelerationSpectra,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
 	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments) #mta and fas vars has to change
@@ -170,7 +174,7 @@ def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_u
 	cnx.commit()		
 	print('model_structure_perfomance table updated correctly!\n')
 
-def model_specs_structure(Linearity = 1, comments = 'Just testing if this function works.'):
+def model_specs_structure(Linearity = 1, comments = 'Comments for model_specs_structure'):
 	if Linearity < 1 or Linearity > 2:
 		raise TypeError('The Linearity parameter can only take the values of 1 or 2.')  
 
