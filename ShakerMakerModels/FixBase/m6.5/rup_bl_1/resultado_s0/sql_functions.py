@@ -51,10 +51,9 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
     return u_t,up_t
 
 def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
-	#-------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE MODEL-BENCHMARK TABLE (JobName,SimulationTime,MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,Comments)|	
-	#-------------------------------------------------------------------------------------------------------------------------------------
+	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
+	#------------------------------------------------------------------------------------------------------------------------------------
 	data = open('run.sh')
 	counter = 0
 	for row in data:
@@ -136,9 +135,6 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	#------------------------------------------------------------------------------------------------------------------------------------
 
 def structure_base_shear():
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE STRUCTURE_BASE_SHEAR
-	#------------------------------------------------------------------------------------------------------------------------------------
 	import pandas as pd
 	import json
 	Units = 'kN'
@@ -159,10 +155,9 @@ def structure_base_shear():
 	cnx.commit()		
 	print('structure_base_shear table updated correctly!\n')
 
-def structure_max_base_shear():
+def structure_max_base_shear(units = 'kN'):
 	import pandas as pd 
 	import json
-	Units = 'kN'
 	#reactions
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
 	sheet_names = list(reactions.keys())
@@ -176,18 +171,16 @@ def structure_max_base_shear():
 	max_shears = [round(num,2) for num in max_shears]
 	
 	insert_query = 'INSERT INTO structure_max_base_shear (MaxX, MaxY, MaxZ, Units) VALUES (%s,%s,%s,%s)'
-	values = (max_shears[0], max_shears[1], max_shears[2],Units)
+	values = (max_shears[0], max_shears[1], max_shears[2],units)
 	cursor.execute(insert_query,values)
 	cnx.commit()
 	print('structure_max_base_shear table updated correctly!\n')
 
-def structure_max_drift_per_floor():
-
+def structure_max_drift_per_floor(units = 'm'):
 	import pandas as pd 
 	import json
-	units = 'm'
-	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
 
+	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
 	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
 	sheet_names = list(displacements.keys())
 	sheet_names.pop(2)
@@ -222,23 +215,20 @@ def structure_max_drift_per_floor():
 					#add to data
 					sheet_corners.append(max_corner)
 					sheet_centers.append(max_center)
-
+		#data
 		drifts.append(sheet_corners)
 		drifts.append(sheet_centers)	
 
 	insert_query = 'INSERT INTO structure_max_drift_per_floor (MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s,%s)'
-	values = (drifts[0], drifts[2], drifts[1], drifts[3], units)
+	values = (json.dumps(drifts[0]), json.dumps(drifts[2]), json.dumps(drifts[1]), json.dumps(drifts[3]), units)
 	cursor.execute(insert_query,values)
 	cnx.commit()
 	print('structure_max_drift_per_floor table updated correctly!\n')
 
-def structure_relative_displacements():
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE STRUCTURE_RELATIVE_DISPLACEMENT
-	#------------------------------------------------------------------------------------------------------------------------------------
+def structure_relative_displacements(units = 'm'):
 	import pandas as pd
 	import json
-	units = 'm'
+
 	#displacements
 	displacements = pd.read_excel('displacements.xlsx',sheet_name = None)
 	sheet_names = list(displacements.keys())
