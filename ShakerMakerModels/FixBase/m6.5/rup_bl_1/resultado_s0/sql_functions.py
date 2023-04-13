@@ -141,7 +141,7 @@ def model_structure_perfomance(bsunits = 'kN'):
 	#fills base shear
 	structure_base_shear(bsunits)
 	BaseShear = cursor.lastrowid
-	
+	print(BaseShear)	
 
 def structure_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
