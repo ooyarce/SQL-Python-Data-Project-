@@ -4,10 +4,10 @@ from scipy.interpolate import make_interp_spline
 # Valores de las variables
 sobrelendig = [4, 4, 4, 5, 5, 6, 7, 8, 9, 9, 9]
 mercado_inmobiliario = [6, 6, 7, 8, 8, 7, 6, 5, 4, 4, 5]
-credito_hipotecario = [8, 8, 7, 6, 6, 7, 8, 9, 10, 10, 9]
+credito_hipotecario = [7, 7, 6, 5, 5, 6, 7, 8, 9, 9, 8]
 derivados_financieros = [4, 4, 4, 5, 6, 7, 8, 9, 10, 10, 9]
 regulacion = [5, 5, 5, 5, 6, 7, 8, 8, 8, 9, 9]
-riesgo_crediticio = [8, 8, 8, 9, 9, 10, 10, 10, 9, 8, 8]
+riesgo_crediticio = [4, 4, 4, 5, 6, 8, 9, 9, 7, 6, 5]
 securitizacion = [5, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4]
 cdos = [7, 7, 8, 9, 9, 10, 10, 9, 8, 8, 9]
 interes_bajo = [1, 1, 1, 1, 1, 1, 1, 1, 1, 5.5, 6.5]
@@ -25,6 +25,15 @@ plt.subplots_adjust(hspace=0.5)
 spl = make_interp_spline(time, sobrelendig)
 x_new = np.linspace(time.min(), time.max(), 100)
 y_new = spl(x_new)
+spl2 = make_interp_spline(time,regulacion)
+spl3 = make_interp_spline(time,riesgo_crediticio)
+spl4 = make_interp_spline(time,securitizacion)
+y2 = spl2(x_new)
+y3 = spl3(x_new)
+y4 = spl4(x_new)
+ax1.plot(x_new, y2, label="Regulación")
+ax1.plot(x_new, y3, label="Riesgo Crediticio")
+ax1.plot(x_new, y4, label="Securitización")
 ax1.plot(x_new, y_new, label="Sobrelendig")
 ax1.set_ylabel("Monto del préstamo (en miles de dólares)")
 ax1.set_title("Variables financieras durante la crisis del 2008")
@@ -42,27 +51,21 @@ ax2.legend()
 
 # Variables de riesgo y regulación
 spl1 = make_interp_spline(time,derivados_financieros)
-spl2 = make_interp_spline(time,regulacion)
-spl3 = make_interp_spline(time,riesgo_crediticio)
-spl4 = make_interp_spline(time,securitizacion)
+
 spl5 = make_interp_spline(time,cdos)
 spl6 = make_interp_spline(time,interes_bajo)
 spl7 = make_interp_spline(time,crisis_financiera)
 y1 = spl1(x_new)
-y2 = spl2(x_new)
-y3 = spl3(x_new)
-y4 = spl4(x_new)
+
 y5 = spl5(x_new)
 y6 = spl6(x_new)
 y7 = spl7(x_new)
 ax3.plot(x_new, y1, label="Derivados Financieros")
-ax3.plot(x_new, y2, label="Regulación")
-ax3.plot(x_new, y3, label="Riesgo Crediticio")
-ax3.plot(x_new, y4, label="Securitización")
+
 ax3.plot(x_new, y5, label="CDOs")
 ax3.plot(x_new, y6, label="Interés Bajo")
 ax3.plot(x_new, y7, label="Crisis Financiera")
-ax3.set_ylabel("Monto (logarítmico)")
+ax3.set_ylabel('Magnitud')
 ax3.set_xlabel("Año")
 ax3.legend(loc='upper right', bbox_to_anchor=(1, 1))
 
