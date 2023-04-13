@@ -137,11 +137,36 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	cnx.commit()	
 	print('model_benchmark table updated correctly!\n')
 
-def model_structure_perfomance(bsunits = 'kN'):
+def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', comments = 'This is the first test.'):
 	#fills base shear
-	structure_base_shear(bsunits)
+	structure_base_shear(bs_units)
 	BaseShear = cursor.lastrowid
-	print(BaseShear)	
+
+	#fills absolute accelerations
+	structure_abs_acceleration(abs_acc_units)
+	AbsAccelerations = cursor.lastrowid
+	
+	#fills relative displacements
+	structure_relative_displacements(rel_displ_units)
+	RelativeDisplacements = cursor.lastrowid
+	
+	#fills max base shear
+	structure_max_base_shear(max_bs_units)
+	MaxBaseShear = cursor.lastrowid
+
+	#fills max drift per floor
+	structure_max_drift_per_floor(max_drift_units)
+	MaxDriftPerFloor = cursor.lastrowid
+
+	mta = 'Not sure how to calculate this'
+	fas = 'Not sure how to calculate this'
+
+	insert_query = 'INSERT INTO model_structure_perfomance (idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,FloorAccelerationSpectra,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
+	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments)
+	cursor.execute(insert_query, values)
+	cnx.commit()		
+	print('model_structure_perfomance table updated correctly!\n')
+
 
 def structure_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)

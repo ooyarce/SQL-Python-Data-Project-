@@ -9,7 +9,8 @@ clustername = 'Omar-Ubuntu'
 comments = 'Just testing model_benchmark function'
 model_benchmark(clustername,comments)
 """
-model_structure_perfomance('unidad al azar')
+bsunits, absacc_units,rel_displ_units
+model_structure_perfomance()
 #close sql
 cursor.close()
 cnx.close()
