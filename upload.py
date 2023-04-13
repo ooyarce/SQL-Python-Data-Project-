@@ -14,6 +14,14 @@ logging.info(f'SESION INICIADA el {fecha_actual.strftime("%d/%m/%Y a las %H:%M:%
 intervalo = 600
 
 while True:
+    # Esperar hasta el siguiente intervalo
+    tiempo_restante = intervalo
+    while tiempo_restante > 0:
+        logging.info(f'Faltan {tiempo_restante//60} minutos para el siguiente commit')
+        tiempo_espera = min(tiempo_restante, 60)  # Esperar un máximo de 1 minutos
+        time.sleep(tiempo_espera)
+        tiempo_restante -= tiempo_espera
+        
     # Ejecutar el comando 'git add .'
     subprocess.run(['git', 'add', '.'])
 
@@ -30,10 +38,3 @@ while True:
     # Imprimir mensaje de confirmación
     logging.info(f'Se ha realizado un commit a las {fecha_actual.strftime("%H:%M:%S")}')
 
-    # Esperar hasta el siguiente intervalo
-    tiempo_restante = intervalo
-    while tiempo_restante > 0:
-        logging.info(f'Faltan {tiempo_restante//60} minutos para el siguiente commit')
-        tiempo_espera = min(tiempo_restante, 60)  # Esperar un máximo de 1 minutos
-        time.sleep(tiempo_espera)
-        tiempo_restante -= tiempo_espera
