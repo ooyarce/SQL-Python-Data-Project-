@@ -14,7 +14,7 @@ interes_bajo = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 crisis_financiera = [0, 0, 0, 0, 10, 50, 100, 150, 200, 300]
 
 # Tiempo
-time = np.arange(2008, 2018)
+time = np.arange(2001, 2011)
 
 # Gráfico
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
