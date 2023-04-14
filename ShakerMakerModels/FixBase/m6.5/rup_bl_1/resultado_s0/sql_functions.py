@@ -82,7 +82,7 @@ def simulation_sm_input():
 	iteration = Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[2]
 	
 	#get location
-	location = os.path.dirname(__file__).split('/')[-1].split('_')[1]
+	location = os.path.dirname(__file__).split('/')[-1][-1]
 	print(location)
 
 def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', perf_comments = '',  linearity = 1, specs_comments = '', clustername = '',bench_comments = ''):
