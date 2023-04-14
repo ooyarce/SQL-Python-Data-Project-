@@ -57,7 +57,8 @@ stage             = parameters['stage']                                         
 options           = parameters['options']                                                                                            #|                                                 
 #-------------------------------------------------------------------------------------------------------------------------------------|
 
-simulation_sm_input()
+simulation()
+
 #close sql
 cursor.close()
 cnx.close()

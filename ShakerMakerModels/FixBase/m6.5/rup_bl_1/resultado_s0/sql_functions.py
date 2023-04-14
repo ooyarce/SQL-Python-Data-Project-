@@ -6,6 +6,7 @@ from Results.check_nodes import *
 import mysql.connector
 import pandas as pd
 import numpy as np
+import datetime
 import json	
 import os
 
@@ -59,10 +60,21 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
-def simulation(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s', type = 1, stage = 'No stage yet', options='No options yet',sim_comments = 'No comments',model_name = 'FixBaseV3', model_comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'No comments',  linearity = 1, specs_comments = 'No comments', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'No comments'):
+def simulation(sim_type = 1, simstage = 'No stage yet', simopt = 'No options yet', sim_comments = 'No comments', sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s', model_name = 'FixBaseV3', model_comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'No comments',  linearity = 1, specs_comments = 'No comments', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'No comments'):
 	simulation_model()
 	Model = cursor.lastrowid
 	simulation_sm_input()
+	SM_Input = cursor.lastrowid
+
+	date = datetime.datetime.now()
+	date = date.strftime("%B %d, %Y")
+
+	insert_query = 'INSERT INTO simulation(idModel, idSM_Input, idType, SimStage, SimOptions, Simdate, Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)'
+	values = (Model, SM_Input, sim_type, simstage, simopt, date, sim_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation table updated correctly!\n')
+
 
 def simulation_sm_input(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s'): #this functions should be modified acording to the format of 
 	#get magnitude
@@ -104,8 +116,6 @@ def simulation_sm_input(sm_input_comments = 'No comments',pga_units = 'm/s/s', r
 	cnx.commit()
 	print('simulation_sm_input table updated correctly!\n')
 
-
-
 def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', perf_comments = '',  linearity = 1, specs_comments = '', clustername = '',bench_comments = ''):
 	model_benchmark(clustername,bench_comments)
 	Benchmark = cursor.lastrowid
@@ -115,7 +125,7 @@ def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_
 	SpecsStructure = cursor.lastrowid
 
 	insert_query = 'INSERT INTO simulation_model(idBenchmark, idStructuralPerfomance, idSpecsStructure, ModelName, Comments) VALUES(%s,%s,%s,%s,%s)'
-	values = (Benchmark,StructurePerfomance,SpecsStructure,model_name,comments)
+	values = (Benchmark,StructurePerfomance,SpecsStructure,model_name, model_comments)
 	cursor.execute(insert_query,values)
 	cnx.commit()
 	print('simulation_model table updated correctly!\n')
