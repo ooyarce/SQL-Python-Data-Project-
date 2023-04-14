@@ -33,7 +33,6 @@ while True:
     subprocess.run(['git', 'commit', '-m', mensaje_commit])
 
     # Ejecutar el comando 'git push'
-    subprocess.run(['git', 'push'])
 
     # Imprimir mensaje de confirmación
     logging.info(f'Se ha realizado un commit a las {fecha_actual.strftime("%H:%M:%S")}')

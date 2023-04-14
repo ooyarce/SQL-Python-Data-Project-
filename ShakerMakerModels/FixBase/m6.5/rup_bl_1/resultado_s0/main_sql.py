@@ -17,9 +17,10 @@ parameters = {
     'sim_comments'   : 'Testint units and input putting in function.'       ,
     'model_comments' : 'Testint units and input putting in function.'       ,
     'bench_comments' : 'Testint units and input putting in function.'       ,
+    'stage'          : 'Here it goes the model stage'                       ,
     'linearity'      : 1                                                    ,
     'type'           : 1                                                    }
-    
+
 #-----------------------------------------------------------------------------------------------------------------------------------|
 #-----------------------------------------------DON'T CHANGE THIS-------------------------------------------------------------------|
 #-----------------------------------------------------------------------------------------------------------------------------------|
@@ -43,7 +44,8 @@ specs_comments  = parameters['specs_comments']                                  
                                                                                                                                    #|         
 #model type and linearity                                                                                                          #|                                 
 sim_type        = parameters['type']                                                                                               #|                                             
-linearity       = parameters['linearity']                                                                                          #|                                                 
+linearity       = parameters['linearity']  
+stege           = parameters['stage']                                                                                        #|                                                 
 #-----------------------------------------------------------------------------------------------------------------------------------|
 simulation_model(model_name=model_name,clustername=clustername,perf_comments=perf_comments)
 #close sql
