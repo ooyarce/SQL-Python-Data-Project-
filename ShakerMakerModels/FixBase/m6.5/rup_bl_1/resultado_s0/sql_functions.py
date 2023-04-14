@@ -66,6 +66,21 @@ def simulation(type = 1, stage = 'No stage yet', options='No options yet',sim_co
 
 def simulation_sm_input():
 	print(os.path.dirname(__file__).split('/'))
+	#get magnitude
+	Magnitude = (os.path.dirname(__file__).split('/')[-3])
+	#get rupture type
+	Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[1]
+	if Rup_type == 'bl':
+		rupture = 'Bilateral'
+	elif Rup_type == 'ns':
+		rupture = 'North-South'
+	elif Rup_type == 'sn':
+		rupture = 'South-North'
+	else:
+		raise TypeError('Folders name are not following the format rup_[bl/ns/sn]_[iteration].')
+	#get realization id
+	iteration = Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[2]
+	print(iteration)
 
 def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', perf_comments = '',  linearity = 1, specs_comments = '', clustername = '',bench_comments = ''):
 	model_benchmark(clustername,bench_comments)
