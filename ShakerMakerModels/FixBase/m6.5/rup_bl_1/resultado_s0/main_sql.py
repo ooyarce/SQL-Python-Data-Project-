@@ -12,15 +12,16 @@ parameters = {
     'abs_acc_units'     : 'm/s/s'                                              ,  
     'pga_units'         : 'm/s/s'                                              , 
     'resp_spectrum'     : 'm/s/s'                                              ,
-    'model_name'        : 'Test Model'                                         ,     
-    'clustername'       : 'Testint units and input putting in function.'       ,
-    'perf_comments'     : 'Testint units and input putting in function.'       ,
-    'specs_comments'    : 'Testint units and input putting in function.'       ,
-    'sim_comments'      : 'Testint units and input putting in function.'       ,
-    'model_comments'    : 'Testint units and input putting in function.'       ,
-    'bench_comments'    : 'Testint units and input putting in function.'       ,
-    'sm_input_comments' : 'No comments'                                        ,
-    'stage'             : 'Here it goes the model stage'                       ,
+    'sim_comments'      : 'Testint units and input putting in function'        ,
+    'sm_input_comments' : 'Testint units and input putting in function'        ,
+    'model_comments'    : 'Testint units and input putting in function'        ,
+    'bench_comments'    : 'Testint units and input putting in function'        ,
+    'perf_comments'     : 'Testint units and input putting in function'        ,
+    'specs_comments'    : 'Testint units and input putting in function'        ,
+    'clustername'       : 'Here it goes the cluster name'                      ,
+    'model_name'        : 'Here it goes the model name'                        ,     
+    'stage'             : 'Here it goes the simulation stage'                  ,
+    'options'           : 'Here it goes the simulation options'                , 
     'linearity'         : 1                                                    ,
     'type'              : 1                                                    }
 
@@ -42,18 +43,20 @@ clustername       = parameters['clustername']                                   
                                                                                                                                      #|         
 #comments                                                                                                                            #|                 
 sim_comments      = parameters['sim_comments']                                                                                       #|                                                     
+sm_input_comments = parameters['sm_input_comments']                                                                                  #|  
 model_comments    = parameters['model_comments']                                                                                     #|                                                     
 bench_comments    = parameters['bench_comments']                                                                                     #|                                                     
 perf_comments     = parameters['perf_comments']                                                                                      #|                                                     
 specs_comments    = parameters['specs_comments']                                                                                     #|
-sm_input_comments = parameters['sm_input_comments']                                                                                  #|  
                                                                                                                                      #|                                                     
                                                                                                                                      #|         
 #model type and linearity                                                                                                            #|                                 
 sim_type          = parameters['type']                                                                                               #|                                             
 linearity         = parameters['linearity']                                                                                          #|
-stege             = parameters['stage']                                                                                              #|                                                 
+stage             = parameters['stage']                                                                                              #|
+options           = parameters['options']                                                                                            #|                                                 
 #-------------------------------------------------------------------------------------------------------------------------------------|
+
 simulation_sm_input()
 #close sql
 cursor.close()
