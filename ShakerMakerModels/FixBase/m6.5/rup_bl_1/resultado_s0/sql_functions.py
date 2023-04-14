@@ -62,7 +62,10 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 def simulation(type = 1, stage = 'No stage yet', options='No options yet',sim_comments = 'No comments',model_name = 'FixBaseV3', model_comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'No comments',  linearity = 1, specs_comments = 'No comments', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'No comments'):
 	simulation_model()
 	Model = cursor.lastrowid
+	simulation_sm_input()
 
+def simulation_sm_input():
+	print(os.path.dirname(__file__).split('/'))
 
 def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', perf_comments = '',  linearity = 1, specs_comments = '', clustername = '',bench_comments = ''):
 	model_benchmark(clustername,bench_comments)

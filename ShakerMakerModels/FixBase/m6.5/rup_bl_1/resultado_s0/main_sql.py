@@ -47,7 +47,7 @@ sim_type        = parameters['type']                                            
 linearity       = parameters['linearity']  
 stege           = parameters['stage']                                                                                        #|                                                 
 #-----------------------------------------------------------------------------------------------------------------------------------|
-simulation_model(model_name=model_name,clustername=clustername,perf_comments=perf_comments)
+simulation_sm_input()
 #close sql
 cursor.close()
 cnx.close()
