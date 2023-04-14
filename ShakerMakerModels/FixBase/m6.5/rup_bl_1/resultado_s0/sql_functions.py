@@ -59,15 +59,15 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
-def simulation(type = 1, stage = 'No stage yet', options='No options yet',sim_comments = 'No comments',model_name = 'FixBaseV3', model_comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'No comments',  linearity = 1, specs_comments = 'No comments', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'No comments'):
+def simulation(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s', type = 1, stage = 'No stage yet', options='No options yet',sim_comments = 'No comments',model_name = 'FixBaseV3', model_comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'No comments',  linearity = 1, specs_comments = 'No comments', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'No comments'):
 	simulation_model()
 	Model = cursor.lastrowid
 	simulation_sm_input()
 
-def simulation_sm_input():
-	print(os.path.dirname(__file__).split('/'))
+def simulation_sm_input(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s'): #this functions should be modified acording to the format of 
 	#get magnitude
 	Magnitude = (os.path.dirname(__file__).split('/')[-3])
+
 	#get rupture type
 	Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[1]
 	if Rup_type == 'bl':
@@ -78,12 +78,32 @@ def simulation_sm_input():
 		rupture = 'South-North'
 	else:
 		raise TypeError('Folders name are not following the format rup_[bl/ns/sn]_[iteration].')
+
 	#get realization id
 	iteration = Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[2]
 	
 	#get location
-	location = os.path.dirname(__file__).split('/')[-1][-1]
-	print(location)
+	station = int(os.path.dirname(__file__).split('/')[-1][-1])
+	if station >= 0 and station <= 3:
+		location = 'Near field'
+	elif station >= 4 and station <=6:
+		location = 'Intermediate field'
+	elif station >= 7 and statio <=9:
+		location = 'Far field'
+	
+	#PGA y Spectrum
+	sm_input_pga()
+	PGA = cursor.lastrowid
+	sm_input_spectrum()
+	Spectrum = cursor.lastrowid
+
+	insert_query = 'INSERT INTO simulation_sm_input(idPGA, idSpectrum, Magnitude, Rupture_type, Location, RealizationID, Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)'
+	values = (PGA, Spectrum, Magnitude, rupture, location, iteration, sm_input_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation_sm_input table updated correctly!\n')
+
+
 
 def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', perf_comments = '',  linearity = 1, specs_comments = '', clustername = '',bench_comments = ''):
 	model_benchmark(clustername,bench_comments)
@@ -384,7 +404,7 @@ def structure_abs_acceleration(units = 'm/s/s'):
 	cnx.commit()		
 	print('structure_abs_acceleration table updated correctly!\n')
 	
-def sm_input_pga(units = 'g'):
+def sm_input_pga(units = 'm/s/s'):
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
 	nu = 0.05
@@ -424,6 +444,12 @@ def sm_input_spectrum(units = 'm/s/s'):
 	npz = os.path.join('..',f'{folder}.npz')
 	nu = 0.05
 	tmax = 50.
+	dt = np.linspace(0,1.,2000)
+	w = np.zeros(len(dt))
+
+	for i in range(len(dt)):
+	    if dt[i] != 0:    
+	        w[i] = 2*np.pi/dt[i]
 
 	#SPECTRUM VERTICAL
 	s = Station()
@@ -433,7 +459,7 @@ def sm_input_spectrum(units = 'm/s/s'):
 	t = t[t<tmax]
 	az = np.gradient(z,t).tolist()
 	Spaz = []
-
+	
 	for j in range(len(w)):
 	    wi = w[j]
 	    u_z,v_z = pwl(az,wi,nu)

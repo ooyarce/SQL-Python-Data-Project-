@@ -5,21 +5,24 @@ from sql_functions import *
 
 #Press insert key and fill the parameters you want to change the default values, then press insert again to keep format sorted.
 parameters = {
-    'bs_units'       : 'kN'                                                 ,                                                            
-    'max_bs_units'   : 'kN'                                                 ,                                                                
-    'rel_displ_units': 'm'                                                  ,             
-    'max_drift_units': 'm'                                                  ,             
-    'abs_acc_units'  : 'm/s/s'                                              ,         
-    'model_name'     : 'Test_Model'                                         ,     
-    'clustername'    : 'Testint units and input putting in function.'       ,
-    'perf_comments'  : 'Testint units and input putting in function.'       ,
-    'specs_comments' : 'Testint units and input putting in function.'       ,
-    'sim_comments'   : 'Testint units and input putting in function.'       ,
-    'model_comments' : 'Testint units and input putting in function.'       ,
-    'bench_comments' : 'Testint units and input putting in function.'       ,
-    'stage'          : 'Here it goes the model stage'                       ,
-    'linearity'      : 1                                                    ,
-    'type'           : 1                                                    }
+    'bs_units'          : 'kN'                                                 ,                                                            
+    'max_bs_units'      : 'kN'                                                 ,                                                                
+    'rel_displ_units'   : 'm'                                                  ,             
+    'max_drift_units'   : 'm'                                                  ,             
+    'abs_acc_units'     : 'm/s/s'                                              ,  
+    'pga_units'         : 'm/s/s'                                              , 
+    'resp_spectrum'     : 'm/s/s'                                              ,
+    'model_name'        : 'Test Model'                                         ,     
+    'clustername'       : 'Testint units and input putting in function.'       ,
+    'perf_comments'     : 'Testint units and input putting in function.'       ,
+    'specs_comments'    : 'Testint units and input putting in function.'       ,
+    'sim_comments'      : 'Testint units and input putting in function.'       ,
+    'model_comments'    : 'Testint units and input putting in function.'       ,
+    'bench_comments'    : 'Testint units and input putting in function.'       ,
+    'sm_input_comments' : 'No comments'                                        ,
+    'stage'             : 'Here it goes the model stage'                       ,
+    'linearity'         : 1                                                    ,
+    'type'              : 1                                                    }
 
 #-----------------------------------------------------------------------------------------------------------------------------------|
 #-----------------------------------------------DON'T CHANGE THIS-------------------------------------------------------------------|
