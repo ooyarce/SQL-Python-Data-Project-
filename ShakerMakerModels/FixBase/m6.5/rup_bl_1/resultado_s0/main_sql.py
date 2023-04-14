@@ -24,32 +24,36 @@ parameters = {
     'linearity'         : 1                                                    ,
     'type'              : 1                                                    }
 
-#-----------------------------------------------------------------------------------------------------------------------------------|
-#-----------------------------------------------DON'T CHANGE THIS-------------------------------------------------------------------|
-#-----------------------------------------------------------------------------------------------------------------------------------|
-#units                                                                                                                             #|                                                                                                                                          
-bs_units        = parameters['bs_units']                                                                                           #|                                                                                                                                                                                                                                          
-max_bs_units    = parameters['max_bs_units']                                                                                       #|                                                                                                                                          
-rel_displ_units = parameters['rel_displ_units']                                                                                    #|                                                     
-max_drift_units = parameters['max_drift_units']                                                                                    #|                                                     
-abs_acc_units   = parameters['abs_acc_units']                                                                                      #|                                                     
-                                                                                                                                   #|         
-#names                                                                                                                             #|             
-model_name      = parameters['model_name']                                                                                         #|                                                 
-clustername     = parameters['clustername']                                                                                        #|                                                 
-                                                                                                                                   #|         
-#comments                                                                                                                          #|                 
-sim_comments    = parameters['sim_comments']                                                                                       #|                                                     
-model_comments  = parameters['model_comments']                                                                                     #|                                                     
-bench_comments  = parameters['bench_comments']                                                                                     #|                                                     
-perf_comments   = parameters['perf_comments']                                                                                      #|                                                     
-specs_comments  = parameters['specs_comments']                                                                                     #|                                                     
-                                                                                                                                   #|         
-#model type and linearity                                                                                                          #|                                 
-sim_type        = parameters['type']                                                                                               #|                                             
-linearity       = parameters['linearity']  
-stege           = parameters['stage']                                                                                        #|                                                 
-#-----------------------------------------------------------------------------------------------------------------------------------|
+#-------------------------------------------------------------------------------------------------------------------------------------|
+#-----------------------------------------------DON'T CHANGE THIS---------------------------------------------------------------------|
+#-------------------------------------------------------------------------------------------------------------------------------------|
+#units                                                                                                                               #|                                                                                                                                          
+bs_units          = parameters['bs_units']                                                                                           #|                                                                                                                                                                                                                                          
+max_bs_units      = parameters['max_bs_units']                                                                                       #|                                                                                                                                          
+rel_displ_units   = parameters['rel_displ_units']                                                                                    #|                                                     
+max_drift_units   = parameters['max_drift_units']                                                                                    #|                                                     
+abs_acc_units     = parameters['abs_acc_units']                                                                                      #|                                                     
+pga_units         = parameters['pga_units']                                                                                          #|
+spectrum_units    = parameters['resp_spectrum']                                                                                      #|
+                                                                                                                                     #|        
+#names                                                                                                                               #|             
+model_name        = parameters['model_name']                                                                                         #|                                                 
+clustername       = parameters['clustername']                                                                                        #|                                                 
+                                                                                                                                     #|         
+#comments                                                                                                                            #|                 
+sim_comments      = parameters['sim_comments']                                                                                       #|                                                     
+model_comments    = parameters['model_comments']                                                                                     #|                                                     
+bench_comments    = parameters['bench_comments']                                                                                     #|                                                     
+perf_comments     = parameters['perf_comments']                                                                                      #|                                                     
+specs_comments    = parameters['specs_comments']                                                                                     #|
+sm_input_comments = parameters['sm_input_comments']                                                                                  #|  
+                                                                                                                                     #|                                                     
+                                                                                                                                     #|         
+#model type and linearity                                                                                                            #|                                 
+sim_type          = parameters['type']                                                                                               #|                                             
+linearity         = parameters['linearity']                                                                                          #|
+stege             = parameters['stage']                                                                                              #|                                                 
+#-------------------------------------------------------------------------------------------------------------------------------------|
 simulation_sm_input()
 #close sql
 cursor.close()

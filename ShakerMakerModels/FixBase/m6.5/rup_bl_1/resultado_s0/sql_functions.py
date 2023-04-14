@@ -66,7 +66,8 @@ def simulation(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spect
 
 def simulation_sm_input(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s'): #this functions should be modified acording to the format of 
 	#get magnitude
-	Magnitude = (os.path.dirname(__file__).split('/')[-3])
+	Magnitude = (os.path.dirname(__file__).split('/')[-3][1:])
+	Magnitude = (f'{Magnitude} magnitude on the Richter scale')
 
 	#get rupture type
 	Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[1]
@@ -445,12 +446,13 @@ def sm_input_spectrum(units = 'm/s/s'):
 	nu = 0.05
 	tmax = 50.
 	dt = np.linspace(0,1.,2000)
+	dt = np.delete(dt,0)
 	w = np.zeros(len(dt))
 
 	for i in range(len(dt)):
-	    if dt[i] != 0:    
+	    if dt[i] != 0.:    
 	        w[i] = 2*np.pi/dt[i]
-
+	    
 	#SPECTRUM VERTICAL
 	s = Station()
 	s.load(npz)
@@ -459,7 +461,7 @@ def sm_input_spectrum(units = 'm/s/s'):
 	t = t[t<tmax]
 	az = np.gradient(z,t).tolist()
 	Spaz = []
-	
+
 	for j in range(len(w)):
 	    wi = w[j]
 	    u_z,v_z = pwl(az,wi,nu)
