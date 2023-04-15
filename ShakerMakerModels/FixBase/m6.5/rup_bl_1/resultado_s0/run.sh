@@ -1,7 +1,6 @@
 #!/bin/bash
-parentdir="$(dirname "$(dirname "$(pwd)")")"
-dir="$(basename "$(dirname "$(pwd)")")"
-subdir="${PWD##*_}"
-JOBNAME="${parentdir##*/}_${dir}_${subdir}"
-JOBNAME="${JOBNAME: -6}${JOBNAME: -2}"
-echo "${JOBNAME}"
+m=$(basename $(dirname $(dirname $(pwd))) | cut -c 2-)
+rup=$(basename $(dirname $(pwd)) | cut -c -5)
+result=$(basename $(pwd))
+job="${m}_${rup}_${result##*_}"
+echo "$job"
