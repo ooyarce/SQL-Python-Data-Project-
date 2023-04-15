@@ -21,37 +21,36 @@ for i in range(len(folders)):
 		folder_disp = f'{path}/{folders[i]}'
 	elif folders[i] == 'reaction':
 		folder_reaction = f'{path}/{folders[i]}'
+	elif folders[i] == 'info':
+		folder_info = f'{path}/{folders[i]}'
+#---------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------ACCELERATIONS------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------
+def give_accelerations():
+	#check nodes
+	files_accel = os.listdir(folder_acc)
+	files = [open(f'{folder_acc}/{file}','r') for file in files_accel]
 
+	#create dictionary
+	accelerations = {}
+	for file in range(len(files)):
+		nodes = [[(num) for num in line.split('\n')] for line in files[file]]
+		file_id = str(files[file]).split('-')[1].split(' ')[0].split('.')[0]
+		accelerations[f'Partition {file_id}'] = {}
+		for nodei in range(len(nodes)):
+			accelerations[f'Partition {file_id}'][f'Node {nodei}'] = nodes[nodei][0]
 
-#---------------------------------------------------------------------------
-#------------------------ACCELERATIONS--------------------------------------
-#---------------------------------------------------------------------------
+	#create list with nodes sorted
+	acce_nodes = []
+	for values in accelerations.values():
+		for node in values.values():
+			acce_nodes.append(int(node))
+	acce_nodes.sort()
 
-#check nodes
-files_accel = os.listdir(folder_acc)
-files = [open(f'{folder_acc}/{file}','r') for file in files_accel]
-
-#create dictionary
-accelerations = {}
-for file in range(len(files)):
-	nodes = [[(num) for num in line.split('\n')] for line in files[file]]
-	file_id = str(files[file]).split('-')[1].split(' ')[0].split('.')[0]
-	accelerations[f'Partition {file_id}'] = {}
-	for nodei in range(len(nodes)):
-		accelerations[f'Partition {file_id}'][f'Node {nodei}'] = nodes[nodei][0]
-
-#create list with nodes sorted
-acce_nodes = []
-for values in accelerations.values():
-	for node in values.values():
-		acce_nodes.append(int(node))
-acce_nodes.sort()
-
-#print(acce_nodes) #this are all the nodes taking in count for the drift and accelerations
-
-#---------------------------------------------------------------------------
-#------------------------DISPLACEMENTS--------------------------------------
-#---------------------------------------------------------------------------
+	return accelerations,acce_nodes
+#---------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------DISPLACEMENTS------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------
 def give_displacements():
 	#check nodes
 	files_disp = os.listdir(folder_disp)
@@ -75,11 +74,10 @@ def give_displacements():
 
 	displ_nodes.sort()
 
-#print(displacements) #this are all the nodes taking in count for the drift and accelerations
-#print('\n')
-#---------------------------------------------------------------------------
-#----------------------------REACTIONS--------------------------------------
-#---------------------------------------------------------------------------
+	return displacements,displ_nodes
+#---------------------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------REACTIONS--------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------
 def give_reactions():
 	#check nodes
 	files_reaction = os.listdir(folder_reaction)
@@ -102,15 +100,13 @@ def give_reactions():
 	reaction_nodes.sort()
 
 	return reactions,reaction_nodes
-	#print(len(reaction_nodes))
-
-#---------------------------------------------------------------------------
-#--------------------------COORDINATES--------------------------------------
-#---------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------COORDINATES--------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------
 def give_coords_info():
 	#check nodes
-	files_accel = os.listdir(folder_coord)
-	files = [open(f'{folder_coord}/{file}','r') for file in files_accel]
+	files_coords = os.listdir(folder_coord)
+	files = [open(f'{folder_coord}/{file}','r') for file in files_coords]
 
 	#create dictionary
 	coordenates = {}
@@ -187,4 +183,19 @@ def give_coords_info():
 	heights.insert(0,(coordenates[list(histories_nodes["Level 1"])[0]]["coord z"] - coordenates[list(histories_nodes["Level 0"])[0]]["coord z"]))
 	return coordenates, drift_nodes,histories_nodes, histories, subs, heights
 
-coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+#coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+
+#--------------------------------------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------MODEL INFO---------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------------------------------------------------
+def give_info():
+	#read file
+	files_info = os.listdir(folder_info)
+	file = open(f'{folder_info}/model_info.csv','r') 
+
+	#get number of nodes and number of elements
+	info = [[row for row in line.split(' ')] for line in file]
+	nnodes = (int(info[0][4]))
+	nelements = (int(info[1][4]))
+
+	return nnodes, nelements

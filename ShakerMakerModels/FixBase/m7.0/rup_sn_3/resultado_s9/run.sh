@@ -1,8 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=FIX_2X8    # Job name
+m=$(basename $(dirname $(dirname $(pwd))) | cut -c 2-)
+rup=$(basename $(dirname $(pwd)) | cut -c -5)
+result=$(basename $(pwd))
+job="${m}_${rup}_${result##*_}"
+echo "$job"
+
+#SBATCH --job-name=${job}    # Job name
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=8
-#SBATCH --output=STKO_2X8.log   # Standard output and error log
+#SBATCH --output=${job}.log   # Standard output and error log
 pwd; hostname; date
 
 export OMP_NUM_THREADS=1

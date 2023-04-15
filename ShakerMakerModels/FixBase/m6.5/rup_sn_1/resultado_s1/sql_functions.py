@@ -6,6 +6,7 @@ from Results.check_nodes import *
 import mysql.connector
 import pandas as pd
 import numpy as np
+import datetime
 import json	
 import os
 
@@ -59,8 +60,78 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
+def simulation(sim_type = 1, simstage = 'No stage yet', simopt = 'No options yet', sim_comments = 'No comments', sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s', model_name = 'FixBaseV3', model_comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'No comments',  linearity = 1, specs_comments = 'No comments', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'No comments'):
+	simulation_model()
+	Model = cursor.lastrowid
+	simulation_sm_input()
+	SM_Input = cursor.lastrowid
 
-def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',comments = 'This is a test model for beta_0.0' ):
+	date = datetime.datetime.now()
+	date = date.strftime("%B %d, %Y")
+
+	insert_query = 'INSERT INTO simulation(idModel, idSM_Input, idType, SimStage, SimOptions, Simdate, Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)'
+	values = (Model, SM_Input, sim_type, simstage, simopt, date, sim_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation table updated correctly!\n')
+
+
+def simulation_sm_input(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s'): #this functions should be modified acording to the format of 
+	#get magnitude
+	Magnitude = (os.path.dirname(__file__).split('/')[-3][1:])
+	Magnitude = (f'{Magnitude} magnitude on the Richter scale')
+
+	#get rupture type
+	Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[1]
+	if Rup_type == 'bl':
+		rupture = 'Bilateral'
+	elif Rup_type == 'ns':
+		rupture = 'North-South'
+	elif Rup_type == 'sn':
+		rupture = 'South-North'
+	else:
+		raise TypeError('Folders name are not following the format rup_[bl/ns/sn]_[iteration].')
+
+	#get realization id
+	iteration = Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[2]
+	
+	#get location
+	station = int(os.path.dirname(__file__).split('/')[-1][-1])
+	if station >= 0 and station <= 3:
+		location = 'Near field'
+	elif station >= 4 and station <=6:
+		location = 'Intermediate field'
+	elif station >= 7 and statio <=9:
+		location = 'Far field'
+	
+	#PGA y Spectrum
+	sm_input_pga()
+	PGA = cursor.lastrowid
+	sm_input_spectrum()
+	Spectrum = cursor.lastrowid
+
+	insert_query = 'INSERT INTO simulation_sm_input(idPGA, idSpectrum, Magnitude, Rupture_type, Location, RealizationID, Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)'
+	values = (PGA, Spectrum, Magnitude, rupture, location, iteration, sm_input_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation_sm_input table updated correctly!\n')
+
+def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', perf_comments = '',  linearity = 1, specs_comments = '', clustername = '',bench_comments = ''):
+	model_benchmark(clustername,bench_comments)
+	Benchmark = cursor.lastrowid
+	model_structure_perfomance(bs_units,abs_acc_units,rel_displ_units,max_bs_units,max_drift_units,perf_comments)
+	StructurePerfomance = cursor.lastrowid
+	model_specs_structure(linearity,specs_comments)
+	SpecsStructure = cursor.lastrowid
+
+	insert_query = 'INSERT INTO simulation_model(idBenchmark, idStructuralPerfomance, idSpecsStructure, ModelName, Comments) VALUES(%s,%s,%s,%s,%s)'
+	values = (Benchmark,StructurePerfomance,SpecsStructure,model_name, model_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation_model table updated correctly!\n')
+
+
+def model_benchmark(clustername = '',comments = '' ):
 	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
 	#------------------------------------------------------------------------------------------------------------------------------------
@@ -137,7 +208,7 @@ def model_benchmark(clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',c
 	cnx.commit()	
 	print('model_benchmark table updated correctly!\n')
 
-def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', comments = 'This is the first test.'):
+def model_structure_perfomance(bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', comments = ''):
 	#fills base shear
 	structure_base_shear(bs_units)
 	BaseShear = cursor.lastrowid
@@ -158,15 +229,29 @@ def model_structure_perfomance(bs_units='kN', abs_acc_units='m/s/s', rel_displ_u
 	structure_max_drift_per_floor(max_drift_units)
 	MaxDriftPerFloor = cursor.lastrowid
 
+	#this is going to change in the future
 	mta = 'Not sure how to calculate this'
 	fas = 'Not sure how to calculate this'
 
+	#insert data into database
 	insert_query = 'INSERT INTO model_structure_perfomance (idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,FloorAccelerationSpectra,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
-	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments)
+	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments) #mta and fas vars has to change
 	cursor.execute(insert_query, values)
 	cnx.commit()		
 	print('model_structure_perfomance table updated correctly!\n')
 
+def model_specs_structure(linearity = 1, comments = ''):
+	if linearity < 1 or linearity > 2:
+		raise TypeError('The Linearity parameter can only take the values of 1 or 2.')  
+
+	nnodes, nelements = give_info()
+	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+
+	insert_query = 'INSERT INTO model_specs_structure (idLinearity, Nnodes, Nelements, Nhistories, Nsubs, InterstoryHeight, Comments) VALUES (%s,%s,%s,%s,%s,%s,%s)'
+	values = (linearity, nnodes, nelements,histories,subs, json.dumps(heights), comments) #mta and fas vars has to change
+	cursor.execute(insert_query, values)
+	cnx.commit()		
+	print('model_specs_structure table updated correctly!\n')
 
 def structure_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
@@ -330,7 +415,7 @@ def structure_abs_acceleration(units = 'm/s/s'):
 	cnx.commit()		
 	print('structure_abs_acceleration table updated correctly!\n')
 	
-def sm_input_pga(units = 'g'):
+def sm_input_pga(units = 'm/s/s'):
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
 	nu = 0.05
@@ -370,7 +455,14 @@ def sm_input_spectrum(units = 'm/s/s'):
 	npz = os.path.join('..',f'{folder}.npz')
 	nu = 0.05
 	tmax = 50.
+	dt = np.linspace(0,1.,2000)
+	dt = np.delete(dt,0)
+	w = np.zeros(len(dt))
 
+	for i in range(len(dt)):
+	    if dt[i] != 0.:    
+	        w[i] = 2*np.pi/dt[i]
+	    
 	#SPECTRUM VERTICAL
 	s = Station()
 	s.load(npz)
