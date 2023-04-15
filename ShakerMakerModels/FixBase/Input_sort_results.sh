@@ -25,7 +25,7 @@ for file in */ ; do
             rm tcl_format_east.tcl
             rm tcl_format_north.tcl
             rm tcl_format_vertical.tcl
-            
+            sh run.sh
             cd ..
         done
         cd ..
