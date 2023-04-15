@@ -4,13 +4,13 @@ for file in */ ; do
     #Iterates over the magnitude (file) and gets inside when 'cd'
 
     cp sql_functions.py "$file"
-    #cp run.sh "$file"
+    cp run.sh "$file"
+    cp check_nodes.py "$file"
+    cp main_sql.py "$file"
     #cp accelerations_writter_tcl_format.py "$file"
     #cp sort_results_into_xlsx.py "$file"
     #cp definitions.tcl "$file"
     #cp exporting_results.py "$file"
-    #cp check_nodes.py "$file"
-
     #cp analysis_steps.tcl "$file"
     #cp elements.tcl "$file"
     #cp main.tcl "$file"
@@ -23,13 +23,14 @@ for file in */ ; do
         #Iterates over the rupture type (file2) and gets inside when 'cd'
 
         cp sql_functions.py "$file2"
+        cp run.sh "$file2"
+        cp check_nodes.py "$file2"
+        cp main_sql.py "$file2"
         #cp accelerations_writter_tcl_format.py "$file2"
         #cp sort_results_into_xlsx.py "$file2"
         #cp definitions.tcl "$file2"
         #cp exporting_results.py "$file2"
         #cp check_nodes.py "$file2"
-
-
         #cp analysis_steps.tcl "$file2"
         #cp elements.tcl "$file2"
         #cp main.tcl "$file2"
@@ -42,10 +43,12 @@ for file in */ ; do
             #Iterates over the station and gets inside when 'cd'
 
             cp sql_functions.py "$file3"
+            cp run.sh "$file3"
+            cp check_nodes.py "$file3/Results/"
+            cp main_sql.py "$file3"
             #cp accelerations_writter_tcl_format.py "$file3"
             #cp sort_results_into_xlsx.py "$file3"
             #cp check_nodes.py "$file3/Results/"
-
             #cp definitions.tcl "$file3"
             #cp elements.tcl "$file3"
             #cp analysis_steps.tcl "$file3"
@@ -54,17 +57,17 @@ for file in */ ; do
             #cp nodes.tcl "$file3"
             #cp sections.tcl "$file3"
 
-            cd "$file3"
-            #rm check_nodes.py
-            cd ..
+            #cd "$file3"
+            #cd ..
         done
 
         rm sql_functions.py 
-        #rm check_nodes.py
+        rm check_nodes.py
+        rm run.sh
+        rm main_sql.py
         #rm accelerations_writter_tcl_format.py
         #rm sort_results_into_xlsx.py 
         #rm definitions.tcl 
-
         #rm analysis_steps.tcl 
         #rm elements.tcl 
         #rm main.tcl 
@@ -76,7 +79,10 @@ for file in */ ; do
 
     done
 
-    rm sql_functions.py 
+    rm sql_functions.py
+    rm check_nodes.py
+    rm run.sh
+    rm main_sql.py
     #rm accelerations_writter_tcl_format.py
     #rm sort_results_into_xlsx.py 
     #rm exporting_results.py
