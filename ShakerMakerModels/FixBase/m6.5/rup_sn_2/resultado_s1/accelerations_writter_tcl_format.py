@@ -23,11 +23,11 @@ for i in accelerations:
 
 for i in range(0,2000,10):
 	if i == 0:
-		tcl_format.write(f'set timeSeries_list_of_values_2 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\ \n' )
+		tcl_format.write(f'set timeSeries_list_of_values_2 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
 	elif i != 0 and i < 1989:
-		tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\ \n')
+		tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
 	else:
-		tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}} \n')
+		tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
 tcl_format.write('timeSeries Path 2 -time $timeSeries_list_of_times_2 -values $timeSeries_list_of_values_2\n')
 tcl_format.close()
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -42,11 +42,11 @@ for i in accelerations2:
 
 for i in range(0,2000,10):
 	if i == 0:
-		tcl_format2.write(f'set timeSeries_list_of_values_3 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\ \n' )
+		tcl_format2.write(f'set timeSeries_list_of_values_3 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
 	elif i != 0 and i < 1989:
-		tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\ \n')
+		tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
 	else:
-		tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}} \n')
+		tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
 tcl_format2.write('timeSeries Path 3 -time $timeSeries_list_of_times_3 -values $timeSeries_list_of_values_3\n')
 tcl_format2.close()
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -61,11 +61,11 @@ for i in accelerations3:
 
 for i in range(0,2000,10):
 	if i == 0:
-		tcl_format3.write(f'set timeSeries_list_of_values_4 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\ \n' )
+		tcl_format3.write(f'set timeSeries_list_of_values_4 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
 	elif i != 0 and i < 1989:
-		tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\ \n')
+		tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
 	else:
-		tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}} \n')
+		tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
 tcl_format3.write('timeSeries Path 4 -time $timeSeries_list_of_times_4 -values $timeSeries_list_of_values_4\n')
 tcl_format3.close()
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
