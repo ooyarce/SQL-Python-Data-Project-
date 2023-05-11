@@ -1,10 +1,21 @@
+from shakermaker.tools.plotting import ZENTPlot,cumulative_trapezoid
+from shakermaker.station import Station
+from shakermaker import shakermaker
+from Results.check_nodes import *
+
 import mysql.connector
+import pandas as pd
+import numpy as np
+import datetime
+import json	
+import os
+
 cnx = mysql.connector.connect(user='root', password='g3drGvwkcmcq', host='localhost', database='stkodatabase')
 cursor = cnx.cursor()
 
 def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por el método de Trapecio
     #print("Piese wise linear")   
-    import numpy as np
+    
     #variables 
     h = 0.005
     u_t = [0.]
@@ -49,13 +60,85 @@ def pwl(vector_a,w,chi): #retorna la integral de p(t) entre 0 y vectort[-1] por 
 
     return u_t,up_t
 
-def model_benchmark():
-	#-------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE MODEL-BENCHMARK TABLE (JobName,SimulationTime,MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,Comments)|	
-	#-------------------------------------------------------------------------------------------------------------------------------------
+def simulation(sim_type = 1, simstage = 'No stage yet', simopt = 'No options yet', sim_comments = 'No comments', sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s', model_name = 'FixBaseV3', model_comments = 'No comments', bs_units='kN', abs_acc_units='m/s/s', rel_displ_units='m', max_bs_units='kN', max_drift_units='m', perf_comments = 'No comments',  linearity = 1, specs_comments = 'No comments', clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl',bench_comments = 'No comments'):
+	simulation_model()
+	Model = cursor.lastrowid
+	simulation_sm_input()
+	SM_Input = cursor.lastrowid
+
+	date = datetime.datetime.now()
+	date = date.strftime("%B %d, %Y")
+
+	insert_query = 'INSERT INTO simulation(idModel, idSM_Input, idType, SimStage, SimOptions, Simdate, Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)'
+	values = (Model, SM_Input, sim_type, simstage, simopt, date, sim_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation table updated correctly!\n')
+
+
+def simulation_sm_input(sm_input_comments = 'No comments',pga_units = 'm/s/s', resp_spectrum = 'm/s/s'): #this functions should be modified acording to the format of 
+	#get magnitude
+	Magnitude = (os.path.dirname(__file__).split('/')[-3][1:])
+	Magnitude = (f'{Magnitude} magnitude on the Richter scale')
+
+	#get rupture type
+	Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[1]
+	if Rup_type == 'bl':
+		rupture = 'Bilateral'
+	elif Rup_type == 'ns':
+		rupture = 'North-South'
+	elif Rup_type == 'sn':
+		rupture = 'South-North'
+	else:
+		raise TypeError('Folders name are not following the format rup_[bl/ns/sn]_[iteration].')
+
+	#get realization id
+	iteration = Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[2]
+	
+	#get location
+	station = int(os.path.dirname(__file__).split('/')[-1][-1])
+	if station >= 0 and station <= 3:
+		location = 'Near field'
+	elif station >= 4 and station <=6:
+		location = 'Intermediate field'
+	elif station >= 7 and statio <=9:
+		location = 'Far field'
+	
+	#PGA y Spectrum
+	sm_input_pga()
+	PGA = cursor.lastrowid
+	sm_input_spectrum()
+	Spectrum = cursor.lastrowid
+
+	insert_query = 'INSERT INTO simulation_sm_input(idPGA, idSpectrum, Magnitude, Rupture_type, Location, RealizationID, Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)'
+	values = (PGA, Spectrum, Magnitude, rupture, location, iteration, sm_input_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation_sm_input table updated correctly!\n')
+
+def simulation_model(model_name = '', model_comments = '', bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', perf_comments = '',  linearity = 1, specs_comments = '', clustername = '',bench_comments = ''):
+	model_benchmark(clustername,bench_comments)
+	Benchmark = cursor.lastrowid
+	model_structure_perfomance(bs_units,abs_acc_units,rel_displ_units,max_bs_units,max_drift_units,perf_comments)
+	StructurePerfomance = cursor.lastrowid
+	model_specs_structure(linearity,specs_comments)
+	SpecsStructure = cursor.lastrowid
+
+	insert_query = 'INSERT INTO simulation_model(idBenchmark, idStructuralPerfomance, idSpecsStructure, ModelName, Comments) VALUES(%s,%s,%s,%s,%s)'
+	values = (Benchmark,StructurePerfomance,SpecsStructure,model_name, model_comments)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('simulation_model table updated correctly!\n')
+
+
+def model_benchmark(clustername = '',comments = '' ):
+	#------------------------------------------------------------------------------------------------------------------------------------
 	#Get calculus time from log file, nodes, threads and comments
+	#------------------------------------------------------------------------------------------------------------------------------------
+
 	data = open('run.sh')
 	counter = 0
+
 	for row in data:
 		#get job name
 		if counter == 1:
@@ -80,15 +163,6 @@ def model_benchmark():
 			value = row.split(' ')[1]
 			time = (f'{value} seconds') #first value of query
 
-
-	#Write some comments
-	clustername = 'Esmeralda HPC Cluster by jaabell@uandes.cl'
-	comments = 'This is a test model for beta_0.0' #for query
-
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#Get MODEL-BENCHMARK from folder read																								|
-	#------------------------------------------------------------------------------------------------------------------------------------
-	import os
 	path1 = f'{os.path.dirname(__file__)}/Accelerations/'
 	path2 = f'{os.path.dirname(__file__)}/Displacements/'
 	path3 = f'{os.path.dirname(__file__)}/Reactions/'
@@ -128,25 +202,58 @@ def model_benchmark():
 	model_name = 'FixBaseV3.scd'
 	memory_by_model = f'{os.path.getsize(model_name)/(1024*1024):.2f} Mb' #this value goes for query
 
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#write query to put data in table
 	insert_query = 'INSERT INTO model_benchmark (JobName,SimulationTime,MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
 	values = (jobname,time,memory_by_results,memory_by_model,nodes,threads,clustername,comments)
 	cursor.execute(insert_query, values)
 	cnx.commit()	
 	print('model_benchmark table updated correctly!\n')
 
-	 
-	#------------------------------------------------------------------------------------------------------------------------------------
+def model_structure_perfomance(bs_units='', abs_acc_units='', rel_displ_units='', max_bs_units='', max_drift_units='', comments = ''):
+	#fills base shear
+	structure_base_shear(bs_units)
+	BaseShear = cursor.lastrowid
 
-def structure_base_shear():
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE STRUCTURE_BASE_SHEAR
-	#------------------------------------------------------------------------------------------------------------------------------------
-	import pandas as pd
-	import json
-	Units = 'kN'
-	#reactions
+	#fills absolute accelerations
+	structure_abs_acceleration(abs_acc_units)
+	AbsAccelerations = cursor.lastrowid
+	
+	#fills relative displacements
+	structure_relative_displacements(rel_displ_units)
+	RelativeDisplacements = cursor.lastrowid
+	
+	#fills max base shear
+	structure_max_base_shear(max_bs_units)
+	MaxBaseShear = cursor.lastrowid
+
+	#fills max drift per floor
+	structure_max_drift_per_floor(max_drift_units)
+	MaxDriftPerFloor = cursor.lastrowid
+
+	#this is going to change in the future
+	mta = 'Not sure how to calculate this'
+	fas = 'Not sure how to calculate this'
+
+	#insert data into database
+	insert_query = 'INSERT INTO model_structure_perfomance (idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,FloorAccelerationSpectra,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
+	values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments) #mta and fas vars has to change
+	cursor.execute(insert_query, values)
+	cnx.commit()		
+	print('model_structure_perfomance table updated correctly!\n')
+
+def model_specs_structure(linearity = 1, comments = ''):
+	if linearity < 1 or linearity > 2:
+		raise TypeError('The Linearity parameter can only take the values of 1 or 2.')  
+
+	nnodes, nelements = give_info()
+	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+
+	insert_query = 'INSERT INTO model_specs_structure (idLinearity, Nnodes, Nelements, Nhistories, Nsubs, InterstoryHeight, Comments) VALUES (%s,%s,%s,%s,%s,%s,%s)'
+	values = (linearity, nnodes, nelements,histories,subs, json.dumps(heights), comments) #mta and fas vars has to change
+	cursor.execute(insert_query, values)
+	cnx.commit()		
+	print('model_specs_structure table updated correctly!\n')
+
+def structure_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
 	sheet_names = list(reactions.keys())
 	base_shears = []
@@ -158,16 +265,12 @@ def structure_base_shear():
 		base_shears.append(summ)
 
 	insert_query = 'INSERT INTO structure_base_shear (TimeSeries, ShearX, ShearY, ShearZ, Units) VALUES (%s,%s,%s,%s,%s)'
-	values = (timeseries, base_shears[0], base_shears[1], base_shears[2], Units)
+	values = (timeseries, base_shears[0], base_shears[1], base_shears[2], units)
 	cursor.execute(insert_query, values)
 	cnx.commit()		
 	print('structure_base_shear table updated correctly!\n')
 
-def structure_max_base_shear():
-	import pandas as pd 
-	import json
-	Units = 'kN'
-	#reactions
+def structure_max_base_shear(units = 'kN'):
 	reactions = pd.read_excel('reactions.xlsx', sheet_name = None)
 	sheet_names = list(reactions.keys())
 	max_shears = []
@@ -180,25 +283,62 @@ def structure_max_base_shear():
 	max_shears = [round(num,2) for num in max_shears]
 	
 	insert_query = 'INSERT INTO structure_max_base_shear (MaxX, MaxY, MaxZ, Units) VALUES (%s,%s,%s,%s)'
-	values = (max_shears[0], max_shears[1], max_shears[2],Units)
+	values = (max_shears[0], max_shears[1], max_shears[2],units)
 	cursor.execute(insert_query,values)
 	cnx.commit()
 	print('structure_max_base_shear table updated correctly!\n')
 
-def structure_max_drift_per_floor():
-	return None
+def structure_max_drift_per_floor(units = 'm'):
+	coordenates, drift_nodes,histories_nodes, histories, subs, heights = give_coords_info()
+	displacements = pd.read_excel('displacements.xlsx', sheet_name = None)
+	sheet_names = list(displacements.keys())
+	sheet_names.pop(2)
+	drifts = []
 
-def structure_relative_displacements():
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE STRUCTURE_RELATIVE_DISPLACEMENT
-	#------------------------------------------------------------------------------------------------------------------------------------
-	import pandas as pd
-	import json
-	units = 'm'
-	#displacements
+	for sheet_name in sheet_names:
+		df = displacements[sheet_name].iloc[:,1:].dropna()
+		sheet_corners = []
+		sheet_centers = []
+		for idx, level in enumerate(list(histories_nodes)):
+			if idx == 20:
+				break
+			for idy, nodo in enumerate(list(histories_nodes[level])):
+				if idy%3 == 0 and idy != 0:
+					#define nodes
+					node1,node5 = list(histories_nodes[f'Level {idx}'])[0],list(histories_nodes[f'Level {idx+1}'])[0]
+					node2,node6 = list(histories_nodes[f'Level {idx}'])[1],list(histories_nodes[f'Level {idx+1}'])[1]
+					node3,node7 = list(histories_nodes[f'Level {idx}'])[2],list(histories_nodes[f'Level {idx+1}'])[2]
+					node4,node8 = list(histories_nodes[f'Level {idx}'])[3],list(histories_nodes[f'Level {idx+1}'])[3]
+					
+					#corner drift absolute value
+					drift1,drift2 = ((df[node5] - df[node1])/heights[idx]).abs().max(),	((df[node6] - df[node2])/heights[idx]).abs().max()
+					drift3,drift4 = ((df[node7] - df[node3])/heights[idx]).abs().max(),	((df[node8] - df[node4])/heights[idx]).abs().max()
+					max_corner = (max((drift1),(drift2),(drift3),(drift4)))
+
+					#center drift absolute value
+					mean_displ2 = df[[node5,node6,node7,node8]].mean(axis=1)
+					id_center = (mean_displ2.abs()).argmax()
+					mean_displ1 = sum([df[node1][id_center],df[node2][id_center],df[node3][id_center],df[node4][id_center]])/4
+					max_center = abs(mean_displ2[id_center]- mean_displ1)/heights[idx]
+
+					#add to data
+					sheet_corners.append(max_corner)
+					sheet_centers.append(max_center)
+		#data
+		drifts.append(sheet_corners)
+		drifts.append(sheet_centers)	
+
+	insert_query = 'INSERT INTO structure_max_drift_per_floor (MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s,%s)'
+	values = (json.dumps(drifts[0]), json.dumps(drifts[2]), json.dumps(drifts[1]), json.dumps(drifts[3]), units)
+	cursor.execute(insert_query,values)
+	cnx.commit()
+	print('structure_max_drift_per_floor table updated correctly!\n')
+
+def structure_relative_displacements(units = 'm'):
 	displacements = pd.read_excel('displacements.xlsx',sheet_name = None)
 	sheet_names = list(displacements.keys())
 	matrixes = []
+
 	for sheet_name in sheet_names:
 		pd.options.display.float_format = '{:.2E}'.format
 		df = displacements[sheet_name].dropna()
@@ -220,15 +360,7 @@ def structure_relative_displacements():
 	cnx.commit()		
 	print('structure_relative_displacements table updated correctly!\n')
  
-def structure_abs_acceleration():
-	#------------------------------------------------------------------------------------------------------------------------------------
-	#THIS FILLS THE RESULTS TABLE (REACTIONS-RELATIVE DISPLACEMENTS - ABSOLUTE ACCELERATIONS)
-	#------------------------------------------------------------------------------------------------------------------------------------
-	import pandas as pd 
-	import json
-	import os 
-	Units = 'm/s/s'
-	#accelerations
+def structure_abs_acceleration(units = 'm/s/s'):
 	accelerations = pd.read_excel('accelerations.xlsx',sheet_name = None)
 	sheet_names = list(accelerations.keys())
 	matrixes = []
@@ -278,31 +410,16 @@ def structure_abs_acceleration():
 			matrixes.append(json.dumps(df.to_dict()))
 
 	insert_query = 'INSERT INTO structure_abs_acceleration (TimeSeries, AbsAccX, AbsAccY, AbsAccZ, Units) VALUES(%s,%s,%s,%s,%s)'
-	values = (timeseries, matrixes[0], matrixes[1], matrixes[2], Units)
+	values = (timeseries, matrixes[0], matrixes[1], matrixes[2], units)
 	cursor.execute(insert_query, values)
 	cnx.commit()		
 	print('structure_abs_acceleration table updated correctly!\n')
 	
-def sm_input_pga():
-	from shakermaker import shakermaker
-	from shakermaker.station import Station
-	from shakermaker.tools.plotting import ZENTPlot,cumulative_trapezoid
-	import os
-	import numpy as np 
-	import json
-	Units = 'g'
+def sm_input_pga(units = 'm/s/s'):
 	folder = os.path.basename(os.getcwd())
 	npz = os.path.join('..',f'{folder}.npz')
-
-	spectra = []
 	nu = 0.05
 	tmax = 50.
-	dt = np.linspace(0,1,2000)
-	w = np.zeros(len(dt))
-
-	for i in range(len(dt)):
-	    if dt[i] != 0:    
-	        w[i] = 2*np.pi/dt[i]
 
 	s = Station()
 	s.load(npz)
@@ -312,39 +429,30 @@ def sm_input_pga():
 	n = n[t<tmax]
 	t = t[t<tmax]
 
-
 	az = np.gradient(z,t)
 	ae = np.gradient(e,t)
 	an = np.gradient(n,t)
 
-
+	PGA_max_z = az.argmax()
 	PGA_max_e = ae.argmax()
-	PGA_min_e = ae.argmin()
-
 	PGA_max_n = an.argmax()
 	PGA_min_n = an.argmin()
-
-	PGA_max_z = az.argmax()
 	PGA_min_z = az.argmin()   
+	PGA_min_e = ae.argmin()
 	    
-	PGAx = json.dumps({'max':str(PGA_max_e),'min':str(PGA_min_e)})
-	PGAy = json.dumps({'max':str(PGA_max_n),'min':str(PGA_min_n)})
-	PGAz = json.dumps({'max':str(PGA_max_z),'min':str(PGA_min_z)})
+	PGAx = json.dumps({'max':round(ae[PGA_max_e],2),'min':round(ae[PGA_min_e],2)})
+	PGAy = json.dumps({'max':round(an[PGA_max_n],2),'min':round(an[PGA_min_n],2)})
+	PGAz = json.dumps({'max':round(az[PGA_max_z],2),'min':round(az[PGA_min_z],2)})
 	
 	insert_query = 'INSERT INTO sm_input_pga (PGA_X, PGA_Y, PGA_Z, Units) VALUES(%s,%s,%s,%s)'
-	values = (PGAx, PGAy, PGAz, Units)
+	values = (PGAx, PGAy, PGAz, units)
 	cursor.execute(insert_query, values)
 	cnx.commit()
 	print('sm_input_pga table updated correctly!\n')
 
-def sm_input_spectrum():
-	from shakermaker import shakermaker
-	from shakermaker.station import Station
-	from shakermaker.tools.plotting import ZENTPlot,cumulative_trapezoid
-	import numpy as np
-	import os 
-	import json
-	Units = 'm/s/s'
+def sm_input_spectrum(units = 'm/s/s'):
+	folder = os.path.basename(os.getcwd())
+	npz = os.path.join('..',f'{folder}.npz')
 	nu = 0.05
 	tmax = 50.
 	dt = np.linspace(0,1.,2000)
@@ -355,10 +463,6 @@ def sm_input_spectrum():
 	    if dt[i] != 0.:    
 	        w[i] = 2*np.pi/dt[i]
 	    
-	folder = os.path.basename(os.getcwd())
-	npz = os.path.join('..',f'{folder}.npz')
-
-
 	#SPECTRUM VERTICAL
 	s = Station()
 	s.load(npz)
@@ -405,7 +509,7 @@ def sm_input_spectrum():
 	    Spn.append(San)
 
 	insert_query = 'INSERT INTO sm_input_spectrum(SpectrumX, SpectrumY, SpectrumZ, Units) VALUES (%s,%s,%s,%s)'
-	values = (json.dumps(Spe), json.dumps(Spn), json.dumps(Spaz), Units)
+	values = (json.dumps(Spe), json.dumps(Spn), json.dumps(Spaz), units)
 	cursor.execute(insert_query, values)
 	cnx.commit()
 	print('sm_input_spectrum table updated correctly!\n')
