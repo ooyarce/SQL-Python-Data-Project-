@@ -5,7 +5,7 @@ Magnitude = (os.path.dirname(__file__).split('/')[-3][1:])
 Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[1]
 iteration = os.path.dirname(__file__).split('/')[-2].split('_')[2]
 station = int(os.path.dirname(__file__).split('/')[-1][-1])
-jobname = f'{Magnitude}_{Rup_type}{iteration}_s{station}'
+jobname = f'4s_{Magnitude}_{Rup_type}{iteration}_s{station}'
 logname = f'Fix_{jobname}.log'
 
 with open('run.sh', 'w') as f:
