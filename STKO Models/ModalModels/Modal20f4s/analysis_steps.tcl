@@ -317,7 +317,7 @@ analysis Static
 
 loadConst -time 0.0
 
-eigen 6
+eigen 20
 
 # modalProperties <-print> <-file $reportFileName> <-unorm>
 modalProperties -print
