@@ -49,7 +49,7 @@ def give_accelerations():
 
 	listed = set(acce_nodes)
 	if len(acce_nodes) == len(listed):
-		print('No nodes repited')
+		print('Accelerations: No nodes repited')
 	else:
 		print('WARNING: NODES REPITED')
 
@@ -82,7 +82,7 @@ def give_displacements():
 
 	listed = set(displ_nodes)
 	if len(displ_nodes) == len(listed):
-		print('No nodes repited')
+		print('Displacements: No nodes repited')
 	else:
 		print('WARNING: NODES REPITED')
 
@@ -114,7 +114,7 @@ def give_reactions():
 
 	listed = set(reaction_nodes)
 	if len(reaction_nodes) == len(listed):
-		print('No nodes repited')
+		print('Reactions:     No nodes repited ')
 	else:
 		print('WARNING: NODES REPITED')
 	return reactions,reaction_nodes
@@ -188,7 +188,7 @@ def give_coords_info():
 	stories_nodes = {}
 	counter = 0
 	for i in range(stories+subs+1):
-		i -= 4
+		i -= subs
 		if i < 0:
 			counter+=4
 			continue
@@ -226,9 +226,13 @@ def give_info():
 
 
 coordenates, drift_nodes,stories_nodes, stories, subs, heights = give_coords_info()
-print(f'{drift_nodes=}')
-print(f'{stories_nodes=}')
+#print(f'{drift_nodes=}')
+#print(f'{stories_nodes=}')
+print("---------------------------------------------|")
+print("----------------CHECKING-MODEL---------------|")
+print("---------------------------------------------|")
 print(f'{stories=}')
+#print(f'{stories_nodes=}')
 print(f'{subs=}')
 print(f'{heights=}')
 accelerations,acce_nodes = give_accelerations()
@@ -236,3 +240,4 @@ displacements,displ_nodes = give_displacements()
 reactions,reaction_nodes = give_reactions()
 nnodes, nelements, npartitions = give_info()
 print(f'{nnodes=},{nelements=},{npartitions=}')
+

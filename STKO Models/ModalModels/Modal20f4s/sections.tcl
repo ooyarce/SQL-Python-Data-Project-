@@ -3,22 +3,22 @@ section Elastic 1 23025203.6 0.25 0.005208333333333333 0.005208333333333333 9593
 section ElasticMembranePlateSection 2 23025203.6 0.2 0.15 4.1 1.0
 section ElasticMembranePlateSection 4 23025203.6 0.2 0.15 5.45 1.0
 section ElasticMembranePlateSection 5 23025203.6 0.2 0.15 6.8 1.0
-section ElasticMembranePlateSection 8 23025203.6 0.2 0.45 2.4 1.0
-section ElasticMembranePlateSection 14 23025203.6 0.2 0.4 2.4 1.0
-section ElasticMembranePlateSection 15 23025203.6 0.2 0.4 2.4 1.0
-section ElasticMembranePlateSection 16 23025203.6 0.2 0.3 2.4 1.0
-section ElasticMembranePlateSection 17 23025203.6 0.2 0.2 2.4 1.0
-section ElasticMembranePlateSection 19 23025203.6 0.2 0.15 2.4 1.0
-section ElasticMembranePlateSection 20 23025203.6 0.2 0.35 2.4 1.0
-section ElasticMembranePlateSection 21 23025203.6 0.2 0.35 2.4 1.0
-section ElasticMembranePlateSection 22 23025203.6 0.2 0.25 2.4 1.0
-section ElasticMembranePlateSection 23 23025203.6 0.2 0.15 2.4 1.0
-section ElasticMembranePlateSection 24 23025203.6 0.2 0.15 2.4 1.0
-section ElasticMembranePlateSection 25 23025203.6 0.2 0.25 2.4 1.0
-section ElasticMembranePlateSection 26 23025203.6 0.2 0.25 2.4 1.0
-section ElasticMembranePlateSection 27 23025203.6 0.2 0.15 2.4 1.0
-section ElasticMembranePlateSection 28 23025203.6 0.2 0.15 2.4 1.0
-section ElasticMembranePlateSection 29 23025203.6 0.2 0.15 2.4 1.0
+section ElasticMembranePlateSection 8 23025203.6 0.2 0.45 2.45 1.0
+section ElasticMembranePlateSection 14 23025203.6 0.2 0.4 2.45 1.0
+section ElasticMembranePlateSection 15 23025203.6 0.2 0.4 2.45 1.0
+section ElasticMembranePlateSection 16 23025203.6 0.2 0.3 2.45 1.0
+section ElasticMembranePlateSection 17 23025203.6 0.2 0.2 2.45 1.0
+section ElasticMembranePlateSection 19 23025203.6 0.2 0.15 2.45 1.0
+section ElasticMembranePlateSection 20 23025203.6 0.2 0.35 2.45 1.0
+section ElasticMembranePlateSection 21 23025203.6 0.2 0.35 2.45 1.0
+section ElasticMembranePlateSection 22 23025203.6 0.2 0.25 2.45 1.0
+section ElasticMembranePlateSection 23 23025203.6 0.2 0.15 2.45 1.0
+section ElasticMembranePlateSection 24 23025203.6 0.2 0.15 2.45 1.0
+section ElasticMembranePlateSection 25 23025203.6 0.2 0.25 2.45 1.0
+section ElasticMembranePlateSection 26 23025203.6 0.2 0.25 2.45 1.0
+section ElasticMembranePlateSection 27 23025203.6 0.2 0.15 2.45 1.0
+section ElasticMembranePlateSection 28 23025203.6 0.2 0.15 2.45 1.0
+section ElasticMembranePlateSection 29 23025203.6 0.2 0.15 2.45 1.0
 
 section Elastic 30 23025203.6 0.81 0.05467500000000001 0.05467500000000001 9593834.83 0.09240075000000002
 
@@ -33,4 +33,4 @@ section Elastic 34 23025203.6 0.25 0.005208333333333333 0.005208333333333333 959
 section Elastic 35 23025203.6 0.16000000000000003 0.002133333333333334 0.002133333333333334 9593834.83 0.0036053333333333345
 
 section Elastic 36 23025203.6 1.0 0.08333333333333333 0.08333333333333333 9593834.83 0.14083333333333334
-section ElasticMembranePlateSection 37 23025203.6 0.2 3.0 24.0 1.0
+section ElasticMembranePlateSection 37 23025203.6 0.2 3.0 2.45 1.0
