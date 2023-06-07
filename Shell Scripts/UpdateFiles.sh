@@ -5,8 +5,8 @@ for file in */ ; do
     #cp run_sh_writter.py "$file"
     #cp check_nodes.py "$file"
     #cp sql_functions.py "$file"
-    cp main_sql.py "$file"
     #cp accelerations_writter_tcl_format.py "$file"
+    #cp main_sql.py "$file"
     #cp exporting_results.py "$file"
     #cp sort_results_into_xlsx.py "$file"
     #cp FixBaseV55_7s.scd "$file"
@@ -25,7 +25,7 @@ for file in */ ; do
         #cp check_nodes.py "$file2"
         #cp sql_functions.py "$file2"
         #cp accelerations_writter_tcl_format.py "$file2"
-        cp main_sql.py "$file2"
+        #cp main_sql.py "$file2"
         #cp exporting_results.py "$file2"
         #cp sort_results_into_xlsx.py "$file2"
         #cp FixBaseV55_7s.scd "$file2"
@@ -44,7 +44,7 @@ for file in */ ; do
             #cp check_nodes.py "$file3/Results/"
             #cp sql_functions.py "$file3"
             #cp accelerations_writter_tcl_format.py "$file3"
-            cp main_sql.py "$file3"
+            #cp main_sql.py "$file3"
             #cp sort_results_into_xlsx.py "$file3"
             #cp FixBaseV55_7s.scd "$file3"
             #-------------------------------
@@ -68,6 +68,9 @@ for file in */ ; do
             #rm -rf ./Results/info/
             #rm -rf ./Results/reaction/
             #rm FixBaseV20_2s.scd 
+            rm accelerations_writter_tcl_format.py
+            rm run_sh_writter.py
+            rm sort_results_into_xlsx.py
             cd ..
             #-------------------------------
         done
@@ -75,9 +78,10 @@ for file in */ ; do
         #rm check_nodes.py
         #rm sql_functions.py 
         #rm accelerations_writter_tcl_format.py
-        rm main_sql.py
+        #rm main_sql.py
         #rm sort_results_into_xlsx.py 
         #rm FixBaseV55_7s.scd
+        #rm exporting_results.py
         #-------------------------------
         #rm definitions.tcl 
         #rm analysis_steps.tcl 
@@ -92,8 +96,7 @@ for file in */ ; do
     #rm check_nodes.py
     #rm sql_functions.py
     #rm accelerations_writter_tcl_format.py
-    rm main_sql.py
-    #rm exporting_results.py
+    #rm main_sql.py
     #rm sort_results_into_xlsx.py 
     #rm FixBaseV55_7s.scd
     #-------------------------------
