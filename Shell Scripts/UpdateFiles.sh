@@ -9,7 +9,7 @@ for file in */ ; do
     #cp main_sql.py "$file"
     #cp exporting_results.py "$file"
     #cp sort_results_into_xlsx.py "$file"
-    #cp FixBaseV55_7s.scd "$file"
+    cp FixBaseV55_4s.scd "$file"
     #-------------------------------
     #cp definitions.tcl "$file"
     #cp analysis_steps.tcl "$file"
@@ -28,7 +28,7 @@ for file in */ ; do
         #cp main_sql.py "$file2"
         #cp exporting_results.py "$file2"
         #cp sort_results_into_xlsx.py "$file2"
-        #cp FixBaseV55_7s.scd "$file2"
+        cp FixBaseV55_4s.scd "$file2"
         #-------------------------------
         #cp definitions.tcl "$file2"
         #cp analysis_steps.tcl "$file2"
@@ -46,7 +46,7 @@ for file in */ ; do
             #cp accelerations_writter_tcl_format.py "$file3"
             #cp main_sql.py "$file3"
             #cp sort_results_into_xlsx.py "$file3"
-            #cp FixBaseV55_7s.scd "$file3"
+            cp FixBaseV55_4s.scd "$file3"
             #-------------------------------
             #cp definitions.tcl "$file3"
             #cp analysis_steps.tcl "$file3"
@@ -67,10 +67,7 @@ for file in */ ; do
             #rm -rf ./Results/disp/
             #rm -rf ./Results/info/
             #rm -rf ./Results/reaction/
-            #rm FixBaseV20_2s.scd 
-            rm accelerations_writter_tcl_format.py
-            rm run_sh_writter.py
-            rm sort_results_into_xlsx.py
+            #rm FixBaseV55_2s.scd 
             cd ..
             #-------------------------------
         done
@@ -80,7 +77,7 @@ for file in */ ; do
         #rm accelerations_writter_tcl_format.py
         #rm main_sql.py
         #rm sort_results_into_xlsx.py 
-        #rm FixBaseV55_7s.scd
+        rm FixBaseV55_4s.scd
         #rm exporting_results.py
         #-------------------------------
         #rm definitions.tcl 
@@ -98,7 +95,7 @@ for file in */ ; do
     #rm accelerations_writter_tcl_format.py
     #rm main_sql.py
     #rm sort_results_into_xlsx.py 
-    #rm FixBaseV55_7s.scd
+    rm FixBaseV55_4s.scd
     #-------------------------------
     #rm definitions.tcl
     #rm analysis_steps.tcl 

@@ -21,7 +21,7 @@ for file in */ ; do
             echo "|--------------------------------------------------------|"
             cd "$file3"
             python run_sh_writter.py
-            python accelerations_writter_tcl_format.py
+            #python accelerations_writter_tcl_format.py
             #mv definitions.tcl definitions_old.tcl
             #mv definitions2.tcl definitions.tcl
             #rm tcl_format_east.tcl
