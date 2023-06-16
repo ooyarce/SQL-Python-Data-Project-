@@ -11,4 +11,6 @@ for m_dir in m6.5 m6.7 m6.9 m7.0; do
             fi
         done
     done
-done
+#m6.5, m6.7, m6.9, m7.0
+#rup_bl_1, rup_bl_2, rup_bl_3, rup_ns_1, rup_ns_2, rup_ns_3, rup_sn_1, rup_sn_2, rup_sn_3
+#resultado_s0, resultado_s1, resultado_s2, resultado_s3, resultado_s4, resultado_s5, resultado_s6, resultado_s7, resultado_s8, resultado_s9 

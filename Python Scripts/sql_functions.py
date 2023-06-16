@@ -23,7 +23,7 @@ def simulation(sim_type = 1,
 	sm_input_comments = 'No comments',
 	pga_units = 'm/s/s',
 	resp_spectrum = 'm/s/s',
-	model_name = 'FixBaseV3',
+	model_name = glob.glob("*.scd")[0],
 	model_comments = 'No comments', 
 	bs_units='kN',
 	abs_acc_units='m/s/s',
@@ -173,7 +173,7 @@ def model_benchmark(clustername = '',comments = '' ):
 	memory_by_results = f'{acc_size + displ_size + react_size + results_size:.2f} Mb' #this value goes as second column in the query
 
 	#get model memory
-	model_name = archivos_scd = glob.glob("*.scd")[0]
+	model_name = glob.glob("*.scd")[0]
 	memory_by_model = f'{os.path.getsize(model_name)/(1024*1024):.2f} Mb' #this value goes for query
 
 	insert_query = 'INSERT INTO model_benchmark (JobName,SimulationTime,MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)'
