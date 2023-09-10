@@ -1,8 +1,4 @@
 
-recorder mpco "Recorder.mpco" \
--N "displacement" "reactionForce" \
--T dt 0.025
-
 # Constraints.sp fix
 	fix 1 1 1 1 1 1 1
 	fix 2 1 1 1 1 1 1
@@ -305,7 +301,7 @@ recorder mpco "Recorder.mpco" \
 	fix 4172 1 1 1 1 1 1
 
 # Patterns.addPattern loadPattern
-pattern Plain 3 10 {
+pattern Plain 2 10 {
 
 # Loads.Force FaceForce
 	load 449 0.0 0.0 -6.532499999999974 0.0 0.0 0.0
@@ -27661,13 +27657,17 @@ analysis Static
 
 loadConst -time 0.0
 
-eigen 12
+
+recorder mpco "asDA_.mpco" \
+-N "displacement" "reactionForce" "modesOfVibration" \
+-E "force" "section.force"
+eigen -genBandArpack 5
 
 # modalProperties <-print> <-file $reportFileName> <-unorm>
-modalProperties
+modalProperties -unorm
 
 # responseSpectrumAnalysis $tsTag $direction <-scale $scale> <-mode $mode>
-responseSpectrumAnalysis 7 3
+responseSpectrumAnalysis 7 1
 
 # Done!
 puts "ANALYSIS SUCCESSFULLY FINISHED"

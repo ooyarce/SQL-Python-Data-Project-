@@ -10,7 +10,8 @@ from collections import Counter
 #access to folders
 path = os.path.dirname(os.path.abspath(__file__))
 folders = os.listdir(path)
-
+folders_name = ['accel', 'coords', 'disp', 'reaction', 'info']
+carpetas_dict = {}
 #access to folders files
 for i in range(len(folders)):
 	if folders[i] == 'accel':
