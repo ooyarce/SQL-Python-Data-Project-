@@ -5,6 +5,7 @@ from PyMpc import *
 from mpc_utils_html import *
 import opensees.utils.tcl_input as tclin
 import importlib
+import os
 
 def makeXObjectMetaData():
 	# -file_name
@@ -382,8 +383,13 @@ def extract_eletags(pinfo, domain, tag, xobj):
 	tag.sort()
 """
 def writeTcl(pinfo):
-	
 	xobj = pinfo.analysis_step.XObject
+	def geta(name):
+		a = xobj.getAttribute(name)
+		if(a is None):
+			raise Exception('Error: cannot find "{}" attribute'.format(name))
+		return a
+
 	doc = PyMpc.App.caeDocument()
 	if(doc is None):
 		raise Exception('null cae document')
@@ -534,22 +540,28 @@ def writeTcl(pinfo):
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 	#-----------------------------------------------PATH---------------------------------------------------------------------------------------------------------------------------|
-	path = f'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Backup/Thesis-Project-Simulation-Data-Analysis/DataBase-Inputs/TestInput/Results' #ESTA LINEA CAMBIA YA QUE GUARDA ARCHIVOS AHI |
+	
+	#path = f'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Inputs/TestInput/Results' #ESTA LINEA CAMBIA YA QUE GUARDA ARCHIVOS AHI |
+	#path  = f'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/STKO Models/SSIModels/AbsorbingBoundaries'
+	path = os.path.abspath(pinfo.out_dir)
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+	os.makedirs(f'{path}/info', exist_ok=True)
+	with open(f'{path}\\info\\model_info.csv', 'w') as info_file:
+		info_file.write(f'Number of nodes = {nodes_number}\n')
+		info_file.write(f'Number of elements = {ele_number}\n')
+		info_file.write(f'Number of partitions = {partitions}\n')
 
-	info_file = open(f'{path}/info/model_info.csv','w')
-	info_file.write(f'Number of nodes = {nodes_number}\n')
-	info_file.write(f'Number of elements = {ele_number}\n')
-	info_file.write(f'Number of partitions = {partitions}\n')
-	info_file.close()
-
+	#Parallel computing
 	if pinfo.process_count > 1:
 		process_block_count = 0
 		for process_id in range(pinfo.process_count):
 			first_done = False
-
+			#Check if directories exist and create them if not
+			os.makedirs(f'{path}/coords', exist_ok=True)
+			os.makedirs(f'{path}/{respType[1:]}', exist_ok=True)
+   
 			#Add coordinate info
 			if respType == ' disp':
 				c = open(f'{path}/coords/coords_{process_id}.csv','w')
@@ -584,7 +596,24 @@ def writeTcl(pinfo):
 				str_tcl += '{}{}'.format(pinfo.indent, '}')
 			f.close()
 
+	#Single processor
 	else:#singleprocesor
+		os.makedirs(f'{path}/coords', exist_ok=True)
+		os.makedirs(f'{path}/{respType[1:]}', exist_ok=True)
+		if respType == ' disp':
+				c = open(f'{path}/coords/coords_{process_id}.csv','w')
+				c.write('Node ID, X, Y, Z \n')
+				for node_id in nodes_tags:
+					if doc.mesh.partitionData.nodePartition(node_id) != process_id:
+						continue
+					nodex = doc.mesh.nodes[node_id].x
+					nodey = doc.mesh.nodes[node_id].y
+					nodez = doc.mesh.nodes[node_id].z
+					c.write("{} {} {} {} \n".format(node_id, nodex,nodey,nodez))
+				c.close()
+		f = open(f'{path}/{respType[1:]}/{respType[1:]}_nodes.csv','w')
+  
+  
 		for node_id in nodes_tags:
 			node_str += f' {node_id}'
 			#str_tcl += '{}{}-node {} \n'.format(pinfo.indent, pinfo.tabIndent, node)
