@@ -40,15 +40,19 @@ for i in range(len(files)):
     n = n[t<tmax]
     t = t[t<tmax]
 
-    az = np.gradient(z,t)
-    ae = np.gradient(e,t)
-    an = np.gradient(n,t)
+    #az = np.gradient(z,t)
+    #ae = np.gradient(e,t)
+    #an = np.gradient(n,t)
 
 
     for j in range(len(z)):
+        """
         text_files[counter].write(f'{az[j]}\n')
         text_files[counter+1].write(f'{ae[j]}\n')
-        text_files[counter+2].write(f'{an[j]}\n')
+        text_files[counter+2].write(f'{an[j]}\n')"""
+        text_files[counter].write(f'{z[j]}\n')
+        text_files[counter+1].write(f'{e[j]}\n')
+        text_files[counter+2].write(f'{n[j]}\n')
         
     counter += 3
 

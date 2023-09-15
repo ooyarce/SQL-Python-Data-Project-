@@ -10,7 +10,7 @@ for file in */ ; do
     #cp main_sql.py "$file"
     #cp accelerations_writter_tcl_format.py "$file"
     #cp sort_results_into_xlsx.py "$file"
-    #cp exporting_results.py "$file"
+    cp exporting_results.py "$file"
     #cp materials.tcl "$file"
     #cp analysis_steps.tcl "$file"
     #cp definitions.tcl "$file"
@@ -30,7 +30,7 @@ for file in */ ; do
         #cp main_sql.py "$file2"
         #cp accelerations_writter_tcl_format.py "$file2"
         #cp sort_results_into_xlsx.py "$file2"
-        #cp exporting_results.py "$file2"
+        cp exporting_results.py "$file2"
         #cp check_nodes.py "$file2"
         #cp materials.tcl "$file2"
         #cp analysis_steps.tcl "$file2"
@@ -72,7 +72,7 @@ for file in */ ; do
             #rm materials.tcl
             #rm nodes.tcl
             #rm sections.tcl
-            rm *.txt
+            #rm *.txt
             cd ..
         done
 
@@ -102,7 +102,7 @@ for file in */ ; do
     #rm main_sql.py
     #rm accelerations_writter_tcl_format.py
     #rm sort_results_into_xlsx.py 
-    #rm exporting_results.py
+    rm exporting_results.py
     #rm check_nodes.py
     #rm materials.tcl 
     #rm analysis_steps.tcl 
