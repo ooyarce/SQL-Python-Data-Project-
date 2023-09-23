@@ -10,70 +10,69 @@ for filename in glob.glob('*.txt'):
 		elif filename[12] == 'z':
 			accelerations3 = open(filename,'r')
 			#print(f'vertical file = {filename}\n')
+# The following value (n) represents the numeration of the timeSeries in the tcl file, and it depends of the model.
+n = 7
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 #WRITTING EAST VALUES INPUT IN TCL 
-tcl_format = open('tcl_format_east.tcl','w')
+with open('tcl_format_east.tcl','w') as tcl_format:
+	values = []
+	counter = 0
+	for i in accelerations:
+		values.append(i)	
 
-values = []
-counter = 0
-for i in accelerations:
-	values.append(i)	
+	for i in range(0,2000,10):
+		if i == 0:
+			tcl_format.write(f'set timeSeries_list_of_values_{n} {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
+		elif i != 0 and i < 1989:
+			tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
+		else:
+			tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
+	tcl_format.write(f'timeSeries Path {n} -time $timeSeries_list_of_times_{n} -values $timeSeries_list_of_values_{n}\n')
 
-for i in range(0,2000,10):
-	if i == 0:
-		tcl_format.write(f'set timeSeries_list_of_values_2 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
-	elif i != 0 and i < 1989:
-		tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
-	else:
-		tcl_format.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
-tcl_format.write('timeSeries Path 2 -time $timeSeries_list_of_times_2 -values $timeSeries_list_of_values_2\n')
-tcl_format.close()
+	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+#WRITTING NORTH VALUES INPUT IN TCL
+with open('tcl_format_north.tcl','w') as tcl_format2:
+	values = []
+	counter = 0
+	for i in accelerations2:
+		values.append(i)	
+
+	for i in range(0,2000,10):
+		if i == 0:
+			tcl_format2.write(f'set timeSeries_list_of_values_{n+1} {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
+		elif i != 0 and i < 1989:
+			tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
+		else:
+			tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
+	tcl_format2.write(f'timeSeries Path {n+1} -time $timeSeries_list_of_times_{n+1} -values $timeSeries_list_of_values_{n+1}\n')
+
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 #WRITTING NORTH VALUES INPUT IN TCL
-tcl_format2 = open('tcl_format_north.tcl','w')
+with open('tcl_format_vertical.tcl','w') as tcl_format3: 
+	values = []
+	counter = 0
+	for i in accelerations3:
+		values.append(i)	
 
-values = []
-counter = 0
-for i in accelerations2:
-	values.append(i)	
+	for i in range(0,2000,10):
+		if i == 0:
+			tcl_format3.write(f'set timeSeries_list_of_values_{n+2} {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
+		elif i != 0 and i < 1989:
+			tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
+		else:
+			tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
+	tcl_format3.write(f'timeSeries Path {n+2} -time $timeSeries_list_of_times_{n+2} -values $timeSeries_list_of_values_{n+2}\n')
 
-for i in range(0,2000,10):
-	if i == 0:
-		tcl_format2.write(f'set timeSeries_list_of_values_3 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
-	elif i != 0 and i < 1989:
-		tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
-	else:
-		tcl_format2.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
-tcl_format2.write('timeSeries Path 3 -time $timeSeries_list_of_times_3 -values $timeSeries_list_of_values_3\n')
-tcl_format2.close()
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-#WRITTING NORTH VALUES INPUT IN TCL
-tcl_format3 = open('tcl_format_vertical.tcl','w')
-
-values = []
-counter = 0
-for i in accelerations3:
-	values.append(i)	
-
-for i in range(0,2000,10):
-	if i == 0:
-		tcl_format3.write(f'set timeSeries_list_of_values_4 {{{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n' )
-	elif i != 0 and i < 1989:
-		tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])} \\\n')
-	else:
-		tcl_format3.write(f'\t\t\t\t\t\t\t\t{float(values[i])} {float(values[i+1])} {float(values[i+2])} {float(values[i+3])} {float(values[i+4])} {float(values[i+5])} {float(values[i+6])} {float(values[i+7])} {float(values[i+8])} {float(values[i+9])}}}\n')
-tcl_format3.write('timeSeries Path 4 -time $timeSeries_list_of_times_4 -values $timeSeries_list_of_values_4\n')
-tcl_format3.close()
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-definitions = open('definitions.tcl','r')
-east_file = open('tcl_format_east.tcl','r')
-north_file = open('tcl_format_north.tcl','r')
-vertical_file = open('tcl_format_vertical.tcl','r')
-created_file = open('definitions2.tcl','w')
+definitions =  open('definitions.tcl','r') 
+east_file =  open('tcl_format_east.tcl','r')
+north_file =  open('tcl_format_north.tcl','r')
+vertical_file =  open('tcl_format_vertical.tcl','r')
+created_file =  open('definitions2.tcl','w')
 
 #writting first vector time
 counter = 0
@@ -116,3 +115,8 @@ for row in definitions:
 		created_file.write(row)
 	counter += 1
 
+definitions.close()
+east_file.close()
+north_file.close()
+vertical_file.close()
+created_file.close()

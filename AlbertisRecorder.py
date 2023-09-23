@@ -383,6 +383,9 @@ def extract_eletags(pinfo, domain, tag, xobj):
 	tag.sort()
 """
 def writeTcl(pinfo):
+    #-----------------------------------------------------------|
+	#----------------------GLOBAL PARAMS------------------------|
+	#-----------------------------------------------------------|
 	xobj = pinfo.analysis_step.XObject
 	def geta(name):
 		a = xobj.getAttribute(name)
@@ -399,24 +402,28 @@ def writeTcl(pinfo):
 		pinfo.out_file.write('\n{}# {} {}\n'.format(pinfo.indent, xobj.Xnamespace, ClassName))
 		pinfo.currentDescription = ClassName
 
-	#File configuration
-	##File name
+	#-----------------------------------------------------------|
+	#------------------FILE CONFIGURATION-----------------------S|
+	#-----------------------------------------------------------|
+	# File name
 	file_name_at = xobj.getAttribute('$fileName')
 	if(file_name_at is None):
 		raise Exception('Error: cannot find "file" attribute')
 	file_name = file_name_at.string
 
-	#Extension definition
+	# Extension definition
 	at_extension = xobj.getAttribute('Extension')
 	if(at_extension is None):
 		raise Exception('Error: cannot find "Extension" attribute')
 	extension = at_extension.string
+ 
 	if '.' not in extension:
 		raise Exception('Extension not valid')
 
-	#File type definition
+	# File type definition
 	file_type = ''
 	at_file_type = xobj.getAttribute('-file')
+ 
 	if(at_file_type is None):
 		raise Exception('Error: cannot find "-file" attribute')
 	file_type += '-file' if at_file_type.boolean else ''
@@ -425,6 +432,7 @@ def writeTcl(pinfo):
 	at_file_type = xobj.getAttribute('-xml')
 	if(at_file_type is None):
 		raise Exception('Error: cannot find "-xml" attribute')
+
 	file_type += '-xml' if at_file_type.boolean else ''
 	if only_type and at_file_type.boolean:
 		raise Exception('Only one type of file can be selected')
@@ -439,14 +447,15 @@ def writeTcl(pinfo):
 		raise Exception('Only one type of file can be selected')
 	
 	#-----------------------------------------------------------|
-	#---------------------------nodes---------------------------|
+	#---------------------------NODES---------------------------|
 	#-----------------------------------------------------------|
+	# Get nodes
 	nodes_at = xobj.getAttribute('-node')
 	if(nodes_at is None):
 		raise Exception('Error: cannot find "nodes" attribute')
 	SelectionSets = nodes_at.indexVector	
 
-	# get node tags
+	# Get node tags
 	nodes_tags = []
 	ele_tags = []
 	for selection_set_id in SelectionSets:
@@ -480,8 +489,7 @@ def writeTcl(pinfo):
 			domain = doc.mesh.meshedInteractions[interaction_id]
 			extract_tags(pinfo, domain, nodes_tags, xobj)
 	
-	#FIX ELEMNTS IN SELECTION SETS
-	#Defining responses types
+	# Defining responses types
 	respType = ''
 	def_respTypes = [' disp',' vel',' accel',' incrDisp','eigen',' reaction',' rayleighForces']
 
@@ -501,35 +509,31 @@ def writeTcl(pinfo):
 	if respType == '':
 		raise Exception('Response Type cannot be empty')
 
-	#raise Exception(respType)
-	#Defining DOFs
+	# Defining DOFs
 	dofs = ''
 	def_dofs = {'-dof_X':' 1','-dof_Y':' 2','-dof_Z':' 3'}
-
 	for dof_str in def_dofs:
 		dof_at = xobj.getAttribute(dof_str)
 		if dof_at is None:
 			raise Exception('Error: cannot find "{}" attribute'.format(dof_str))
 		dofs += def_dofs[dof_str] if dof_at.boolean else ''
-
 	if dofs == '':
 		raise Exception('DOF cannot be empty')
 
-	#Optionals
+	# Optionals 1
 	sopt = ''
 	at_time = xobj.getAttribute('-time')
 	if(at_time is None):
 		raise Exception('Error: cannot find "-time" attribute')
 	sopt += ' -time ' if at_time.boolean else ''
-
+ 
+	# Optionals 2
 	at_precision = xobj.getAttribute('precision')
 	at_nSD = xobj.getAttribute('$nSD')
 	if(at_precision is None):
 		raise Exception('Error: cannot find "precision" attribute')
 	sopt += ' -precision {}'.format(at_nSD.integer) if at_precision.boolean else ''
 
-	#Identify which nodes are in more of one partition
-	#TO DO -> if one node is in more than one partition, depending of respType, the result has to be overwriten or sumed
 	#Write TCL
 	str_tcl = ''
 	node_str = ''
@@ -537,87 +541,84 @@ def writeTcl(pinfo):
 	ele_number = len(doc.mesh.elements)
 	partitions = pinfo.process_count
 
-	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-	#-----------------------------------------------PATH---------------------------------------------------------------------------------------------------------------------------|
-	
-	#path = f'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Inputs/TestInput/Results' #ESTA LINEA CAMBIA YA QUE GUARDA ARCHIVOS AHI |
-	#path  = f'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/STKO Models/SSIModels/AbsorbingBoundaries'
+	#-----------------------------------------------------------|
+	#------------------WRITE RECORDER---------------------------|
+	#-----------------------------------------------------------|
+	# Create 'Results' folders
 	path = os.path.abspath(pinfo.out_dir)
-	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-	#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-	os.makedirs(f'{path}/info', exist_ok=True)
-	with open(f'{path}\\info\\model_info.csv', 'w') as info_file:
+	os.makedirs(f'{path}/Accelerations', exist_ok=True)
+	os.makedirs(f'{path}/Displacements', exist_ok=True)
+	os.makedirs(f'{path}/Reactions', exist_ok=True)
+ 
+	# Create folder for Partitions Info files and check model
+	os.makedirs(f'{path}/PartitionsInfo/info', exist_ok=True)
+	with open(f'{path}\\PartitionsInfo\\info\\model_info.csv', 'w') as info_file:
 		info_file.write(f'Number of nodes = {nodes_number}\n')
 		info_file.write(f'Number of elements = {ele_number}\n')
 		info_file.write(f'Number of partitions = {partitions}\n')
-
-	#Parallel computing
+	
+	# Parallel computing
 	if pinfo.process_count > 1:
 		process_block_count = 0
 		for process_id in range(pinfo.process_count):
 			first_done = False
 			#Check if directories exist and create them if not
-			os.makedirs(f'{path}/coords', exist_ok=True)
-			os.makedirs(f'{path}/{respType[1:]}', exist_ok=True)
+			os.makedirs(f'{path}/PartitionsInfo/coords', exist_ok=True)
+			os.makedirs(f'{path}/PartitionsInfo/{respType[1:]}', exist_ok=True)
    
 			#Add coordinate info
 			if respType == ' disp':
-				c = open(f'{path}/coords/coords_{process_id}.csv','w')
-				c.write('Node ID, X, Y, Z \n')
-				for node_id in nodes_tags:
-					if doc.mesh.partitionData.nodePartition(node_id) != process_id:
-						continue
-					nodex = doc.mesh.nodes[node_id].x
-					nodey = doc.mesh.nodes[node_id].y
-					nodez = doc.mesh.nodes[node_id].z
-					c.write("{} {} {} {} \n".format(node_id, nodex,nodey,nodez))
-				c.close()
+				with open(f'{path}/PartitionsInfo/coords/coords_{process_id}.csv','w') as coords_file:
+					coords_file.write('Node ID, X, Y, Z \n')
+					for node_id in nodes_tags:
+						if doc.mesh.partitionData.nodePartition(node_id) != process_id:
+							continue
+						nodex = doc.mesh.nodes[node_id].x
+						nodey = doc.mesh.nodes[node_id].y
+						nodez = doc.mesh.nodes[node_id].z
+						coords_file.write("{} {} {} {} \n".format(node_id, nodex,nodey,nodez))
+
 
 			#Add info about accelerations, displacements and reactions
-			f = open(f'{path}/{respType[1:]}/{respType[1:]}_nodes_part-{process_id}.csv','w')
-			for node_id in nodes_tags:
-				#In short, this line of code ensures that only nodes belonging to the current process running in parallel are processed.
-				if doc.mesh.partitionData.nodePartition(node_id) != process_id:
-					continue
-				f.write(f'{node_id}\n')
-				#This lines are about getting the output
-				if not first_done:
-					if process_block_count == 0:
-						str_tcl += '\n{}{}{}{}\n'.format(pinfo.indent, 'if {$STKO_VAR_process_id == ', process_id, '} {')
-					else:
-						str_tcl += '{}{}{}{}\n'.format(pinfo.indent, ' elseif {$STKO_VAR_process_id == ', process_id, '} {')
-					first_done = True
-				str_tcl += '{}{}recorder Node {} "{}-node_{}-part_$STKO_VAR_process_id{}" -node {}{} -dof{}{}\n'.format(pinfo.indent, pinfo.tabIndent,file_type,file_name, node_id,extension, node_id , sopt,dofs, respType)
-				if first_done:
-					process_block_count += 1
-			if process_block_count > 0 and first_done:
-				str_tcl += '{}{}'.format(pinfo.indent, '}')
-			f.close()
+			with open(f'{path}/PartitionsInfo/{respType[1:]}/{respType[1:]}_nodes_part-{process_id}.csv','w') as results_file:
+				for node_id in nodes_tags:
+					#In short, this line of code ensures that only nodes belonging to the current process running in parallel are processed.
+					if doc.mesh.partitionData.nodePartition(node_id) != process_id:
+						continue
+					results_file.write(f'{node_id}\n')
+		
+					#This lines are about getting the output
+					if not first_done:
+						if process_block_count == 0:
+							str_tcl += '\n{}{}{}{}\n'.format(pinfo.indent, 'if {$STKO_VAR_process_id == ', process_id, '} {')
+						else:
+							str_tcl += '{}{}{}{}\n'.format(pinfo.indent, ' elseif {$STKO_VAR_process_id == ', process_id, '} {')
+						first_done = True
+					str_tcl += '{}{}recorder Node {} "{}-node_{}-part_$STKO_VAR_process_id{}" -node {}{} -dof{}{}\n'.format(pinfo.indent, pinfo.tabIndent,file_type,file_name, node_id,extension, node_id , sopt,dofs, respType)
+					if first_done:
+						process_block_count += 1
+				if process_block_count > 0 and first_done:
+					str_tcl += '{}{}'.format(pinfo.indent, '}')
 
-	#Single processor
-	else:#singleprocesor
+
+	# Secuencial computing
+	else:
 		os.makedirs(f'{path}/coords', exist_ok=True)
 		os.makedirs(f'{path}/{respType[1:]}', exist_ok=True)
 		if respType == ' disp':
-				c = open(f'{path}/coords/coords_{process_id}.csv','w')
-				c.write('Node ID, X, Y, Z \n')
-				for node_id in nodes_tags:
-					if doc.mesh.partitionData.nodePartition(node_id) != process_id:
-						continue
-					nodex = doc.mesh.nodes[node_id].x
-					nodey = doc.mesh.nodes[node_id].y
-					nodez = doc.mesh.nodes[node_id].z
-					c.write("{} {} {} {} \n".format(node_id, nodex,nodey,nodez))
-				c.close()
-		f = open(f'{path}/{respType[1:]}/{respType[1:]}_nodes.csv','w')
-  
-  
-		for node_id in nodes_tags:
-			node_str += f' {node_id}'
-			#str_tcl += '{}{}-node {} \n'.format(pinfo.indent, pinfo.tabIndent, node)
-		str_tcl += '{}recorder Node {} "{}{}" -node {}{} -dof{}{}'.format(pinfo.indent,file_type,file_name,extension, node_str , sopt,dofs, respType,'\n')
+				with open(f'{path}/coords/coords.csv','w') as coords_file:
+					coords_file.write('Node ID, X, Y, Z \n')
+					for node_id in nodes_tags:
+						nodex = doc.mesh.nodes[node_id].x
+						nodey = doc.mesh.nodes[node_id].y
+						nodez = doc.mesh.nodes[node_id].z
+						coords_file.write("{} {} {} {} \n".format(node_id, nodex,nodey,nodez))
+
+		with open(f'{path}/{respType[1:]}/{respType[1:]}_nodes.csv','w') as results_file:
+			for node_id in nodes_tags:
+				results_file.write(f'{node_id}\n')	
+				node_str += f' {node_id}'
+				str_tcl += '{}recorder Node {} "{}{}" -node {}{} -dof{}{}'.format(pinfo.indent,file_type,file_name,extension, node_str , sopt,dofs, respType,'\n')
 	str_tcl += '{}{}'.format(pinfo.indent,'\n')
 	pinfo.out_file.write(str_tcl)
 

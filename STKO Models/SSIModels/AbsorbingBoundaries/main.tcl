@@ -7,7 +7,7 @@ wipe
 # The current process id (from 0 to NP-1)
 set STKO_VAR_process_id [getPID]
 # A boolean flag for parallel processing (True if NP > 1)
-set STKO_VAR_is_parallel 0
+set STKO_VAR_is_parallel 1
 # The result from analyze command  (0 if succesfull)
 set STKO_VAR_analyze_done 0
 # The alternative result from after-analyze custom functions (0 if succesfull)
@@ -75,6 +75,8 @@ source materials.tcl
 source sections.tcl
 # source node
 source nodes.tcl
+# begin sourcing files for pre-processing of automatic element assemblies...
+source ASDAbsorbingBoundary3D.tcl
 # source element
 source elements.tcl
 # source analysis_steps
