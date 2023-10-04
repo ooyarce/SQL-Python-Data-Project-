@@ -1,9 +1,9 @@
-#%% ------------------------------------------------------------------------------------
+#%% IMPORT LIBRARIES -------------------------------------------------------------------
 # IMPORT LIBRARIES																		
 #---------------------------------------------------------------------------------------
 from sql_functions import ModelSimulation
 import os
-#%% ------------------------------------------------------------------------------------
+#%% INIT AND CONNECT TO DATABASE -------------------------------------------------------
 # INIT AND CONNECT TO DATABASE															
 #---------------------------------------------------------------------------------------
 # Folder path
@@ -26,21 +26,21 @@ parameters = {# Remember that the Db has a max lenght from:
 'abs_acc_units'     : 'm/s/s'                                        ,  
 'pga_units'         : 'm/s/s'                                        , 
 'resp_spectrum'     : 'm/s/s'                                        ,
-'sim_comments'      : 'Simulation for 55floors and 7basements model ',
-'sm_input_comments' : 'ShakerMaker Input for 55floors-7basements sim',
-'model_comments'    : 'Model of 55floors and 7basements with FixBase',
+'sim_comments'      : 'Abosrbing Boundaries Test 1'                  ,
+'sm_input_comments' : 'ShakerMaker Input for Abosrbing Boundaries'   ,
+'model_comments'    : 'Model of Abosrbing Boundaries Test 1'         ,
 'bench_comments'    : 'Model w/ 2.5meter spacemenet structured mesh ',
 'perf_comments'     : 'Model with shear,displacement & acce metrics ',
 'specs_comments'    : 'Model with linear-elastic-beam-column-shells ',
-'clustername'       : 'Here it goes the cluster name                ',
-'model_name'        : 'Here it goes the model name                  ',     
+'clustername'       : 'Esmeralda cluster HPC Uandes by jaabel       ',
+'model_name'        : 'AbsBound Test01                  '            ,     
 'stage'             : 'Here it goes the simulation stage            ',
 'options'           : 'Here it goes the simulation options          ', 
 'linearity'         : 1                                              ,
 'type'              : 1                                                }
 
 DataBase = ModelSimulation(user, password, host, database, **parameters)
-#%% ------------------------------------------------------------------------------------
+#%% CREATE XLSX FILES ------------------------------------------------------------------
 # CREATE XLSX FILES
 #---------------------------------------------------------------------------------------
 accelerations_file = os.path.join(folder_path, 'accelerations.xlsx')
@@ -63,7 +63,7 @@ if (os.path.exists(accelerations_file)
     and os.path.exists(displacements_file)
     and os.path.exists(reactions_file)):
     print("Files xlsx already created. Proceeding to fill the database.")
-#%% ------------------------------------------------------------------------------------
+#%% FILL DATABASE-----------------------------------------------------------------------
 # FILL DATABASE
 #---------------------------------------------------------------------------------------
 DataBase.simulation()

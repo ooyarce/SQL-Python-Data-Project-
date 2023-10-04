@@ -77,9 +77,6 @@ class ModelSimulation:
         # initialize database manager and cursor
         self.db_manager = DataBaseManager(db_user, db_password, db_host, db_database)
         
-        # initialize model info class
-        self.model_info = ModelInfo()
-        
         # initialize parameters
         bench_cluster             = 'Esmeralda HPC Cluster by jaabell@uandes.cl'
         modelname               = glob.glob("*.scd")[0]
@@ -102,7 +99,10 @@ class ModelSimulation:
         self._max_bs_units      = kwargs.get('max_bs_units'     , 'kN'            )
         self._bs_units          = kwargs.get('bs_units'         , 'kN'            )
         self._linearity         = kwargs.get('linearity'        , 1               )
-    
+        self._fidelity          = kwargs.get('fidelity'         , False           )
+        
+        # initialize model info class
+        self.model_info = ModelInfo(fidelity=self._fidelity)
         
     # ==================================================================================
     # SQL FUNCTIONS
@@ -221,7 +221,7 @@ class ModelSimulation:
         print('simulation_model table updated correctly!\n')  
     def model_benchmark(self, **kwargs):
         #------------------------------------------------------------------------------------------------------------------------------------
-        #Get calculus time from log file, nodes, threads and comments
+        # Get calculus time from log file, nodes, threads and comments
         #------------------------------------------------------------------------------------------------------------------------------------
         # initialize parameters
         cursor        = self.db_manager.cursor
@@ -259,7 +259,7 @@ class ModelSimulation:
         path1 = f'{os.path.dirname(__file__)}/Accelerations/'
         path2 = f'{os.path.dirname(__file__)}/Displacements/'
         path3 = f'{os.path.dirname(__file__)}/Reactions/'
-        path4 = f'{os.path.dirname(__file__)}/Results/'
+        path4 = f'{os.path.dirname(__file__)}/PartitionsInfo/'
 
         acc_results = 0
         displ_results = 0
@@ -342,15 +342,17 @@ class ModelSimulation:
         """
         # initialize parameters
         cursor          = self.db_manager.cursor
+        fidelity        = kwargs.get('fidelity'      , self._fidelity      )
         comments        = kwargs.get('perf_comments' , self._perf_comments )
         
-        #fills base shear
-        self.structure_base_shear()
-        BaseShear = cursor.lastrowid
-
-        #fills max base shear
-        self.structure_max_base_shear()
-        MaxBaseShear = cursor.lastrowid
+        # Base shear calculations
+        if not fidelity:
+            #fills base shear
+            self.structure_base_shear()
+            BaseShear = cursor.lastrowid
+            #fills max base shear
+            self.structure_max_base_shear()
+            MaxBaseShear = cursor.lastrowid
         
         #fills absolute accelerations
         self.structure_abs_acceleration()
@@ -369,22 +371,38 @@ class ModelSimulation:
         fas = 'Not implemented yet' #floor acceleration spectra
 
         #insert data into database
-        insert_query = ('INSERT INTO model_structure_perfomance '
-                        '(idBaseShear,idAbsAccelerations,idRelativeDisplacements,'
-                        'idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,'
-                        'FloorAccelerationSpectra,Comments)'
-                        ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s)')
-        values = (
-            BaseShear,
-            AbsAccelerations,
-            RelativeDisplacements,
-            MaxBaseShear,
-            MaxDriftPerFloor,
-            mta,
-            fas,
-            comments) #mta and fas vars has to change
-        cursor.execute(insert_query, values)		
-        print('model_structure_perfomance table updated correctly!\n') 
+        if not fidelity:
+            insert_query = ('INSERT INTO model_structure_perfomance '
+                            '(idBaseShear,idAbsAccelerations,idRelativeDisplacements,'
+                            'idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,'
+                            'FloorAccelerationSpectra,Comments)'
+                            ' VALUES (%s,%s,%s,%s,%s,%s,%s,%s)')
+            values = (
+                BaseShear,
+                AbsAccelerations,
+                RelativeDisplacements,
+                MaxBaseShear,
+                MaxDriftPerFloor,
+                mta,
+                fas,
+                comments) #mta and fas vars has to change
+            cursor.execute(insert_query, values)		
+            print('model_structure_perfomance table updated correctly!\n')
+        else:
+            insert_query = ('INSERT INTO model_structure_perfomance '
+                            '(idAbsAccelerations,idRelativeDisplacements,'
+                            'idMaxDriftPerFloor,MaxTorsionAngle,'
+                            'FloorAccelerationSpectra,Comments)'
+                            ' VALUES (%s,%s,%s,%s,%s,%s)')
+            values = (
+                AbsAccelerations,
+                RelativeDisplacements,
+                MaxDriftPerFloor,
+                mta,
+                fas,
+                comments) #mta and fas vars has to change
+            cursor.execute(insert_query, values)		
+            print('model_structure_perfomance table updated correctly!\n')
     def structure_base_shear(self, **kwargs):
         """
         This function is used to export data into the structure_base_shear table database.
@@ -835,7 +853,7 @@ class ModelSimulation:
     
     
     # ==================================================================================
-    # INIT MAIN FUNCTIONS
+    # STATIC METHODS
     # ==================================================================================
     @staticmethod
     def create_reaction_xlsx():
@@ -1391,17 +1409,17 @@ class ModelInfo:
     Attributes
     ----------
     path : str
-        Path to the 'Results' subfolder.
+        Path to the 'PartitionsInfo' subfolder.
     folder_accel : str
-        Path to the 'Results/accel' subfolder.
+        Path to the 'PartitionsInfo/accel' subfolder.
     folder_coords : str
-        Path to the 'Results/coords' subfolder.
+        Path to the 'PartitionsInfo/coords' subfolder.
     folder_disp : str
-        Path to the 'Results/disp' subfolder.
+        Path to the 'PartitionsInfo/disp' subfolder.
     folder_info : str
-        Path to the 'Results/info' subfolder.
+        Path to the 'PartitionsInfo/info' subfolder.
     folder_reaction : str
-        Path to the 'Results/reaction' subfolder.
+        Path to the 'PartitionsInfo/reaction' subfolder.
     
     Methods
     -------    
@@ -1416,16 +1434,16 @@ class ModelInfo:
     give_reactions()
         Returns the reactions of the model.
     """
-    def __init__(self):
-        # Set the path to the 'Results' subfolder
+    def __init__(self, fidelity = False):
+        # Set the path to the 'PartitionsInfo' subfolder
         current_path = os.path.dirname(os.path.abspath(__file__))
-        self.path = os.path.join(current_path, 'Results')
+        self.path = os.path.join(current_path, 'PartitionsInfo')
         
-        # Check if the 'Results' subfolder exists
+        # Check if the 'PartitionsInfo' subfolder exists
         if not os.path.exists(self.path):
-            raise Exception('The Results folder does not exist!\n'
+            raise Exception('The PartitionsInfo folder does not exist!\n'
                             'Current path = {}'.format(current_path))
-        # Access to folders within the 'Results' subfolder
+        # Access to folders within the 'PartitionsInfo' subfolder
         folders = os.listdir(self.path)
         for folder_name in folders:
             setattr(self, f'folder_{folder_name}', os.path.join(self.path, folder_name))
@@ -1437,7 +1455,8 @@ class ModelInfo:
         
         self.accelerations, self.acce_nodes = self.give_accelerations()
         self.displacements, self.displ_nodes = self.give_displacements()
-        self.reactions, self.reaction_nodes = self.give_reactions()
+        if fidelity == False:
+            self.reactions, self.reaction_nodes = self.give_reactions()
         self.nnodes, self.nelements, self.npartitions = self.give_model_info()     
     def give_accelerations(self):
         #check nodes
