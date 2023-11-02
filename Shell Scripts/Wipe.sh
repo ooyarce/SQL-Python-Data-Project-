@@ -1,5 +1,5 @@
-i=42029
-while [ $i -le 42118 ]
+i=49845
+while [ $i -le 50051 ]
 do
   scancel $i
   i=$((i+1))

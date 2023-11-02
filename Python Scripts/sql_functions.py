@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from pathlib import Path
 import mysql.connector
 import pandas as pd
 import numpy as np
@@ -6,6 +7,7 @@ import glob
 import datetime
 import json	
 import os
+
 
 class DataBaseManager:
     """
@@ -348,12 +350,19 @@ class ModelSimulation:
         # Base shear calculations
         if not fidelity:
             #fills base shear
-            self.structure_base_shear()
+            self.structure_base_shear_byReactionForces()
             BaseShear = cursor.lastrowid
+            #fills max base shear
+            self.structure_max_base_shear_byReactionForces()
+            MaxBaseShear = cursor.lastrowid
+        
+        if fidelity:
+            #fills base shear
+            self.structure_base_shear_byAccelerations()
+            
             #fills max base shear
             self.structure_max_base_shear()
             MaxBaseShear = cursor.lastrowid
-        
         #fills absolute accelerations
         self.structure_abs_acceleration()
         AbsAccelerations = cursor.lastrowid
@@ -403,9 +412,21 @@ class ModelSimulation:
                 comments) #mta and fas vars has to change
             cursor.execute(insert_query, values)		
             print('model_structure_perfomance table updated correctly!\n')
-    def structure_base_shear(self, **kwargs):
+    def structure_base_shear_byAccelerations(self, **kwargs):
         """
-        This function is used to export data into the structure_base_shear table database.
+        This function is used to export data into the structure_base_shear table database using
+        the accelerations obtained in the simulation for every story.
+        """
+        # initialize parameters
+        cursor = self.db_manager.cursor
+        units  = kwargs.get('bs_units', self._bs_units)
+        
+        # get base shear for every story
+        
+    def structure_base_shear_byReactionForces(self, **kwargs):
+        """
+        This function is used to export data into the structure_base_shear table database using
+        the reactions obtained in the simulation.
         """
         # initialize parameters
         cursor = self.db_manager.cursor
@@ -426,7 +447,7 @@ class ModelSimulation:
         values = (timeseries, base_shears[0], base_shears[1], base_shears[2], units)
         cursor.execute(insert_query, values)		
         print('structure_base_shear table updated correctly!\n')  
-    def structure_max_base_shear(self, **kwargs):
+    def structure_max_base_shear_byReactionForces(self, **kwargs):
         """
         This function is used to export data into the structure_max_base_shear table database.
         """
@@ -468,7 +489,7 @@ class ModelSimulation:
         sheet_names = list(accelerations.keys())
         matrixes = []
 
-        #file names
+        # file names
         folder = os.path.basename(os.getcwd())
         east = open(os.path.join(f'{folder}e.txt'))
         north = open(os.path.join(f'{folder}n.txt'))
@@ -502,8 +523,8 @@ class ModelSimulation:
             optimized_matrix = {}
             matrix = df.to_dict()
             for keys, vals in matrix.items():
-                optimized_matrix[keys] = {k: v for k, v in vals.items() if (int(k)+1) % 40 == 0}
-            values = []
+                optimized_matrix[keys] = {k: v for k, v in vals.items() if (int(k)+1) % 40 == 0} # 40 is the separation between values
+            values = []                                                                          # change it if you want to change the separation
             for vals in optimized_matrix.values():
                 sublist = list(vals.values())
                 values.append(sublist)
@@ -835,6 +856,7 @@ class ModelSimulation:
         print('sm_input_spectrum table updated correctly!\n')    
     def get_sm_id(self):
         path = os.path.dirname(os.path.abspath(__file__)).split('\\')
+        path = list(Path(__file__).resolve().parent)
         magnitude = path[-3][-3:]
         rupture = path[-2][-4:]
         station = int(path[-1][-1])+1

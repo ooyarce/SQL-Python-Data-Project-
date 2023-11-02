@@ -11,9 +11,9 @@ print("---------------------------------------------|")
 folder_path = os.path.dirname(os.path.abspath(__file__))
 
 # Init the SeismicSimulation class
-user     = 'root'
-password = 'g3drGvwkcmcq'
-host     = '34.176.187.208'
+user     = 'omarson'
+password = 'Mackbar2112!'
+host     = '192.168.0.150'
 database = 'stkodatabase'
 
 # Press insert key and fill the parameters you want to change the default values.

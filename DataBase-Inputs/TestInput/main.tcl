@@ -75,6 +75,8 @@ source materials.tcl
 source sections.tcl
 # source node
 source nodes.tcl
+# begin sourcing files for pre-processing of automatic element assemblies...
+source ASDAbsorbingBoundary3D.tcl
 # source element
 source elements.tcl
 # source analysis_steps

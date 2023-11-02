@@ -1,12 +1,15 @@
 import os
 
 # Define el nombre del archivo y la ruta completa
+stories = 20
+subs = 2
+
 Magnitude = (os.path.dirname(__file__).split('/')[-3][1:])
 Rup_type = os.path.dirname(__file__).split('/')[-2].split('_')[1]
 iteration = os.path.dirname(__file__).split('/')[-2].split('_')[2]
 station = int(os.path.dirname(__file__).split('/')[-1][-1])
-jobname = f'{Magnitude}_{Rup_type}{iteration}_s{station}_55f_4s'
-logname = f'Test{jobname}.log'
+jobname = f'{Magnitude}_{Rup_type}{iteration}_s{station}_{stories}f_{subs}s'
+logname = f'Test_{jobname}.log'
 
 with open('run.sh', 'w') as f:
         f.write(f"""#!/bin/bash
