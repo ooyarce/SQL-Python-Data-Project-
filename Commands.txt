@@ -1,4 +1,0 @@
-To change direct access to DRM input:
-	-> ln -sf /mnt/krakenschest/home/FSR_DRM_Motions/<name_of_DRM_file>.h5drm input.h5drm
-To check if DRM Box is well defined:
-	->  grep Accounted <name_of_log_file>.log
