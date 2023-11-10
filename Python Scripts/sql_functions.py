@@ -56,9 +56,8 @@ class ModelSimulation:
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
-    def __init__(
-        self, db_user: str, db_password: str, db_host: str, db_database: str, **kwargs
-    ):
+    def __init__(self, db_user: str, db_password: str, db_host: str,
+                 db_database: str, **kwargs):
         """
         This method is used to initialize the parameters.
         """
@@ -71,7 +70,8 @@ class ModelSimulation:
         self._sim_opt: str = kwargs.get("sim_opt", "No options yet")
         self._sim_stage: str = kwargs.get("sim_stage", "No stage yet")
         self._sim_type: int = kwargs.get("sim_type", 1)
-        self._sm_input_comments: str = kwargs.get("sm_input_comments", "No comments")
+        self._sm_input_comments: str = kwargs.get("sm_input_comments",
+                                                  "No comments")
         self._model_name: str = kwargs.get("model_name", modelname)
         self._model_comments: str = kwargs.get("model_comments", "No comments")
         self._bench_cluster: str = kwargs.get("bench_cluster", bench_cluster)
@@ -118,9 +118,8 @@ class ModelSimulation:
 
         # Initialize Database Manager and Cursor
         if not self._test_mode:
-            self.db_manager = DataBaseManager(
-                db_user, db_password, db_host, db_database
-            )
+            self.db_manager = DataBaseManager(db_user, db_password, db_host,
+                                              db_database)
 
     # ==================================================================================
     # SQL FUNCTIONS
@@ -154,9 +153,9 @@ class ModelSimulation:
         insert_query = (
             "INSERT INTO simulation("
             "idModel, idSM_Input, idType, SimStage, SimOptions, Simdate,"
-            "Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)"
-        )
-        values = (Model, SM_Input, sim_type, sim_stage, sim_opt, date, sim_comments)
+            "Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)")
+        values = (Model, SM_Input, sim_type, sim_stage, sim_opt, date,
+                  sim_comments)
         self.db_manager.insert_data(insert_query, values)
         self.db_manager.close_connection()
 
@@ -171,14 +170,19 @@ class ModelSimulation:
         """
         # Initialize parameters
         cursor = self.db_manager.cursor
-        sm_input_comments = kwargs.get("sm_input_comments", self._sm_input_comments)
+        sm_input_comments = kwargs.get("sm_input_comments",
+                                       self._sm_input_comments)
 
         # Get magnitude
         magnitude = Path(__file__).parents[2].name[1:]
         magnitude = f"{magnitude} Mw"
 
         # Get rupture type
-        rupture_types = {"bl": "Bilateral", "ns": "North-South", "sn": "South-North"}
+        rupture_types = {
+            "bl": "Bilateral",
+            "ns": "North-South",
+            "sn": "South-North"
+        }
         folder_name = Path(__file__).parents[1].name
         rup_type = folder_name.split("_")[1]
         rupture = rupture_types.get(rup_type)
@@ -190,9 +194,8 @@ class ModelSimulation:
         # Get realization id
         iter_name = Path(__file__).parents[1].name
         iteration = (
-            iter_name.split("_")[2]
-            if len(iter_name.split("_")) == 3
-            else f"Unknown Iteration for {iter_name=}. Check folder iteration name!"
+            iter_name.split("_")[2] if len(iter_name.split("_")) == 3 else
+            f"Unknown Iteration for {iter_name=}. Check folder iteration name!"
         )
 
         # Get location
@@ -224,8 +227,7 @@ class ModelSimulation:
         insert_query = (
             "INSERT INTO simulation_sm_input(idPGA, idSpectrum, Magnitude,"
             "Rupture_type, Location, RealizationID, Comments)"
-            " VALUES(%s,%s,%s,%s,%s,%s,%s)"
-        )
+            " VALUES(%s,%s,%s,%s,%s,%s,%s)")
         values = (
             Pga,
             Spectrum,
@@ -255,11 +257,9 @@ class ModelSimulation:
         self.model_specs_structure()
         SpecsStructure = cursor.lastrowid
 
-        insert_query = (
-            "INSERT INTO simulation_model("
-            "idBenchmark,idStructuralPerfomance,idSpecsStructure,"
-            "ModelName,Comments) VALUES(%s,%s,%s,%s,%s)"
-        )
+        insert_query = ("INSERT INTO simulation_model("
+                        "idBenchmark,idStructuralPerfomance,idSpecsStructure,"
+                        "ModelName,Comments) VALUES(%s,%s,%s,%s,%s)")
         values = (
             Benchmark,
             StructurePerfomance,
@@ -299,12 +299,9 @@ class ModelSimulation:
         # Get memort by results
         folder_names = ["Accelerations", "Displacements", "PartitionsInfo"]
         memory_by_results = sum(
-            sum(
-                file.stat().st_size
-                for file in (Path(__file__).parent / folder).iterdir()
-            )
-            for folder in folder_names
-        ) / (1024 * 1024)
+            sum(file.stat().st_size
+                for file in (Path(__file__).parent / folder).iterdir())
+            for folder in folder_names) / (1024 * 1024)
 
         # Get model memory
         model_name = next(Path(".").glob("*.scd"))
@@ -314,8 +311,7 @@ class ModelSimulation:
         insert_query = (
             "INSERT INTO model_benchmark (JobName,SimulationTime,"
             "MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,"
-            "Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
-        )
+            "Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
         values = (
             jobname,
             time,
@@ -338,13 +334,13 @@ class ModelSimulation:
         comments = kwargs.get("specs_comments", self._specs_comments)
 
         if self._linearity < 1 or self._linearity > 2:
-            raise TypeError("The Linearity parameter can only take 1 or 2 values(int).")
+            raise TypeError(
+                "The Linearity parameter can only take 1 or 2 values(int).")
 
         insert_query = (
             "INSERT INTO model_specs_structure ("
             "idLinearity, Nnodes, Nelements, Nstories, Nsubs,"
-            "InterstoryHeight, Comments) VALUES (%s,%s,%s,%s,%s,%s,%s)"
-        )
+            "InterstoryHeight, Comments) VALUES (%s,%s,%s,%s,%s,%s,%s)")
         values = (
             self._linearity,
             self.nnodes,
@@ -405,8 +401,7 @@ class ModelSimulation:
                 "(idBaseShear,idAbsAccelerations,idRelativeDisplacements,"
                 "idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,"
                 "FloorAccelerationSpectra,Comments)"
-                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
-            )
+                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
             values = (
                 BaseShear,
                 AbsAccelerations,
@@ -420,13 +415,11 @@ class ModelSimulation:
             cursor.execute(insert_query, values)
             print("model_structure_perfomance table updated correctly!\n")
         else:
-            insert_query = (
-                "INSERT INTO model_structure_perfomance "
-                "(idAbsAccelerations,idRelativeDisplacements,"
-                "idMaxDriftPerFloor,MaxTorsionAngle,"
-                "FloorAccelerationSpectra,Comments)"
-                " VALUES (%s,%s,%s,%s,%s,%s)"
-            )
+            insert_query = ("INSERT INTO model_structure_perfomance "
+                            "(idAbsAccelerations,idRelativeDisplacements,"
+                            "idMaxDriftPerFloor,MaxTorsionAngle,"
+                            "FloorAccelerationSpectra,Comments)"
+                            " VALUES (%s,%s,%s,%s,%s,%s)")
             values = (
                 AbsAccelerations,
                 RelativeDisplacements,
@@ -459,7 +452,8 @@ class ModelSimulation:
             base_shears.append(summ)
 
         insert_query = "INSERT INTO structure_base_shear (TimeSeries, ShearX, ShearY, ShearZ, Units) VALUES (%s,%s,%s,%s,%s)"
-        values = (timeseries, base_shears[0], base_shears[1], base_shears[2], units)
+        values = (timeseries, base_shears[0], base_shears[1], base_shears[2],
+                  units)
         cursor.execute(insert_query, values)
         print("structure_base_shear table updated correctly!\n")
 
@@ -467,11 +461,11 @@ class ModelSimulation:
         """
         This function is used to export data into the structure_max_base_shear table database.
         """
-        # initialize parameters
+        # Initialize parameters
         cursor = self.db_manager.cursor
         units = kwargs.get("max_bs_units", self._max_bs_units)
 
-        # get max base shear
+        # Get max base shear
         reactions = pd.read_excel("reactions.xlsx", sheet_name=None)
         sheet_names = list(reactions.keys())
         max_shears = []
@@ -483,10 +477,8 @@ class ModelSimulation:
         max_shears = [float(num) for num in max_shears]
         max_shears = [round(num, 2) for num in max_shears]
 
-        insert_query = (
-            "INSERT INTO structure_max_base_shear ("
-            "MaxX, MaxY, MaxZ, Units) VALUES (%s,%s,%s,%s)"
-        )
+        insert_query = ("INSERT INTO structure_max_base_shear ("
+                        "MaxX, MaxY, MaxZ, Units) VALUES (%s,%s,%s,%s)")
         values = (max_shears[0], max_shears[1], max_shears[2], units)
         cursor.execute(insert_query, values)
         print("structure_max_base_shear table updated correctly!\n")
@@ -495,21 +487,19 @@ class ModelSimulation:
         """
         This function is used to export data into the structure_abs_acceleration table database.
         """
-        # initialize parameters
+        # Initialize parameters
         cursor = self.db_manager.cursor
         units = kwargs.get("abs_acc_units", self._abs_acc_units)
         acc_timeseries = json.dumps(
-            self.acc_matrixes[0].index.get_level_values(0).tolist()
-        )
+            self.acc_matrixes[0].index.get_level_values(0).tolist())
         matrixes = [
-            json.dumps(self.disp_matrixes[i].iloc[::8].to_dict()) for i in range(3)
+            json.dumps(self.disp_matrixes[i].iloc[::8].to_dict())
+            for i in range(3)
         ]
 
-        insert_query = (
-            "INSERT INTO structure_abs_acceleration ("
-            "TimeSeries, AbsAccX, AbsAccY, AbsAccZ, Units) "
-            "VALUES(%s,%s,%s,%s,%s)"
-        )
+        insert_query = ("INSERT INTO structure_abs_acceleration ("
+                        "TimeSeries, AbsAccX, AbsAccY, AbsAccZ, Units) "
+                        "VALUES(%s,%s,%s,%s,%s)")
         values = (acc_timeseries, matrixes[0], matrixes[1], matrixes[2], units)
         cursor.execute(insert_query, values)
         print("structure_abs_acceleration table updated correctly!\n")
@@ -522,16 +512,14 @@ class ModelSimulation:
         cursor = self.db_manager.cursor
         units = kwargs.get("rel_displ_units", self._rel_displ_units)
         time_series = json.dumps(
-            self.disp_matrixes[0].index.get_level_values(0).tolist()
-        )
+            self.disp_matrixes[0].index.get_level_values(0).tolist())
         matrixes = [
-            json.dumps(self.disp_matrixes[i].iloc[::8].to_dict()) for i in range(3)
+            json.dumps(self.disp_matrixes[i].iloc[::8].to_dict())
+            for i in range(3)
         ]
-        insert_query = (
-            "INSERT INTO structure_relative_displacements ("
-            "TimeSeries, DispX, DispY, DispZ, Units) "
-            "VALUES(%s,%s,%s,%s,%s)"
-        )
+        insert_query = ("INSERT INTO structure_relative_displacements ("
+                        "TimeSeries, DispX, DispY, DispZ, Units) "
+                        "VALUES(%s,%s,%s,%s,%s)")
         values = (time_series, matrixes[0], matrixes[1], matrixes[2], units)
         cursor.execute(insert_query, values)
         print("structure_relative_displacements table updated correctly!\n")
@@ -540,7 +528,7 @@ class ModelSimulation:
         """
         This function is used to export data into the structure_max_drift_per_floor table database.
         """
-        # initialize parameters
+        # Initialize parameters
         cursor = self.db_manager.cursor
         units = kwargs.get("max_drift_units", self._max_drift_units)
         displacements = self.disp_matrixes
@@ -553,19 +541,23 @@ class ModelSimulation:
             for i in range(self.stories):
                 current = f"Level {i}"
                 following = f"Level {i+1}"
-                compute_drifts = [abs(pd.to_numeric(df[current_node]) - pd.to_numeric(df[following_node])) / self.heights[i]
-                    for current_node, following_node in zip(self.story_nodes[current].keys(),self.story_nodes[following].keys())]
+                compute_drifts = [
+                    abs(
+                        pd.to_numeric(df[current_node]) -
+                        pd.to_numeric(df[following_node])) / self.heights[i]
+                    for current_node, following_node in zip(
+                        self.story_nodes[current].keys(),
+                        self.story_nodes[following].keys())
+                ]
                 drift_df = pd.concat(compute_drifts, axis=1)
                 center = drift_df.mean(axis=1).max()
                 corner = drift_df.max().max()
                 center_drifts[loc].append(center)
-
+                corner_drifts[loc].append(corner)
         # Upload results to the database
-        insert_query = (
-            "INSERT INTO structure_max_drift_per_floor ("
-            "MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, "
-            "MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s,%s)"
-        )
+        insert_query = ("INSERT INTO structure_max_drift_per_floor ("
+                        "MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, "
+                        "MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s,%s)")
         values = (
             json.dumps(corner_drifts[0]),
             json.dumps(corner_drifts[1]),
@@ -596,6 +588,7 @@ class ModelSimulation:
         units = kwargs.get("bs_units", self._bs_units)
         accelerations = self.acc_matrixes
         base_reactions = [[], [], []]
+        
         # Define areas and core thicknesses, areas in m2 and thicknesses in m
         # TODO: Include the columns in the area and length dictionaries.
         areas = {
@@ -603,19 +596,18 @@ class ModelSimulation:
                 "slabs_area": 704.0,
                 "external_core": 28.0,
                 "internal_core_x": 112.0,
-                "internal_core_y": 94.5,
-            }
-        }
+                "internal_core_y": 94.5}}
 
         # Define thicknesses
         thickness = {
             20: {
                 "slabs_thickness": [0.15] * self.stories,
-                "external_core": [0.40] * 4 + [0.30] * 6 + [0.25] * 5 + [0.15] * 5,
-                "internal_core_x": [0.35] * 4 + [0.25] * 6 + [0.15] * 5 + [0.15] * 5,
-                "internal_core_y": [0.25] * 4 + [0.15] * 6 + [0.15] * 5 + [0.15] * 5,
-            }
-        }
+                "external_core":
+                [0.40] * 4 + [0.30] * 6 + [0.25] * 5 + [0.15] * 5,
+                "internal_core_x":
+                [0.35] * 4 + [0.25] * 6 + [0.15] * 5 + [0.15] * 5,
+                "internal_core_y":
+                [0.25] * 4 + [0.15] * 6 + [0.15] * 5 + [0.15] * 5}}
 
         # Define densities
         density = 2.400  # tonf/m3
@@ -623,21 +615,15 @@ class ModelSimulation:
         # Compute Story Mases in a dict
         masses = {
             20: {
-                k: areas[20]["slabs_area"]
-                * thickness[20]["slabs_thickness"][k]
-                * density
-                + areas[20]["external_core"]
-                * thickness[20]["external_core"][k]
-                * density
-                + areas[20]["internal_core_x"]
-                * thickness[20]["internal_core_x"][k]
-                * density
-                + areas[20]["internal_core_y"]
-                * thickness[20]["internal_core_y"][k]
-                * density
-                for k in range(self.stories)
-            }
-        }
+                k:
+                areas[20]["slabs_area"] * thickness[20]["slabs_thickness"][k] *
+                density + areas[20]["external_core"] *
+                thickness[20]["external_core"][k] * density +
+                areas[20]["internal_core_x"] *
+                thickness[20]["internal_core_x"][k] * density +
+                areas[20]["internal_core_y"] *
+                thickness[20]["internal_core_y"][k] * density
+                for k in range(self.stories)}}
 
         # For each story, compute the mean acceleration in the 4 nodes of the story
 
@@ -683,23 +669,18 @@ class ModelSimulation:
 
         A = e * (chi * sin / raiz + cos)  # check
         B = e * (sin / w_d)  # check
-        C = (1 / w**2) * (
-            división
-            + e
-            * (
-                ((1 - (2 * chi**2)) / (w_d * h) - chi / raiz) * sin
-                - (1 + división) * cos
-            )
-        )  # check
-        D = (1 / w**2) * (
-            1 - división + e * ((2 * chi**2 - 1) * sin / (w_d * h) + división * cos)
-        )  # check
+        C = (1 / w**2) * (división + e * (((1 - (2 * chi**2)) /
+                                           (w_d * h) - chi / raiz) * sin -
+                                          (1 + división) * cos))  # check
+        D = (1 / w**2) * (1 - división + e *
+                          ((2 * chi**2 - 1) * sin /
+                           (w_d * h) + división * cos))  # check
 
         A1 = -e * ((w * sin) / raiz)  # check
         B1 = e * (cos - chi * sin / raiz)  # check
-        C1 = (1 / w**2) * (
-            -1 / h + e * ((w / raiz + chi / (h * raiz)) * sin + cos / h)
-        )  # check
+        C1 = (1 / w**2) * (-1 / h + e *
+                           ((w / raiz + chi /
+                             (h * raiz)) * sin + cos / h))  # check
         D1 = (1 / w**2) * (1 / h - (e / h * (chi * sin / raiz + cos)))  # check
 
         vector_a.insert(0, 0)
@@ -732,10 +713,10 @@ class ModelSimulation:
 
         # create table
         insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
-        values = ("Linear",)
+        values = ("Linear", )
         cursor.execute(insert_query, values)
         insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
-        values = ("Non Linear",)
+        values = ("Non Linear", )
         cursor.execute(insert_query, values)
         cnx.commit()
         print("model_linearity created correctly!\n")
@@ -750,10 +731,10 @@ class ModelSimulation:
 
         # create table
         insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
-        values = ("Fix Base Model",)
+        values = ("Fix Base Model", )
         cursor.execute(insert_query, values)
         insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
-        values = ("Soil Structure Interaction Model",)
+        values = ("Soil Structure Interaction Model", )
         cursor.execute(insert_query, values)
         cnx.commit()
         print("simulation_type created correctly!\n")
@@ -781,9 +762,8 @@ class ModelSimulation:
 
         # Get results
         def process_data(sheet_name, counter):
-            df = (
-                accelerations[sheet_name].dropna().copy()
-            )  # Make a copy to avoid operating on a view
+            df = (accelerations[sheet_name].dropna().copy()
+                  )  # Make a copy to avoid operating on a view
             timeseries = [(round(v, 2)) for v in df.iloc[:, 0]]
             for col in df.columns[1:]:
                 df.loc[:, col] += acc[counter]
@@ -791,7 +771,10 @@ class ModelSimulation:
             df.index = timeseries
             return df
 
-        df = [process_data(sheet, count) for count, sheet in enumerate(sheet_names)]
+        df = [
+            process_data(sheet, count)
+            for count, sheet in enumerate(sheet_names)
+        ]
         return df
 
     def _computeRelativeDisplacementsDF(self):
@@ -807,7 +790,6 @@ class ModelSimulation:
 
         df = [process_data(sheet) for sheet in sheet_names]
         return df
-
 
     # ==================================================================================
     # STATIC METHODS
@@ -913,7 +895,8 @@ class ModelSimulation:
         files = [open(f"Reactions/{file}", "r") for file in results_sorted]
         column = 1
         for file in range(len(files)):
-            nodal_result = [[(num) for num in line.split("\n")] for line in files[file]]
+            nodal_result = [[(num) for num in line.split("\n")]
+                            for line in files[file]]
             row = 1
             for row_val in nodal_result:
                 reaction_X = float(row_val[0].split(" ")[0])
@@ -998,7 +981,8 @@ class ModelSimulation:
         files = [open(f"Displacements/{file}", "r") for file in results_sorted]
         column = 1
         for file in range(len(files)):
-            nodal_result = [[(num) for num in line.split("\n")] for line in files[file]]
+            nodal_result = [[(num) for num in line.split("\n")]
+                            for line in files[file]]
             row = 1
             for row_val in nodal_result:
                 acceleration_X = float(row_val[0].split(" ")[0])
@@ -1083,7 +1067,8 @@ class ModelSimulation:
         files = [open(f"Accelerations/{file}", "r") for file in results_sorted]
         column = 1
         for file in range(len(files)):
-            nodal_result = [[(num) for num in line.split("\n")] for line in files[file]]
+            nodal_result = [[(num) for num in line.split("\n")]
+                            for line in files[file]]
             row = 1
             for row_val in nodal_result:
                 acceleration_X = float(row_val[0].split(" ")[0])
@@ -1128,6 +1113,7 @@ class ModelSimulation:
         id = m + r + station
         return id
 
+
 # ==================================================================================
 # SECONDARY CLASSES
 # ==================================================================================
@@ -1135,11 +1121,11 @@ class DataBaseManager:
     """
     This class is used to manage the connection to the database.
     """
-
     def __init__(self, user: str, password: str, host: str, database: str):
-        self.cnx = mysql.connector.connect(
-            user=user, password=password, host=host, database=database
-        )
+        self.cnx = mysql.connector.connect(user=user,
+                                           password=password,
+                                           host=host,
+                                           database=database)
         self.cursor = self.cnx.cursor()
 
     def insert_data(self, query: str, values: tuple):
@@ -1157,7 +1143,6 @@ class Plotting:
     It's used to analyse quiclky the structure and get the results of the analysis.
     You use it in the main after the results are uploaded to the database.
     """
-
     @staticmethod
     def pwl(vector_a, w, chi):
         # variables
@@ -1176,23 +1161,18 @@ class Plotting:
 
         A = e * (chi * sin / raiz + cos)  # check
         B = e * (sin / w_d)  # check
-        C = (1 / w**2) * (
-            división
-            + e
-            * (
-                ((1 - (2 * chi**2)) / (w_d * h) - chi / raiz) * sin
-                - (1 + división) * cos
-            )
-        )  # check
-        D = (1 / w**2) * (
-            1 - división + e * ((2 * chi**2 - 1) * sin / (w_d * h) + división * cos)
-        )  # check
+        C = (1 / w**2) * (división + e * (((1 - (2 * chi**2)) /
+                                           (w_d * h) - chi / raiz) * sin -
+                                          (1 + división) * cos))  # check
+        D = (1 / w**2) * (1 - división + e *
+                          ((2 * chi**2 - 1) * sin /
+                           (w_d * h) + división * cos))  # check
 
         A1 = -e * ((w * sin) / raiz)  # check
         B1 = e * (cos - chi * sin / raiz)  # check
-        C1 = (1 / w**2) * (
-            -1 / h + e * ((w / raiz + chi / (h * raiz)) * sin + cos / h)
-        )  # check
+        C1 = (1 / w**2) * (-1 / h + e *
+                           ((w / raiz + chi /
+                             (h * raiz)) * sin + cos / h))  # check
         D1 = (1 / w**2) * (1 / h - (e / h * (chi * sin / raiz + cos)))  # check
 
         vector_a.insert(0, 0)
@@ -1223,7 +1203,7 @@ class Plotting:
 
         for i in range(2000):
             tn = T[i]
-            alpha = (1 + 4.5 * (tn / To) ** p) / (1 + (tn / To) ** 3)
+            alpha = (1 + 4.5 * (tn / To)**p) / (1 + (tn / To)**3)
             Sah[i] = S * Ao * alpha / (R / I)
             Sav[i] = 2 / 3 * S * Ao * alpha / (R / I)
         Sah = np.delete(Sah, 0)
@@ -1284,12 +1264,14 @@ class Plotting:
 
         y433 = np.interp(2.4, dt, Sav_433)
         year = np.interp(2.4, dt, Spaz)
-        plt.scatter(
-            2.4, y433, color="black", label=f"Value for T=2.4: Spa={round(y433,2)}"
-        )
-        plt.scatter(
-            2.4, year, color="blue", label=f"Value for T=2.4: Spa={round(year,2)}"
-        )
+        plt.scatter(2.4,
+                    y433,
+                    color="black",
+                    label=f"Value for T=2.4: Spa={round(y433,2)}")
+        plt.scatter(2.4,
+                    year,
+                    color="blue",
+                    label=f"Value for T=2.4: Spa={round(year,2)}")
         plt.plot([2.4, 2.4], [0, y433], "--r")
         plt.text(2.4, y433 + 0.1, f"({2.4},{y433:.2f})")
         plt.text(2.4, year + 0.1, f"({2.4},{year:.2f})")
@@ -1329,15 +1311,18 @@ class Plotting:
         y433 = np.interp(2.4, dt, Sah_433)
         year1 = np.interp(2.4, dt, Spe)
         year2 = np.interp(2.4, dt, Spn)
-        plt.scatter(
-            2.4, y433, color="black", label=f"Value for x = 2.4: Spa={round(y433,2)}"
-        )
-        plt.scatter(
-            2.4, year1, color="blue", label=f"Value for x = 2.4: Spa={round(year1,2)}"
-        )
-        plt.scatter(
-            2.4, year2, color="orange", label=f"Value for x = 2.4: Spa={round(year2,2)}"
-        )
+        plt.scatter(2.4,
+                    y433,
+                    color="black",
+                    label=f"Value for x = 2.4: Spa={round(y433,2)}")
+        plt.scatter(2.4,
+                    year1,
+                    color="blue",
+                    label=f"Value for x = 2.4: Spa={round(year1,2)}")
+        plt.scatter(2.4,
+                    year2,
+                    color="orange",
+                    label=f"Value for x = 2.4: Spa={round(year2,2)}")
         plt.plot([2.4, 2.4], [0, y433], "--r")
 
         plt.plot(dt, Sah_433, "k--", label="NCh433")
@@ -1505,7 +1490,6 @@ class ModelInfo:
     give_reactions()
         Returns the reactions of the model.
     """
-
     def __init__(self, fidelity=0):
         # Set the path to the 'PartitionsInfo' subfolder
         current_path = Path(__file__).parent
@@ -1513,18 +1497,18 @@ class ModelInfo:
 
         # Check if the 'PartitionsInfo' subfolder exists
         if not self.path.exists():
-            raise Exception(
-                "The PartitionsInfo folder does not exist!\n"
-                "Current path = {}".format(current_path)
-            )
+            raise Exception("The PartitionsInfo folder does not exist!\n"
+                            "Current path = {}".format(current_path))
         # Access to folders within the 'PartitionsInfo' subfolder
         folders = self.path.iterdir()
         for folder in folders:
-            if folder.is_dir():  # Asegurarse de que solo se procesen directorios
+            if folder.is_dir(
+            ):  # Asegurarse de que solo se procesen directorios
                 folder_name = folder.name
                 setattr(self, f"folder_{folder_name}", folder)
         dict_folders = {
-            f"folder_{folder.name}": folder for folder in folders if folder.is_dir()
+            f"folder_{folder.name}": folder
+            for folder in folders if folder.is_dir()
         }
         # Call the methods to initialize the data
         (
@@ -1545,21 +1529,21 @@ class ModelInfo:
     def give_accelerations(self):
         # check nodes
         files_accel = self.path / self.folder_accel
-        files = [open(file, "r") for file in files_accel.iterdir() if file.is_file()]
+        files = [
+            open(file, "r") for file in files_accel.iterdir()
+            if file.is_file()
+        ]
         # create dictionary
         accelerations = {}
         for file in range(len(files)):
-            nodes = [[(num) for num in line.split("\n")] for line in files[file]]
-            file_id = (
-                str(files[file])
-                .split("/")[-1]
-                .split("-")[1]
-                .split(" ")[0]
-                .split(".")[0]
-            )
+            nodes = [[(num) for num in line.split("\n")]
+                     for line in files[file]]
+            file_id = (str(files[file]).split("/")[-1].split("-")[1].split(" ")
+                       [0].split(".")[0])
             accelerations[f"Partition {file_id}"] = {}
             for nodei in range(len(nodes)):
-                accelerations[f"Partition {file_id}"][f"Node {nodei}"] = nodes[nodei][0]
+                accelerations[f"Partition {file_id}"][f"Node {nodei}"] = nodes[
+                    nodei][0]
 
         # create list with nodes sorted
         acce_nodes = []
@@ -1579,22 +1563,21 @@ class ModelInfo:
     def give_displacements(self):
         # check nodes
         files_disp = self.path / self.folder_disp
-        files = [open(file, "r") for file in files_disp.iterdir() if file.is_file()]
+        files = [
+            open(file, "r") for file in files_disp.iterdir() if file.is_file()
+        ]
 
         # create dictionary
         displacements = {}
         for file in range(len(files)):
-            nodes = [[(num) for num in line.split("\n")] for line in files[file]]
-            file_id = (
-                str(files[file])
-                .split("/")[-1]
-                .split("-")[1]
-                .split(" ")[0]
-                .split(".")[0]
-            )
+            nodes = [[(num) for num in line.split("\n")]
+                     for line in files[file]]
+            file_id = (str(files[file]).split("/")[-1].split("-")[1].split(" ")
+                       [0].split(".")[0])
             displacements[f"Partition {file_id}"] = {}
             for nodei in range(len(nodes)):
-                displacements[f"Partition {file_id}"][f"Node {nodei}"] = nodes[nodei][0]
+                displacements[f"Partition {file_id}"][f"Node {nodei}"] = nodes[
+                    nodei][0]
 
         # create list with nodes sorted
         displ_nodes = []
@@ -1615,22 +1598,22 @@ class ModelInfo:
     def give_reactions(self):
         # check nodes
         files_reaction = self.path / self.folder_reaction
-        files = [open(f"{self.folder_reaction}/{file}", "r") for file in files_reaction]
+        files = [
+            open(f"{self.folder_reaction}/{file}", "r")
+            for file in files_reaction
+        ]
 
         # create dictionary
         reactions = {}
         for file in range(len(files)):
-            nodes = [[(num) for num in line.split("\n")] for line in files[file]]
-            file_id = (
-                str(files[file])
-                .split("/")[-1]
-                .split("-")[1]
-                .split(" ")[0]
-                .split(".")[0]
-            )
+            nodes = [[(num) for num in line.split("\n")]
+                     for line in files[file]]
+            file_id = (str(files[file]).split("/")[-1].split("-")[1].split(" ")
+                       [0].split(".")[0])
             reactions[f"Partition {file_id}"] = {}
             for nodei in range(len(nodes)):
-                reactions[f"Partition {file_id}"][f"Node {nodei}"] = nodes[nodei][0]
+                reactions[f"Partition {file_id}"][f"Node {nodei}"] = nodes[
+                    nodei][0]
 
         # create list with nodes sorted
         reaction_nodes = []
@@ -1650,14 +1633,18 @@ class ModelInfo:
         # check nodes
         files_coords = self.path / self.folder_coords
         print(files_coords)
-        files = [open(file, "r") for file in files_coords.iterdir() if file.is_file()]
+        files = [
+            open(file, "r") for file in files_coords.iterdir()
+            if file.is_file()
+        ]
         # files = [open(f'{self.folder_coords()}/{file}','r') for file in files_coords]
         # files = [open(f'{self.folder_coords}/{file.name}', 'r') for file in files_coords if file.is_file()]
 
         # create dictionary
         coordenates = {}
         for file in range(len(files)):
-            nodes = [[(num) for num in line.split("\n")] for line in files[file]]
+            nodes = [[(num) for num in line.split("\n")]
+                     for line in files[file]]
             file_id = str(files[file]).split("_")[2].split(".")[0]
 
             for nodei in range(1, len(nodes)):
@@ -1668,9 +1655,12 @@ class ModelInfo:
                 coordenates[f"Node {node_id}"] = {}
                 coordenates[f"Node {node_id}"] = {}
                 coordenates[f"Node {node_id}"] = {}
-                coordenates[f"Node {node_id}"]["coord x"] = float(f"{coord_x:.1f}")
-                coordenates[f"Node {node_id}"]["coord y"] = float(f"{coord_y:.1f}")
-                coordenates[f"Node {node_id}"]["coord z"] = float(f"{coord_z:.1f}")
+                coordenates[f"Node {node_id}"]["coord x"] = float(
+                    f"{coord_x:.1f}")
+                coordenates[f"Node {node_id}"]["coord y"] = float(
+                    f"{coord_y:.1f}")
+                coordenates[f"Node {node_id}"]["coord z"] = float(
+                    f"{coord_z:.1f}")
 
         # sort every node per level
         sorted_nodes = sorted(
@@ -1678,7 +1668,12 @@ class ModelInfo:
             key=lambda x: (x[1]["coord x"], x[1]["coord y"], x[1]["coord z"]),
         )
         # create dictionary with specific nodes per corner to calculate directly the drift
-        drift_nodes = {"corner1": [], "corner2": [], "corner3": [], "corner4": []}
+        drift_nodes = {
+            "corner1": [],
+            "corner2": [],
+            "corner3": [],
+            "corner4": []
+        }
 
         # calculate subs, stories, and fill drift nodes with heights
         height = 0
@@ -1711,8 +1706,8 @@ class ModelInfo:
         heights = []
         for data in range(len(drift_nodes["corner1"]) - 1):
             current_height = float(
-                drift_nodes["corner1"][data + 1].split("|")[1]
-            ) - float(drift_nodes["corner1"][data].split("|")[1])
+                drift_nodes["corner1"][data + 1].split("|")[1]) - float(
+                    drift_nodes["corner1"][data].split("|")[1])
             heights.append(current_height)
 
         # create dict with nodes per historie
@@ -1734,16 +1729,17 @@ class ModelInfo:
             node4 = sort_by_historie[counter + 3][0]
             # print(node1,node2,node3,node4)
             stories_nodes[f"Level {i}"][node1] = sort_by_historie[counter][1]
-            stories_nodes[f"Level {i}"][node2] = sort_by_historie[counter + 1][1]
-            stories_nodes[f"Level {i}"][node3] = sort_by_historie[counter + 2][1]
-            stories_nodes[f"Level {i}"][node4] = sort_by_historie[counter + 3][1]
+            stories_nodes[f"Level {i}"][node2] = sort_by_historie[counter +
+                                                                  1][1]
+            stories_nodes[f"Level {i}"][node3] = sort_by_historie[counter +
+                                                                  2][1]
+            stories_nodes[f"Level {i}"][node4] = sort_by_historie[counter +
+                                                                  3][1]
             counter += 4
         heights.insert(
             0,
-            (
-                coordenates[list(stories_nodes["Level 1"])[0]]["coord z"]
-                - coordenates[list(stories_nodes["Level 0"])[0]]["coord z"]
-            ),
+            (coordenates[list(stories_nodes["Level 1"])[0]]["coord z"] -
+             coordenates[list(stories_nodes["Level 0"])[0]]["coord z"]),
         )
         return coordenates, drift_nodes, stories_nodes, stories, subs, heights
 

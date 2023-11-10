@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=FixBase    # Job name
+#SBATCH --job-name=FixBase3    # Job name
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-node=32
 #SBATCH --output=log.log   # Standard output and error log
 pwd; hostname; date
 
