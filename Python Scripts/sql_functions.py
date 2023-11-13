@@ -1,8 +1,13 @@
+# ==================================================================================
+# IMPORT LIBRARIES
+# ==================================================================================
 from matplotlib import pyplot as plt
 from pathlib import Path
+
 import mysql.connector
 import pandas as pd
 import numpy as np
+import subprocess
 import datetime
 import warnings
 import glob
@@ -52,74 +57,82 @@ class ModelSimulation:
     sm_input_spectrum(**kwargs)
         This function is used to export data into the sm_input_spectrum table database.
     """
-
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
-    def __init__(self, db_user: str, db_password: str, db_host: str,
-                 db_database: str, **kwargs):
-        """
-        This method is used to initialize the parameters.
-        """
+    def __init__(self,user='omarson',password='Mackbar2112!',host='localhost',database='stkodatabase',**kwargs):
+
         # Define generic parameters
         bench_cluster = "Esmeralda HPC Cluster by jaabell@uandes.cl"
         modelname = glob.glob("*.scd")[0]
 
-        # Define default parameters
-        self._sim_comments: str = kwargs.get("sim_comments", "No comments")
-        self._sim_opt: str = kwargs.get("sim_opt", "No options yet")
-        self._sim_stage: str = kwargs.get("sim_stage", "No stage yet")
-        self._sim_type: int = kwargs.get("sim_type", 1)
+        # Simulation default parameters
+        self._sim_comments: str      = kwargs.get("sim_comments", "No comments")
+        self._sim_opt: str           = kwargs.get("sim_opt", "No options yet")
+        self._sim_stage: str         = kwargs.get("sim_stage", "No stage yet")
+        self._sim_type: int          = kwargs.get("sim_type", 0)
         self._sm_input_comments: str = kwargs.get("sm_input_comments",
                                                   "No comments")
-        self._model_name: str = kwargs.get("model_name", modelname)
-        self._model_comments: str = kwargs.get("model_comments", "No comments")
-        self._bench_cluster: str = kwargs.get("bench_cluster", bench_cluster)
-        self._bench_comments: str = kwargs.get("bench_comments", "No comments")
-        self._perf_comments: str = kwargs.get("perf_comments", "No comments")
-        self._specs_comments: str = kwargs.get("specs_comments", "No comments")
-        self._pga_units: str = kwargs.get("pga_units", "m/s/s")
-        self._resp_spectrum: str = kwargs.get("resp_spectrum", "m/s/s")
-        self._abs_acc_units: str = kwargs.get("abs_acc_units", "m/s/s")
-        self._rel_displ_units: str = kwargs.get("rel_displ_units", "m")
-        self._max_drift_units: str = kwargs.get("max_drift_units", "m")
-        self._max_bs_units: str = kwargs.get("max_bs_units", "kN")
-        self._bs_units: str = kwargs.get("bs_units", "kN")
-        self._linearity: int = kwargs.get("linearity", 1)
-        self._fidelity: int = kwargs.get("fidelity", 0)
-        self._test_mode: bool = kwargs.get("test_mode", False)
+        self._model_name: str        = kwargs.get("model_name", modelname)
+        self._model_comments: str    = kwargs.get("model_comments", "No comments")
+        self._bench_cluster: str     = kwargs.get("bench_cluster", bench_cluster)
+        self._bench_comments: str    = kwargs.get("bench_comments", "No comments")
+        self._perf_comments: str     = kwargs.get("perf_comments", "No comments")
+        self._specs_comments: str    = kwargs.get("specs_comments", "No comments")
+        self._pga_units: str         = kwargs.get("pga_units", "m/s/s")
+        self._resp_spectrum: str     = kwargs.get("resp_spectrum", "m/s/s")
+        self._abs_acc_units: str     = kwargs.get("abs_acc_units", "m/s/s")
+        self._rel_displ_units: str   = kwargs.get("rel_displ_units", "m")
+        self._max_drift_units: str   = kwargs.get("max_drift_units", "m")
+        self._max_bs_units: str      = kwargs.get("max_bs_units", "kN")
+        self._bs_units: str          = kwargs.get("bs_units", "kN")
+        self._linearity: int         = kwargs.get("linearity", 1)
+        self._fidelity: int          = kwargs.get("fidelity", 0)
+        self._time_step: int              = kwargs.get("step", 0.0025)
+        self._total_time: int        = kwargs.get("total_time", 40)
+        self._jump: int              = kwargs.get("jump", 8) # Use this to reduce the size of the data
 
         # Initialize Model Info
         self.model_info = ModelInfo(fidelity=self._fidelity)
-        self.path = Path(__file__).parent
-        accelerations_file = self.path / "accelerations.xlsx"
-        displacements_file = self.path / "displacements.xlsx"
+        self.path       = Path(__file__).parent
+        self.timeseries = np.arange(self._time_step, self._total_time+self._time_step, self._time_step)
 
         # Compute model info parameters
-        (
-            self.nnodes,
-            self.nelements,
-            self.npartitions,
-        ) = self.model_info.give_model_info()
-        (
-            self.coordenates,
-            self.drift_nodes,
-            self.story_nodes,
-            self.stories,
-            self.subs,
-            self.heights,
-        ) = self.model_info.give_coords_info()
+        print(f'Computing model information...')
+        self.nnodes = self.model_info.nnodes
+        self.nelements = self.model_info.nelements
+        self.npartitions = self.model_info.npartitions
+        print(f'Done!\n')
 
-        # Initialize Accelerations and Displacements DF
-        if accelerations_file.exists():
-            self.acc_matrixes = self._computeAbsAccelerationsDF()
-        if displacements_file.exists():
-            self.disp_matrixes = self._computeRelativeDisplacementsDF()
+        # Compute structure info parameters
+        print(f'Computing structure information...')
+        self.coordenates = self.model_info.coordenates
+        self.drift_nodes = self.model_info.drift_nodes
+        self.story_nodes = self.model_info.stories_nodes
+        self.stories = self.model_info.stories
+        self.subs = self.model_info.subs
+        self.heights = self.model_info.heights
+        print(f'Done!\n')
 
-        # Initialize Database Manager and Cursor
-        if not self._test_mode:
-            self.db_manager = DataBaseManager(db_user, db_password, db_host,
-                                              db_database)
+        # Compute DataFrames
+        print(f'Computing DataFrames...')
+        self.accel_mdf, self.accel_dfs = self._computeAbsAccelerationsDF()
+        self.displ_mdf, self.displ_dfs = self._computeRelativeDisplacementsDF()
+        self.react_mdf, self.react_dfs = self._computeReactionForcesDF()
+        print(f'Done!\n')
+
+        # Connect to Dabase
+        print("Attempting to establish the SSH Tunnel...")
+        self._test_mode: bool = kwargs.get("windows_os", False)
+        self.db_user    : str = user
+        self.db_password: str = password
+        self.db_host    : str = host
+        self.db_database: str = database
+        self.connect()
+        print(f'Done!\n')
+
+
+
 
     # ==================================================================================
     # SQL FUNCTIONS
@@ -142,8 +155,9 @@ class ModelSimulation:
         # Fills simulation and simulation_sm_input tables
         self.simulation_model()
         Model = cursor.lastrowid
-        self.simulation_sm_input()
-        SM_Input = cursor.lastrowid
+
+        #self.simulation_sm_input()
+        #SM_Input = cursor.lastrowid
 
         # Fet date
         date = datetime.datetime.now()
@@ -152,9 +166,11 @@ class ModelSimulation:
         # Insert data into database
         insert_query = (
             "INSERT INTO simulation("
-            "idModel, idSM_Input, idType, SimStage, SimOptions, Simdate,"
-            "Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)")
-        values = (Model, SM_Input, sim_type, sim_stage, sim_opt, date,
+            "idModel,"#,idSM_Input,
+            "idType, SimStage, SimOptions, Simdate,"
+            "Comments) VALUES(%s,%s,%s,%s,%s,%s)")
+        values = (Model,# SM_Input,
+                  sim_type, sim_stage, sim_opt, date,
                   sim_comments)
         self.db_manager.insert_data(insert_query, values)
         self.db_manager.close_connection()
@@ -170,8 +186,7 @@ class ModelSimulation:
         """
         # Initialize parameters
         cursor = self.db_manager.cursor
-        sm_input_comments = kwargs.get("sm_input_comments",
-                                       self._sm_input_comments)
+        sm_input_comments = kwargs.get("sm_input_comments", self._sm_input_comments)
 
         # Get magnitude
         magnitude = Path(__file__).parents[2].name[1:]
@@ -181,22 +196,18 @@ class ModelSimulation:
         rupture_types = {
             "bl": "Bilateral",
             "ns": "North-South",
-            "sn": "South-North"
-        }
+            "sn": "South-North"}
         folder_name = Path(__file__).parents[1].name
         rup_type = folder_name.split("_")[1]
         rupture = rupture_types.get(rup_type)
         if not rupture:
-            raise Warning(
-                "Folders name are not following the format rup_[bl/ns/sn]_[iteration]."
-            )
+            raise Warning("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
 
         # Get realization id
         iter_name = Path(__file__).parents[1].name
         iteration = (
             iter_name.split("_")[2] if len(iter_name.split("_")) == 3 else
-            f"Unknown Iteration for {iter_name=}. Check folder iteration name!"
-        )
+            f"Unknown Iteration for {iter_name=}. Check folder iteration name!")
 
         # Get location
         location_mapping = {
@@ -209,8 +220,7 @@ class ModelSimulation:
             6: "Intermediate field South",
             7: "Far field North",
             8: "Far field Center",
-            9: "Far field South",
-        }
+            9: "Far field South",}
         station = int((Path(__file__).parents[0].name).split("_")[1][-1])
         location = location_mapping.get(station, None)
         if location is None:
@@ -220,8 +230,8 @@ class ModelSimulation:
         # TODO: This has to change to the new algorithm to extract the data from the
         # TODO: hdf5 file reader py.
         # PGA y Spectrum
-        Pga = self.get_sm_id()
-        Spectrum = self.get_sm_id()
+        #Pga = self.get_sm_id()
+        #Spectrum = self.get_sm_id()
 
         # Insert data into database
         insert_query = (
@@ -285,7 +295,7 @@ class ModelSimulation:
             jobname = lines[1].split(" ")[1].split("=")[1]
             nodes = int(lines[2].split("=")[1])
             threads = int(lines[3].split("=")[1])
-            logname = lines[4].split("=")[1].strip()
+            logname = lines[4].split("=")[1].split("#")[0].strip()
 
         # Get simulation time
         with open(logname) as log:
@@ -300,7 +310,7 @@ class ModelSimulation:
         folder_names = ["Accelerations", "Displacements", "PartitionsInfo"]
         memory_by_results = sum(
             sum(file.stat().st_size
-                for file in (Path(__file__).parent / folder).iterdir())
+                for file in (self.path / folder).iterdir())
             for folder in folder_names) / (1024 * 1024)
 
         # Get model memory
@@ -363,21 +373,15 @@ class ModelSimulation:
         comments = kwargs.get("perf_comments", self._perf_comments)
 
         # Base shear calculations
-        if fidelity == 0:
-            # fills base shear
-            self.structure_base_shear_byReactionForces()
-            BaseShear = cursor.lastrowid
-            # fills max base shear
-            self.structure_max_base_shear_byReactionForces()
-            MaxBaseShear = cursor.lastrowid
+        #TODO: Take the decisiton inside in how to compute the shearbase
+        # fills base shear
+        self.structure_base_shear()
+        BaseShear = cursor.lastrowid
 
-        else:
-            # fills base shear
-            self.structure_base_shear_byAccelerations()
+        # fills max base shear
+        self.structure_max_base_shear()
+        MaxBaseShear = cursor.lastrowid
 
-            # fills max base shear
-            self.structure_max_base_shear_byReactionForces()
-            MaxBaseShear = cursor.lastrowid
         # fills absolute accelerations
         self.structure_abs_acceleration()
         AbsAccelerations = cursor.lastrowid
@@ -395,25 +399,27 @@ class ModelSimulation:
         fas = "Not implemented yet"  # floor acceleration spectra
 
         # insert data into database
-        if not fidelity:
-            insert_query = (
-                "INSERT INTO model_structure_perfomance "
-                "(idBaseShear,idAbsAccelerations,idRelativeDisplacements,"
-                "idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,"
-                "FloorAccelerationSpectra,Comments)"
-                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
-            values = (
-                BaseShear,
-                AbsAccelerations,
-                RelativeDisplacements,
-                MaxBaseShear,
-                MaxDriftPerFloor,
-                mta,
-                fas,
-                comments,
-            )  # mta and fas vars has to change
-            cursor.execute(insert_query, values)
-            print("model_structure_perfomance table updated correctly!\n")
+
+
+        insert_query = (
+            "INSERT INTO model_structure_perfomance "
+            "(idBaseShear,idAbsAccelerations,idRelativeDisplacements,"
+            "idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,"
+            "FloorAccelerationSpectra,Comments)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
+        values = (
+            BaseShear,
+            AbsAccelerations,
+            RelativeDisplacements,
+            MaxBaseShear,
+            MaxDriftPerFloor,
+            mta,
+            fas,
+            comments,
+        )  # mta and fas vars has to change
+        cursor.execute(insert_query, values)
+        print("model_structure_perfomance table updated correctly!\n")
+        """
         else:
             insert_query = ("INSERT INTO model_structure_perfomance "
                             "(idAbsAccelerations,idRelativeDisplacements,"
@@ -430,58 +436,7 @@ class ModelSimulation:
             )  # mta and fas vars has to change
             cursor.execute(insert_query, values)
             print("model_structure_perfomance table updated correctly!\n")
-
-    def structure_base_shear_byReactionForces(self, **kwargs):
         """
-        This function is used to export data into the structure_base_shear table database using
-        the reactions obtained in the simulation.
-        """
-        # initialize parameters
-        cursor = self.db_manager.cursor
-        units = kwargs.get("bs_units", self._bs_units)
-
-        # get base shear
-        reactions = pd.read_excel("reactions.xlsx", sheet_name=None)
-        sheet_names = list(reactions.keys())
-        base_shears = []
-
-        for sheet_name in sheet_names:
-            df = reactions[sheet_name].iloc[:, 1:].dropna()
-            timeseries = json.dumps(reactions[sheet_name].iloc[:, 0].tolist())
-            summ = json.dumps((df.sum(axis=1).values).tolist())
-            base_shears.append(summ)
-
-        insert_query = "INSERT INTO structure_base_shear (TimeSeries, ShearX, ShearY, ShearZ, Units) VALUES (%s,%s,%s,%s,%s)"
-        values = (timeseries, base_shears[0], base_shears[1], base_shears[2],
-                  units)
-        cursor.execute(insert_query, values)
-        print("structure_base_shear table updated correctly!\n")
-
-    def structure_max_base_shear_byReactionForces(self, **kwargs):
-        """
-        This function is used to export data into the structure_max_base_shear table database.
-        """
-        # Initialize parameters
-        cursor = self.db_manager.cursor
-        units = kwargs.get("max_bs_units", self._max_bs_units)
-
-        # Get max base shear
-        reactions = pd.read_excel("reactions.xlsx", sheet_name=None)
-        sheet_names = list(reactions.keys())
-        max_shears = []
-
-        for sheet_name in sheet_names:
-            df = reactions[sheet_name].iloc[:, 1:].dropna()
-            summ = json.dumps(max(df.sum(axis=1).values).tolist())
-            max_shears.append((summ))
-        max_shears = [float(num) for num in max_shears]
-        max_shears = [round(num, 2) for num in max_shears]
-
-        insert_query = ("INSERT INTO structure_max_base_shear ("
-                        "MaxX, MaxY, MaxZ, Units) VALUES (%s,%s,%s,%s)")
-        values = (max_shears[0], max_shears[1], max_shears[2], units)
-        cursor.execute(insert_query, values)
-        print("structure_max_base_shear table updated correctly!\n")
 
     def structure_abs_acceleration(self, **kwargs):
         """
@@ -490,17 +445,16 @@ class ModelSimulation:
         # Initialize parameters
         cursor = self.db_manager.cursor
         units = kwargs.get("abs_acc_units", self._abs_acc_units)
-        acc_timeseries = json.dumps(
-            self.acc_matrixes[0].index.get_level_values(0).tolist())
-        matrixes = [
-            json.dumps(self.disp_matrixes[i].iloc[::8].to_dict())
-            for i in range(3)
-        ]
 
+        # Convert Data to JSON format and reduce the size of the data
+        time_series = json.dumps(self.timeseries.tolist()[::self._jump])
+        matrixes = [json.dumps(self.accel_dfs[i].iloc[::self._jump].to_dict())for i in range(3)]
+
+        # Upload results to the database
         insert_query = ("INSERT INTO structure_abs_acceleration ("
                         "TimeSeries, AbsAccX, AbsAccY, AbsAccZ, Units) "
                         "VALUES(%s,%s,%s,%s,%s)")
-        values = (acc_timeseries, matrixes[0], matrixes[1], matrixes[2], units)
+        values = (time_series, matrixes[0], matrixes[1], matrixes[2], units)
         cursor.execute(insert_query, values)
         print("structure_abs_acceleration table updated correctly!\n")
 
@@ -508,15 +462,15 @@ class ModelSimulation:
         """
         This function is used to export data into the structure_relative_displacements table database.
         """
-        # initialize parameters
+        # Initialize parameters
         cursor = self.db_manager.cursor
         units = kwargs.get("rel_displ_units", self._rel_displ_units)
-        time_series = json.dumps(
-            self.disp_matrixes[0].index.get_level_values(0).tolist())
-        matrixes = [
-            json.dumps(self.disp_matrixes[i].iloc[::8].to_dict())
-            for i in range(3)
-        ]
+
+        # Convert Data to JSON format and reduce the size of the data
+        time_series = json.dumps(self.timeseries.tolist()[::self._jump])
+        matrixes = [json.dumps(self.displ_dfs[i].iloc[::self._jump].to_dict())for i in range(3)]
+
+        # Upload results to the database
         insert_query = ("INSERT INTO structure_relative_displacements ("
                         "TimeSeries, DispX, DispY, DispZ, Units) "
                         "VALUES(%s,%s,%s,%s,%s)")
@@ -528,16 +482,15 @@ class ModelSimulation:
         """
         This function is used to export data into the structure_max_drift_per_floor table database.
         """
-        # Initialize parameters
+        # initialize parameters
         cursor = self.db_manager.cursor
         units = kwargs.get("max_drift_units", self._max_drift_units)
-        displacements = self.disp_matrixes
+        displacements = self.displ_dfs
         center_drifts = [[], []]
         corner_drifts = [[], []]
 
         # Compute Drifts
         for loc, df in enumerate(displacements[:2]):
-            df = df.iloc[:, 1:].dropna()
             for i in range(self.stories):
                 current = f"Level {i}"
                 following = f"Level {i+1}"
@@ -547,13 +500,13 @@ class ModelSimulation:
                         pd.to_numeric(df[following_node])) / self.heights[i]
                     for current_node, following_node in zip(
                         self.story_nodes[current].keys(),
-                        self.story_nodes[following].keys())
-                ]
+                        self.story_nodes[following].keys())]
                 drift_df = pd.concat(compute_drifts, axis=1)
                 center = drift_df.mean(axis=1).max()
                 corner = drift_df.max().max()
                 center_drifts[loc].append(center)
                 corner_drifts[loc].append(corner)
+
         # Upload results to the database
         insert_query = ("INSERT INTO structure_max_drift_per_floor ("
                         "MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, "
@@ -568,11 +521,154 @@ class ModelSimulation:
         cursor.execute(insert_query, values)
         print("structure_max_drift_per_floor table updated correctly!\n")
 
+    def structure_base_shear(self, **kwargs):
+        """
+        This function is used to export data into the structure_base_shear table database using
+        the reactions obtained in the simulation.
+        """
+        # Initialize parameters
+        cursor = self.db_manager.cursor
+        units = kwargs.get("bs_units", self._bs_units)
+        df = self.react_mdf.sum(axis=1)
+
+        # Convert Data to JSON format and reduce the size of the data
+        timeseries = json.dumps(self.timeseries.tolist()[::self._jump])
+        matrixes = [df.xs(dir, level='Dir') for dir in ['x', 'y', 'z']]
+        matrixes = [json.dumps(matrix.iloc[::self._jump].to_dict()) for matrix in matrixes]
+
+        # Upload results to the database
+        insert_query = "INSERT INTO structure_base_shear (TimeSeries, ShearX, ShearY, ShearZ, Units) VALUES (%s,%s,%s,%s,%s)"
+        values = (timeseries, matrixes[0], matrixes[1], matrixes[2],units)
+        cursor.execute(insert_query, values)
+        print("structure_base_shear table updated correctly!\n")
+
+    def structure_max_base_shear(self, **kwargs):
+        """
+        This function is used to export data into the structure_max_base_shear table database.
+        """
+        # Initialize parameters
+        cursor = self.db_manager.cursor
+        units = kwargs.get("max_bs_units", self._max_bs_units)
+        df = self.react_mdf.sum(axis=1)
+
+        # Get max base shear
+        shear_x_ss = df.xs('x', level='Dir').abs().max()
+        shear_y_ss = df.xs('y', level='Dir').abs().max()
+        shear_z_ss = df.xs('z', level='Dir').abs().max()
+
+
+        # Upload results to the database
+        insert_query = ("INSERT INTO structure_max_base_shear ("
+                        "MaxX, MaxY, MaxZ, Units) VALUES (%s,%s,%s,%s)")
+
+        values = (f'{shear_x_ss:.2f}', f'{shear_y_ss:.2f}', f'{shear_z_ss:.2f}', units)
+        cursor.execute(insert_query, values)
+        print("structure_max_base_shear table updated correctly!\n")
+
+    def sm_input_pga(self, **kwargs):
+        """
+        This function is used to export data into the sm_input_pga table database.
+        """
+        # initialize parameters
+        cursor   = self.db_manager.cursor
+        cnx      = self.db_manager.cnx
+        units    = kwargs.get("pga_units", self._pga_units)
+        input_df = self._computeInputAccelerationsDF()
+
+        az = input_df.xs('z', level='Dir').to_numpy()
+        ae = input_df.xs('x', level='Dir').to_numpy()
+        an = input_df.xs('y', level='Dir').to_numpy()
+
+        PGA_max_z = az.argmax()
+        PGA_max_e = ae.argmax()
+        PGA_max_n = an.argmax()
+        PGA_min_n = an.argmin()
+        PGA_min_z = az.argmin()
+        PGA_min_e = ae.argmin()
+
+        PGAx = json.dumps({
+            "max": round(ae[PGA_max_e], 2),
+            "min": round(ae[PGA_min_e], 2)
+        })
+        PGAy = json.dumps({
+            "max": round(an[PGA_max_n], 2),
+            "min": round(an[PGA_min_n], 2)
+        })
+        PGAz = json.dumps({
+            "max": round(az[PGA_max_z], 2),
+            "min": round(az[PGA_min_z], 2)
+        })
+
+        insert_query = ("INSERT INTO sm_input_pga ("
+                        "PGA_X, PGA_Y, PGA_Z, Units) VALUES(%s,%s,%s,%s)")
+        values = (PGAx, PGAy, PGAz, units)
+        cursor.execute(insert_query, values)
+        cnx.commit()
+        print("sm_input_pga table updated correctly!\n")
+
+    def sm_input_spectrum(self, **kwargs):
+        """
+        This function is used to export data into the sm_input_spectrum table database.
+        """
+        # initialize parameters
+        cursor = self.db_manager.cursor
+        cnx    = self.db_manager.cnx
+        units  = kwargs.get("resp_spectrum", self._resp_spectrum)
+        nu     = 0.05
+        dt     = np.linspace(0, 1.0, int(self._total_time/self._time_step))
+        dt     = np.delete(dt, 0)
+        w      = np.zeros(len(dt))
+        input_df = self._computeInputAccelerationsDF()
+        for i in range(len(dt)):
+            if dt[i] != 0.0:
+                w[i] = 2 * np.pi / dt[i]
+
+        # SPECTRUM VERTICAL
+        az = input_df.xs('z', level='Dir').to_numpy()
+        Spaz = []
+
+        for j in range(len(w)):
+            wi = w[j]
+            u_z, v_z = self.pwl(az, wi, nu)
+            Saz = max(max(u_z), (abs(min(u_z)))) * wi**2
+            Spaz.append(Saz)
+
+        # SPECTRUM EAST
+        ae = input_df.xs('x', level='Dir').to_numpy()
+        Spe = []
+
+        for j in range(len(w)):
+            wi = w[j]
+            u_x, v_x = self.pwl(ae, wi, nu)
+            Sae = max(max(u_x), (abs(min(u_x)))) * wi**2
+            Spe.append(Sae)
+
+        # SPECTRUM NORTH
+        an = input_df.xs('y', level='Dir').to_numpy()
+        Spn = []
+
+        for j in range(len(w)):
+            wi = w[j]
+            u_y, v_y = self.pwl(an, wi, nu)
+            San = max(max(u_y), (abs(min(u_y)))) * wi**2
+            Spn.append(San)
+
+        insert_query = ("INSERT INTO sm_input_spectrum("
+                        "SpectrumX, SpectrumY, SpectrumZ, Units) "
+                        "VALUES (%s,%s,%s,%s)")
+        values = (json.dumps(Spe), json.dumps(Spn), json.dumps(Spaz), units)
+        cursor.execute(insert_query, values)
+        cnx.commit()
+        print("sm_input_spectrum table updated correctly!\n")
+
+
+
+
     # ==================================================================================
     # SQL FUNCTIONS NOT FINISHEED
     # =================================================================================
-    # TODO: Include the columns in the area and length dictionaries.
-    def structure_base_shear_byAccelerations(self, **kwargs):
+    # TODO: Finish just this function
+    def computeBaseShearByAccelerations(self, **kwargs):
         """
         This function is used to export data into the structure_base_shear table database using
         the accelerations obtained in the simulation for every story.
@@ -586,9 +682,8 @@ class ModelSimulation:
         # initialize parameters
         cursor = self.db_manager.cursor
         units = kwargs.get("bs_units", self._bs_units)
-        accelerations = self.acc_matrixes
+        accelerations = self.accel_dfs
         base_reactions = [[], [], []]
-        
         # Define areas and core thicknesses, areas in m2 and thicknesses in m
         # TODO: Include the columns in the area and length dictionaries.
         areas = {
@@ -596,7 +691,9 @@ class ModelSimulation:
                 "slabs_area": 704.0,
                 "external_core": 28.0,
                 "internal_core_x": 112.0,
-                "internal_core_y": 94.5}}
+                "internal_core_y": 94.5,
+            }
+        }
 
         # Define thicknesses
         thickness = {
@@ -607,7 +704,9 @@ class ModelSimulation:
                 "internal_core_x":
                 [0.35] * 4 + [0.25] * 6 + [0.15] * 5 + [0.15] * 5,
                 "internal_core_y":
-                [0.25] * 4 + [0.15] * 6 + [0.15] * 5 + [0.15] * 5}}
+                [0.25] * 4 + [0.15] * 6 + [0.15] * 5 + [0.15] * 5,
+            }
+        }
 
         # Define densities
         density = 2.400  # tonf/m3
@@ -623,7 +722,9 @@ class ModelSimulation:
                 thickness[20]["internal_core_x"][k] * density +
                 areas[20]["internal_core_y"] *
                 thickness[20]["internal_core_y"][k] * density
-                for k in range(self.stories)}}
+                for k in range(self.stories)
+            }
+        }
 
         # For each story, compute the mean acceleration in the 4 nodes of the story
 
@@ -632,25 +733,475 @@ class ModelSimulation:
         # Finally, compute the base shear for every story and direction
 
         # Return the base shear for every direction in the same format as the function
-        # structure_base_shear_byReactionForces
+        # structure_base_shear
 
         # Upload results to the database
 
-    def structure_max_base_shear_byAccelerations(self, **kwargs):
-        pass
+
+    #NOTE: Check if you wanna create the atribute or if you wanna return the value in the function
+    def computeSubNodes(self):
+        """
+        This function is used to get the subterrain nodes of the model.
+        """
+        # Initialize parameters
+        df = pd.DataFrame(self.coordenates)
+        df = df.transpose()
+        sub_nodes_df = df[df['coord z'] < 0.0]
+        self.sub_nodes_lst = sub_nodes_df.index.tolist()
+        return sub_nodes_df.index.tolist()
 
     # ==================================================================================
-    # COMPLEMENTARY FUNCTIONS
+    # COMPUTE DATAFRAMES FOR ACCELERATIONS AND DISPLACEMENTS
     # ==================================================================================
-    # FIXME: sm_input_pga and sm_input_spectrum are not working cause they needs
-    # FIXME: the ShakerMaker package to be installed in the computer to work.
-    # FIXME: ShakeMaker is not implemented in Windows yet. On the other hand,
-    # FIXME: all the input data is already in the database, so this functions are
-    # FIXME: not necessary for the moment.
-    # NOTE: YOU HAVE TO CHANGE SM_INPUT PGA AND SM_INPUT SPECTRUM TO WORK WITH THE
-    # NOTE: NEW ALGORITH TO EXTRACT THE DATA FROM THE ACCELERATIONS FILE.
-    # NOTE: THE CODE EXIST AND LETS TRY EXTRACT THE DATA AS A PANDAS DF AND THEN COMPUTE
-    # NOTE: THE PGA AND SPECTRUM, BUT IT IS NOT WORKING YET.
+    def _computeReactionForcesDF(self):
+        """
+        This function is used to compute the nodes accelerations DataFrame.
+        """
+        """if self._fidelity != 0:
+            return None, None"""
+        files = [file.name for file in (self.path/'Reactions').iterdir() if file.is_file()]
+
+        # Preparar un MultiIndex para los TimeSteps y las direcciones
+        time_steps = self.timeseries
+        directions = ['x', 'y', 'z']
+        multi_index = pd.MultiIndex.from_product([time_steps, directions], names=['Time Step', 'Dir'])
+
+        # Diccionario para almacenar los datos de cada nodo
+        data_dict = {}
+
+        # Extraemos los números de nodo y los ordenamos
+        node_numbers = [int(file_name.split("_")[1].split("-")[0]) for file_name in files]
+        node_numbers.sort()
+
+        for node_number in node_numbers:
+            # Encuentra el archivo correspondiente al número de nodo
+            file_name = next(file for file in files if f"_{node_number}-" in file)
+            node = f"Node {node_number}"
+            file_path = f"{self.path}/Reactions/{file_name}"
+
+            # Leer los datos con separador de espacio
+            data = pd.read_csv(file_path, sep=' ', header=None).values.flatten()
+
+            # Se reorganiza en un vector único para el MultiIndex y se agrega al diccionario
+            data_dict[node] = data
+
+        # Crear el DataFrame con el MultiIndex y los datos
+        nodes_react_df = pd.DataFrame(data_dict, index=multi_index)
+        nodes_react_df = nodes_react_df.applymap(lambda x: round(x,2))
+        react_df_x = nodes_react_df.xs('x', level='Dir')
+        react_df_y = nodes_react_df.xs('y', level='Dir')
+        react_df_z = nodes_react_df.xs('z', level='Dir')
+        return nodes_react_df, [react_df_x, react_df_y, react_df_z]
+
+    def _computeRelativeDisplacementsDF(self):
+        """
+        This function is used to compute the nodes accelerations DataFrame.
+        """
+        files = [file.name for file in (self.path/'Displacements').iterdir() if file.is_file()]
+
+        # Preparar un MultiIndex para los TimeSteps y las direcciones
+        time_steps = self.timeseries
+        directions = ['x', 'y', 'z']
+        multi_index = pd.MultiIndex.from_product([time_steps, directions], names=['Time Step', 'Dir'])
+
+        # Diccionario para almacenar los datos de cada nodo
+        data_dict = {}
+
+        # Extraemos los números de nodo y los ordenamos
+        node_numbers = [int(file_name.split("_")[1].split("-")[0]) for file_name in files]
+        node_numbers.sort()
+
+        for node_number in node_numbers:
+            # Encuentra el archivo correspondiente al número de nodo
+            file_name = next(file for file in files if f"_{node_number}-" in file)
+            node = f"Node {node_number}"
+            file_path = f"{self.path}/Displacements/{file_name}"
+
+            # Leer los datos con separador de espacio
+            data = pd.read_csv(file_path, sep=' ', header=None).values.flatten()
+
+            # Se reorganiza en un vector único para el MultiIndex y se agrega al diccionario
+            data_dict[node] = data
+
+        # Crear el DataFrame con el MultiIndex y los datos
+        nodes_react_df = pd.DataFrame(data_dict, index=multi_index)
+        nodes_react_df = nodes_react_df.applymap(lambda x: round(x,4))
+        react_df_x = nodes_react_df.xs('x', level='Dir')
+        react_df_y = nodes_react_df.xs('y', level='Dir')
+        react_df_z = nodes_react_df.xs('z', level='Dir')
+        return nodes_react_df, [react_df_x, react_df_y, react_df_z]
+
+    def _computeAbsAccelerationsDF(self):
+        """
+        This function is used to compute the absolute accelerations DataFrame.
+        """
+        nodes_df = self._computeNodesAccelerationsDF()
+        input_df = self._computeInputAccelerationsDF()
+        accel_df = nodes_df.add(input_df['Acceleration'], axis='index')
+        accel_df = accel_df.applymap(lambda x: round(x,4))
+        accel_df_x = accel_df.xs('x', level='Dir')
+        accel_df_y = accel_df.xs('y', level='Dir')
+        accel_df_z = accel_df.xs('z', level='Dir')
+
+        return accel_df, [accel_df_x, accel_df_y, accel_df_z]
+
+    def _computeInputAccelerationsDF(self):
+        """
+        This function is used to compute the input accelerations DataFrame.
+        """
+        # Leer cada archivo de aceleraciones del suelo
+        acc_e = pd.read_csv(self.path/'accelerations_e.txt', sep=" ", header=None)
+        acc_n = pd.read_csv(self.path/'accelerations_n.txt', sep=" ", header=None)
+        acc_z = pd.read_csv(self.path/'accelerations_z.txt', sep=" ", header=None)
+
+        # Crear el índice de Time Steps, asumiendo que el intervalo de tiempo es 0.025 segundos
+        time_steps = self.timeseries
+
+        # Crear el MultiIndex para las direcciones y los Time Steps
+        directions = ['x', 'y', 'z']
+        multi_index = pd.MultiIndex.from_product([time_steps, directions], names=['Time Step', 'Dir'])
+
+        # Concatenar los datos de aceleración y asociarlos al MultiIndex
+        acc_data = np.concatenate((acc_e.values, acc_n.values, acc_z.values)).flatten()
+        input_acce_df = pd.DataFrame(acc_data, index=multi_index, columns=['Acceleration'])
+
+        return input_acce_df
+
+    def _computeNodesAccelerationsDF(self):
+        """
+        This function is used to compute the nodes accelerations DataFrame.
+        """
+        files = [file.name for file in (self.path/'Accelerations').iterdir() if file.is_file()]
+
+        # Preparar un MultiIndex para los TimeSteps y las direcciones
+        time_steps = self.timeseries
+        directions = ['x', 'y', 'z']
+        multi_index = pd.MultiIndex.from_product([time_steps, directions], names=['Time Step', 'Dir'])
+
+        # Diccionario para almacenar los datos de cada nodo
+        data_dict = {}
+
+        # Extraemos los números de nodo y los ordenamos
+        node_numbers = [int(file_name.split("_")[1].split("-")[0]) for file_name in files]
+        node_numbers.sort()
+
+        for node_number in node_numbers:
+            # Encuentra el archivo correspondiente al número de nodo
+            file_name = next(file for file in files if f"_{node_number}-" in file)
+            node = f"Node {node_number}"
+            file_path = f"{self.path}/Accelerations/{file_name}"
+
+            # Leer los datos con separador de espacio
+            data = pd.read_csv(file_path, sep=' ', header=None).values.flatten()
+
+            # Se reorganiza en un vector único para el MultiIndex y se agrega al diccionario
+            data_dict[node] = data
+
+        # Crear el DataFrame con el MultiIndex y los datos
+        nodes_acce_df = pd.DataFrame(data_dict, index=multi_index)
+
+        return nodes_acce_df
+
+
+
+
+    # ==================================================================================
+    # EXTERNAL FILES GENERATIONS METHODS
+    # ==================================================================================
+    def createReactions_xlsx(self):
+        import xlsxwriter
+        # create nodes sorted list
+        nodes = []
+        results = self.path /'Reactions'
+
+        # sorting nodes
+        for result in results.glob("*.csv"):
+            node = int(result.name.split("-")[1].split("_")[1])
+            nodes.append(node)
+        nodes.sort()
+
+        # sorting files in list
+        results_sorted = []
+        for node in nodes:
+            nodeid = f"_{node}-"
+            for result in results.glob("*.csv"):
+                if nodeid in result.name:
+                    results_sorted.append(result)
+
+        # define format
+        workbook = xlsxwriter.Workbook("reactions.xlsx")
+        main_format = workbook.add_format({"bold": True})
+        main_format.set_align("center")
+        second_format = workbook.add_format({"font_color": "black"})
+        second_format.set_align("center")
+
+        # open book and start writing in shells
+        x_sheet = workbook.add_worksheet("Reaction East")
+        y_sheet = workbook.add_worksheet("Reaction North")
+        z_sheet = workbook.add_worksheet("Reaction Vertical")
+        x_sheet.write(0, 0, "Timestep/NodeID", main_format)
+        y_sheet.write(0, 0, "Timestep/NodeID", main_format)
+        z_sheet.write(0, 0, "Timestep/NodeID", main_format)
+        x_sheet.set_column(0, 0, 17, main_format)
+        y_sheet.set_column(0, 0, 17, main_format)
+        z_sheet.set_column(0, 0, 17, main_format)
+
+        # fill rows names
+        row = 1
+        column = 0
+        time_step = 0.0
+        while time_step < self._total_time:
+            x_sheet.write(row, column, f"{time_step:.3f}", main_format)
+            y_sheet.write(row, column, f"{time_step:.3f}", main_format)
+            z_sheet.write(row, column, f"{time_step:.3f}", main_format)
+
+            time_step += self._time_step
+            row += 1
+
+        # fill columns names
+        row = 0
+        column = 1
+        files = []
+        for node in range(len(nodes)):
+            x_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            y_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            z_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            column += 1
+
+        # fill matrix in correct values, here the file is the column and it's results are the rows
+        files = [open(file, "r") for file in results_sorted]
+        column = 1
+        for file in range(len(files)):
+            nodal_result = [[(num) for num in line.split("\n")]
+                            for line in files[file]]
+            row = 1
+            for row_val in nodal_result:
+                reaction_X = float(row_val[0].split(" ")[0])
+                reaction_Y = float(row_val[0].split(" ")[1])
+                reaction_Z = float(row_val[0].split(" ")[2])
+                x_sheet.write(row, column, reaction_X, second_format)
+                y_sheet.write(row, column, reaction_Y, second_format)
+                z_sheet.write(row, column, reaction_Z, second_format)
+                row += 1
+
+            column += 1
+
+        workbook.close()
+
+    def createDisplacements_xlsx(self):
+        import xlsxwriter
+
+        # create nodes sorted list
+        nodes = []
+        results = self.path /'Displacements'
+
+        # sorting nodes
+        for result in results.glob("*.csv"):
+            node = int(result.name.split("-")[1].split("_")[1])
+            nodes.append(node)
+        nodes.sort()
+
+        # sorting files in list
+        results_sorted = []
+        for node in nodes:
+            nodeid = f"_{node}-"
+            for result in results.glob("*.csv"):
+                if nodeid in result.name:
+                    results_sorted.append(result)
+
+        # define format
+        workbook = xlsxwriter.Workbook("displacements.xlsx")
+        main_format = workbook.add_format({"bold": True})
+        main_format.set_align("center")
+        second_format = workbook.add_format({"font_color": "black"})
+        second_format.set_align("center")
+
+        # open book and start writing in shells
+        x_sheet = workbook.add_worksheet("Displacements East")
+        y_sheet = workbook.add_worksheet("Displacements North")
+        z_sheet = workbook.add_worksheet("Displacements Vertical")
+        x_sheet.write(0, 0, "Timestep/NodeID", main_format)
+        y_sheet.write(0, 0, "Timestep/NodeID", main_format)
+        z_sheet.write(0, 0, "Timestep/NodeID", main_format)
+
+        x_sheet.set_column(0, 0, 17, main_format)
+        y_sheet.set_column(0, 0, 17, main_format)
+        z_sheet.set_column(0, 0, 17, main_format)
+
+        # fill rows names
+        row = 1
+        column = 0
+        time_step = 0.0
+        while time_step < self._total_time:
+            x_sheet.write(row, column, time_step, main_format)
+            y_sheet.write(row, column, time_step, main_format)
+            z_sheet.write(row, column, time_step, main_format)
+
+            time_step += self._time_step
+            row += 1
+
+        # fill columns names
+        row = 0
+        column = 1
+        files = []
+        for node in range(len(nodes)):
+            x_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            y_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            z_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            column += 1
+
+        # fill matrix in correct values, here the file is the column and it's results are the rows
+        files = [open(file, "r") for file in results_sorted]
+        column = 1
+        for file in range(len(files)):
+            nodal_result = [[(num) for num in line.split("\n")]
+                            for line in files[file]]
+            row = 1
+            for row_val in nodal_result:
+                acceleration_X = float(row_val[0].split(" ")[0])
+                acceleration_Y = float(row_val[0].split(" ")[1])
+                acceleration_Z = float(row_val[0].split(" ")[2])
+                x_sheet.write(row, column, acceleration_X, second_format)
+                y_sheet.write(row, column, acceleration_Y, second_format)
+                z_sheet.write(row, column, acceleration_Z, second_format)
+                row += 1
+
+            column += 1
+
+        workbook.close()
+
+    def createAccelerations_xlsx(self):
+        import xlsxwriter
+        import os
+
+        # create nodes sorted list
+        nodes = []
+        results = self.path /'Accelerations'
+
+        # sorting nodes
+        for result in results.glob("*.csv"):
+            node = int(result.name.split("-")[1].split("_")[1])
+            nodes.append(node)
+        nodes.sort()
+
+        # sorting files in list
+        results_sorted = []
+        for node in nodes:
+            nodeid = f"_{node}-"
+            for result in results.glob("*.csv"):
+                if nodeid in result.name:
+                    results_sorted.append(result)
+
+        # define format
+        workbook = xlsxwriter.Workbook("accelerations.xlsx")
+        main_format = workbook.add_format({"bold": True})
+        main_format.set_align("center")
+        second_format = workbook.add_format({"font_color": "black"})
+        second_format.set_align("center")
+
+        # open book and start writing in shells
+        x_sheet = workbook.add_worksheet("Accelerations East")
+        y_sheet = workbook.add_worksheet("Accelerations North")
+        z_sheet = workbook.add_worksheet("Accelerations Vertical")
+        x_sheet.write(0, 0, "Timestep/NodeID", main_format)
+        y_sheet.write(0, 0, "Timestep/NodeID", main_format)
+        z_sheet.write(0, 0, "Timestep/NodeID", main_format)
+
+        x_sheet.set_column(0, 0, 17, main_format)
+        y_sheet.set_column(0, 0, 17, main_format)
+        z_sheet.set_column(0, 0, 17, main_format)
+
+        # fill rows names
+        row = 1
+        column = 0
+        time_step = 0.0
+        while time_step < self._total_time:
+            x_sheet.write(row, column, time_step, main_format)
+            y_sheet.write(row, column, time_step, main_format)
+            z_sheet.write(row, column, time_step, main_format)
+
+            time_step += self._time_step
+            row += 1
+
+        # fill columns names
+        row = 0
+        column = 1
+        files = []
+        for node in range(len(nodes)):
+            x_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            y_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            z_sheet.write(row, column, f"Node {nodes[node]}", main_format)
+            column += 1
+
+        # fill matrix in correct values, here the file is the column and it's results are the rows
+        files = [open(file, "r") for file in results_sorted]
+        column = 1
+        for file in range(len(files)):
+            nodal_result = [[(num) for num in line.split("\n")]
+                            for line in files[file]]
+            row = 1
+            for row_val in nodal_result:
+                acceleration_X = float(row_val[0].split(" ")[0])
+                acceleration_Y = float(row_val[0].split(" ")[1])
+                acceleration_Z = float(row_val[0].split(" ")[2])
+                x_sheet.write(row, column, acceleration_X, second_format)
+                y_sheet.write(row, column, acceleration_Y, second_format)
+                z_sheet.write(row, column, acceleration_Z, second_format)
+                row += 1
+
+            column += 1
+
+        workbook.close()
+
+    def model_linearity(self):
+        """
+        This function is used to create the model_linearity table database.
+        """
+        # initialize parameters
+        cursor = self.db_manager.cursor
+        cnx = self.db_manager.cnx
+
+        # create table
+        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
+        values = ("Linear", )
+        cursor.execute(insert_query, values)
+        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
+        values = ("Non Linear", )
+        cursor.execute(insert_query, values)
+        cnx.commit()
+        print("model_linearity created correctly!\n")
+
+    def simulation_type(self):
+        """
+        This function is used to create the simulation_type table database.
+        """
+        # initialize parameters
+        cursor = self.db_manager.cursor
+        cnx = self.db_manager.cnx
+
+        # create table
+        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
+        values = ("Fix Base Model", )
+        cursor.execute(insert_query, values)
+        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
+        values = ("Soil Structure Interaction Model", )
+        cursor.execute(insert_query, values)
+        cnx.commit()
+        print("simulation_type created correctly!\n")
+
+    def connect(self):
+        import time
+        """
+        This function is used to connect to the database.
+        """
+        if self._test_mode:
+            ModelSimulation.initialize_ssh_tunnel()
+            time.sleep(1)
+            self.db_manager = DataBaseManager(self.db_user, self.db_password, self.db_host,
+                                                self.db_database)
+            print("Database Manager initialized correctly!")
+            print(f"Connected to {self.db_database} database as {self.db_user}.")
+
     @staticmethod
     def pwl(vector_a, w, chi):
         # variables
@@ -703,396 +1254,27 @@ class ModelSimulation:
 
         return u_t, up_t
 
-    def model_linearity(self):
-        """
-        This function is used to create the model_linearity table database.
-        """
-        # initialize parameters
-        cursor = self.db_manager.cursor
-        cnx = self.db_manager.cnx
-
-        # create table
-        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
-        values = ("Linear", )
-        cursor.execute(insert_query, values)
-        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
-        values = ("Non Linear", )
-        cursor.execute(insert_query, values)
-        cnx.commit()
-        print("model_linearity created correctly!\n")
-
-    def simulation_type(self):
-        """
-        This function is used to create the simulation_type table database.
-        """
-        # initialize parameters
-        cursor = self.db_manager.cursor
-        cnx = self.db_manager.cnx
-
-        # create table
-        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
-        values = ("Fix Base Model", )
-        cursor.execute(insert_query, values)
-        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
-        values = ("Soil Structure Interaction Model", )
-        cursor.execute(insert_query, values)
-        cnx.commit()
-        print("simulation_type created correctly!\n")
-
-    def sm_input_pga(self, **kwargs):
-        pass
-
-    def sm_input_spectrum(self, **kwargs):
-        pass
-
-    # ==================================================================================
-    # COMPUTE DATAFRAMES FOR ACCELERATIONS AND DISPLACEMENTS
-    # ==================================================================================
-    def _computeAbsAccelerationsDF(self):
-        accelerations = pd.read_excel("accelerations.xlsx", sheet_name=None)
-        sheet_names = list(accelerations.keys())
-
-        # Define file names
-        file_name = "resultado_s0"
-        files = {"e": [], "n": [], "z": []}
-        for key in files:
-            with open(f"{file_name}{key}.txt") as f:
-                files[key] = [float(line.strip()) for line in f]
-        acc = list(files.values())
-
-        # Get results
-        def process_data(sheet_name, counter):
-            df = (accelerations[sheet_name].dropna().copy()
-                  )  # Make a copy to avoid operating on a view
-            timeseries = [(round(v, 2)) for v in df.iloc[:, 0]]
-            for col in df.columns[1:]:
-                df.loc[:, col] += acc[counter]
-            df = df.iloc[:, 1:].applymap(lambda x: "{:.2e}".format(x))
-            df.index = timeseries
-            return df
-
-        df = [
-            process_data(sheet, count)
-            for count, sheet in enumerate(sheet_names)
-        ]
-        return df
-
-    def _computeRelativeDisplacementsDF(self):
-        displacements = pd.read_excel("displacements.xlsx", sheet_name=None)
-        sheet_names = list(displacements.keys())
-
-        def process_data(sheet_name):
-            df = displacements[sheet_name].dropna()
-            timeseries = [(round(v, 2)) for v in df.iloc[:, 0]]
-            df = df.iloc[:, 1:].copy().applymap(lambda x: "{:.2e}".format(x))
-            df.index = pd.Index(timeseries, name="TimeSeries")
-            return df
-
-        df = [process_data(sheet) for sheet in sheet_names]
-        return df
-
-    # ==================================================================================
-    # STATIC METHODS
-    # ==================================================================================
-    # NOTE: IN THE FUTURE, LET'S SEE HOW IT IS TO DIRECTLY OBTAIN A DATAFRAME AS A
-    # NOTE: ATRIBUTE OF THE CLASS, INSTEAD OF CREATING A FILE AND THEN READING IT.
-    """
     @staticmethod
-    def create_reaction_df(self):
-        # Obtener la lista de archivos de reacción
-        path = os.getcwd()
-        results = os.listdir(f'{path}/Reactions/')
-        results_sorted = sorted(results, key=lambda x: int(x.split('-')[1].split('_')[1]))
+    def initialize_ssh_tunnel():
+        command = "ssh -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
+        try:
+            # Ejecutar el comando SSH en un nuevo terminal cmd, pero minimizado
+            subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
+            #print("Attempting to establish the SSH Tunnel...")
+        except Exception as e:
+            print(f"Error trying to open cmd:  {e}")
+            return False
+        return True
 
-        # Crear el DataFrame de reacciones
-        nodes = [int(result.split('-')[1].split('_')[1]) for result in results_sorted]
-        timesteps = np.arange(0, 50.00, 0.025)
-        self.reaction_df = pd.DataFrame(index=timesteps, columns=nodes)
-
-        # Llenar el DataFrame con valores
-        for result in results_sorted:
-            node = int(result.split('-')[1].split('_')[1])
-            with open(f'Reactions/{result}', 'r') as file:
-                for i, line in enumerate(file):
-                    if i >= len(timesteps): break  # Asegúrate de no exceder el rango de timesteps
-                    values = [float(num) for num in line.split()]
-                    self.reaction_df.loc[timesteps[i], node] = values  # Asumiendo que cada línea tiene 3 valores para X, Y, Z
-
-    def save_reaction_xlsx(self):
-        # Guardar el DataFrame como Excel
-        with pd.ExcelWriter('reactions.xlsx') as writer:
-            self.reaction_df.to_excel(writer, sheet_name='Reaction East')  # X values
-            self.reaction_df.to_excel(writer, sheet_name='Reaction North')  # Y values
-            self.reaction_df.to_excel(writer, sheet_name='Reaction Vertical')  # Z values
-    """
-
-    @staticmethod
-    def create_reaction_xlsx():
-        import xlsxwriter
-        import os
-
-        # create nodes sorted list
-        nodes = []
-        path = os.getcwd()
-        results = os.listdir(f"{path}/Reactions/")
-
-        # sorting nodes
-        for result in results:
-            node = int(result.split("-")[1].split("_")[1])
-            nodes.append(node)
-        nodes.sort()
-
-        # sorting files in list
-        results_sorted = []
-        counter = 0
-        for node in nodes:
-            nodeid = f"_{node}-"
-            for result in results:
-                if nodeid in result:
-                    results_sorted.append(result)
-
-        # define format
-        workbook = xlsxwriter.Workbook("reactions.xlsx")
-        main_format = workbook.add_format({"bold": True})
-        main_format.set_align("center")
-        second_format = workbook.add_format({"font_color": "black"})
-        second_format.set_align("center")
-
-        # open book and start writing in shells
-        x_sheet = workbook.add_worksheet("Reaction East")
-        y_sheet = workbook.add_worksheet("Reaction North")
-        z_sheet = workbook.add_worksheet("Reaction Vertical")
-        x_sheet.write(0, 0, "Timestep/NodeID", main_format)
-        y_sheet.write(0, 0, "Timestep/NodeID", main_format)
-        z_sheet.write(0, 0, "Timestep/NodeID", main_format)
-        x_sheet.set_column(0, 0, 17, main_format)
-        y_sheet.set_column(0, 0, 17, main_format)
-        z_sheet.set_column(0, 0, 17, main_format)
-
-        # fill rows names
-        row = 1
-        column = 0
-        time_step = 0.0
-        while time_step < 50.00:
-            x_sheet.write(row, column, f"{time_step:.3f}", main_format)
-            y_sheet.write(row, column, f"{time_step:.3f}", main_format)
-            z_sheet.write(row, column, f"{time_step:.3f}", main_format)
-
-            time_step += 0.025
-            row += 1
-
-        # fill columns names
-        row = 0
-        column = 1
-        files = []
-        for node in range(len(nodes)):
-            x_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            y_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            z_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            column += 1
-
-        # fill matrix in correct values, here the file is the column and it's results are the rows
-        files = [open(f"Reactions/{file}", "r") for file in results_sorted]
-        column = 1
-        for file in range(len(files)):
-            nodal_result = [[(num) for num in line.split("\n")]
-                            for line in files[file]]
-            row = 1
-            for row_val in nodal_result:
-                reaction_X = float(row_val[0].split(" ")[0])
-                reaction_Y = float(row_val[0].split(" ")[1])
-                reaction_Z = float(row_val[0].split(" ")[2])
-                x_sheet.write(row, column, reaction_X, second_format)
-                y_sheet.write(row, column, reaction_Y, second_format)
-                z_sheet.write(row, column, reaction_Z, second_format)
-                row += 1
-
-            column += 1
-
-        workbook.close()
-
-    @staticmethod
-    def create_displacement_xlsx():
-        import xlsxwriter
-        import os
-
-        # create nodes sorted list
-        nodes = []
-        path = os.getcwd()
-        results = os.listdir(f"{path}/Displacements/")
-
-        # sorting nodes
-        for result in results:
-            node = int(result.split("-")[1].split("_")[1])
-            nodes.append(node)
-        nodes.sort()
-
-        # sorting files in list
-        results_sorted = []
-        counter = 0
-        for node in nodes:
-            nodeid = f"_{node}-"
-            for result in results:
-                if nodeid in result:
-                    results_sorted.append(result)
-
-        # define format
-        workbook = xlsxwriter.Workbook("displacements.xlsx")
-        main_format = workbook.add_format({"bold": True})
-        main_format.set_align("center")
-        second_format = workbook.add_format({"font_color": "black"})
-        second_format.set_align("center")
-
-        # open book and start writing in shells
-        x_sheet = workbook.add_worksheet("Displacements East")
-        y_sheet = workbook.add_worksheet("Displacements North")
-        z_sheet = workbook.add_worksheet("Displacements Vertical")
-        x_sheet.write(0, 0, "Timestep/NodeID", main_format)
-        y_sheet.write(0, 0, "Timestep/NodeID", main_format)
-        z_sheet.write(0, 0, "Timestep/NodeID", main_format)
-
-        x_sheet.set_column(0, 0, 17, main_format)
-        y_sheet.set_column(0, 0, 17, main_format)
-        z_sheet.set_column(0, 0, 17, main_format)
-
-        # fill rows names
-        row = 1
-        column = 0
-        time_step = 0.0
-        while time_step < 50:
-            x_sheet.write(row, column, time_step, main_format)
-            y_sheet.write(row, column, time_step, main_format)
-            z_sheet.write(row, column, time_step, main_format)
-
-            time_step += 0.025
-            row += 1
-
-        # fill columns names
-        row = 0
-        column = 1
-        files = []
-        for node in range(len(nodes)):
-            x_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            y_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            z_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            column += 1
-
-        # fill matrix in correct values, here the file is the column and it's results are the rows
-        files = [open(f"Displacements/{file}", "r") for file in results_sorted]
-        column = 1
-        for file in range(len(files)):
-            nodal_result = [[(num) for num in line.split("\n")]
-                            for line in files[file]]
-            row = 1
-            for row_val in nodal_result:
-                acceleration_X = float(row_val[0].split(" ")[0])
-                acceleration_Y = float(row_val[0].split(" ")[1])
-                acceleration_Z = float(row_val[0].split(" ")[2])
-                x_sheet.write(row, column, acceleration_X, second_format)
-                y_sheet.write(row, column, acceleration_Y, second_format)
-                z_sheet.write(row, column, acceleration_Z, second_format)
-                row += 1
-
-            column += 1
-
-        workbook.close()
-
-    @staticmethod
-    def create_accelerations_xlsx():
-        import xlsxwriter
-        import os
-
-        # create nodes sorted list
-        nodes = []
-        path = os.getcwd()
-        results = os.listdir(f"{path}/Accelerations/")
-
-        # sorting nodes
-        for result in results:
-            node = int(result.split("-")[1].split("_")[1])
-            nodes.append(node)
-        nodes.sort()
-
-        # sorting files in list
-        results_sorted = []
-        counter = 0
-        for node in nodes:
-            nodeid = f"_{node}-"
-            for result in results:
-                if nodeid in result:
-                    results_sorted.append(result)
-
-        # define format
-        workbook = xlsxwriter.Workbook("accelerations.xlsx")
-        main_format = workbook.add_format({"bold": True})
-        main_format.set_align("center")
-        second_format = workbook.add_format({"font_color": "black"})
-        second_format.set_align("center")
-
-        # open book and start writing in shells
-        x_sheet = workbook.add_worksheet("Accelerations East")
-        y_sheet = workbook.add_worksheet("Accelerations North")
-        z_sheet = workbook.add_worksheet("Accelerations Vertical")
-        x_sheet.write(0, 0, "Timestep/NodeID", main_format)
-        y_sheet.write(0, 0, "Timestep/NodeID", main_format)
-        z_sheet.write(0, 0, "Timestep/NodeID", main_format)
-
-        x_sheet.set_column(0, 0, 17, main_format)
-        y_sheet.set_column(0, 0, 17, main_format)
-        z_sheet.set_column(0, 0, 17, main_format)
-
-        # fill rows names
-        row = 1
-        column = 0
-        time_step = 0.0
-        while time_step < 50:
-            x_sheet.write(row, column, time_step, main_format)
-            y_sheet.write(row, column, time_step, main_format)
-            z_sheet.write(row, column, time_step, main_format)
-
-            time_step += 0.025
-            row += 1
-
-        # fill columns names
-        row = 0
-        column = 1
-        files = []
-        for node in range(len(nodes)):
-            x_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            y_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            z_sheet.write(row, column, f"Node {nodes[node]}", main_format)
-            column += 1
-
-        # fill matrix in correct values, here the file is the column and it's results are the rows
-        files = [open(f"Accelerations/{file}", "r") for file in results_sorted]
-        column = 1
-        for file in range(len(files)):
-            nodal_result = [[(num) for num in line.split("\n")]
-                            for line in files[file]]
-            row = 1
-            for row_val in nodal_result:
-                acceleration_X = float(row_val[0].split(" ")[0])
-                acceleration_Y = float(row_val[0].split(" ")[1])
-                acceleration_Z = float(row_val[0].split(" ")[2])
-                x_sheet.write(row, column, acceleration_X, second_format)
-                y_sheet.write(row, column, acceleration_Y, second_format)
-                z_sheet.write(row, column, acceleration_Z, second_format)
-                row += 1
-
-            column += 1
-
-        workbook.close()
-
-    # ==================================================================================
-    # DEPRECATED METHODS
-    # ==================================================================================
+    #DEPRECATED METHODS
     def get_sm_id(self):
-
-        path = Path(__file__).parent.parts
+        import os
+        path = os.path.dirname(os.path.abspath(__file__)).split("\\")
+        path = list(Path(__file__).resolve().parent)
         magnitude = path[-3][-3:]
         rupture = path[-2][-4:]
         station = int(path[-1][-1]) + 1
-        m = 0
+        m,r = 0,0
         if magnitude == "6.5":
             m = 0
         elif magnitude == "6.7":
@@ -1102,7 +1284,6 @@ class ModelSimulation:
         elif magnitude == "7.0":
             m = 270
 
-        r = (int(rupture[-1]) - 1) * 10
         if rupture[0:2] == "bl":
             r = (int(rupture[-1]) - 1) * 10
         elif rupture[0:2] == "ns":
@@ -1114,6 +1295,8 @@ class ModelSimulation:
         return id
 
 
+
+
 # ==================================================================================
 # SECONDARY CLASSES
 # ==================================================================================
@@ -1121,6 +1304,7 @@ class DataBaseManager:
     """
     This class is used to manage the connection to the database.
     """
+
     def __init__(self, user: str, password: str, host: str, database: str):
         self.cnx = mysql.connector.connect(user=user,
                                            password=password,
@@ -1143,6 +1327,7 @@ class Plotting:
     It's used to analyse quiclky the structure and get the results of the analysis.
     You use it in the main after the results are uploaded to the database.
     """
+
     @staticmethod
     def pwl(vector_a, w, chi):
         # variables
@@ -1490,41 +1675,42 @@ class ModelInfo:
     give_reactions()
         Returns the reactions of the model.
     """
-    def __init__(self, fidelity=0):
+
+    def __init__(self, fidelity:int = 0):
         # Set the path to the 'PartitionsInfo' subfolder
         current_path = Path(__file__).parent
         self.path = Path(__file__).parent / "PartitionsInfo"
-
         # Check if the 'PartitionsInfo' subfolder exists
         if not self.path.exists():
             raise Exception("The PartitionsInfo folder does not exist!\n"
                             "Current path = {}".format(current_path))
+
         # Access to folders within the 'PartitionsInfo' subfolder
         folders = self.path.iterdir()
         for folder in folders:
-            if folder.is_dir(
-            ):  # Asegurarse de que solo se procesen directorios
+            if folder.is_dir():  # Asegurarse de que solo se procesen directorios
                 folder_name = folder.name
                 setattr(self, f"folder_{folder_name}", folder)
-        dict_folders = {
-            f"folder_{folder.name}": folder
-            for folder in folders if folder.is_dir()
-        }
-        # Call the methods to initialize the data
-        (
-            self.coordenates,
-            self.drift_nodes,
-            self.stories_nodes,
-            self.stories,
-            self.subs,
-            self.heights,
-        ) = self.give_coords_info()
 
-        self.accelerations, self.acce_nodes = self.give_accelerations()
+        # Call the methods to initialize the data
+        print("---------------------------------------------|")
+        print("------- CHECKING NODES IN PARTITIONS --------|")
+        print("---------------------------------------------|")
+        self.accelerations, self.acce_nodes  = self.give_accelerations()
         self.displacements, self.displ_nodes = self.give_displacements()
-        if fidelity == 0:
-            self.reactions, self.reaction_nodes = self.give_reactions()
+
+        print('\n---------------------------------------------|')
+        print('------------- INITIALIZING DATA -------------|')
+        print('---------------------------------------------|')
+        self.reactions, self.reaction_nodes = self.give_reactions() if fidelity==0 else (None, None)
         self.nnodes, self.nelements, self.npartitions = self.give_model_info()
+
+        self.coordenates,\
+        self.drift_nodes,\
+        self.stories_nodes,\
+        self.stories,\
+        self.subs,\
+        self.heights = self.give_coords_info()
 
     def give_accelerations(self):
         # check nodes
@@ -1632,7 +1818,6 @@ class ModelInfo:
     def give_coords_info(self):
         # check nodes
         files_coords = self.path / self.folder_coords
-        print(files_coords)
         files = [
             open(file, "r") for file in files_coords.iterdir()
             if file.is_file()
@@ -1711,7 +1896,7 @@ class ModelInfo:
             heights.append(current_height)
 
         # create dict with nodes per historie
-        sort_by_historie = sorted(
+        sort_by_story = sorted(
             coordenates.items(),
             key=lambda x: (x[1]["coord z"], x[1]["coord x"], x[1]["coord y"]),
         )
@@ -1723,17 +1908,17 @@ class ModelInfo:
                 counter += 4
                 continue
             stories_nodes[f"Level {i}"] = {}
-            node1 = sort_by_historie[counter][0]
-            node2 = sort_by_historie[counter + 1][0]
-            node3 = sort_by_historie[counter + 2][0]
-            node4 = sort_by_historie[counter + 3][0]
+            node1 = sort_by_story[counter][0]
+            node2 = sort_by_story[counter + 1][0]
+            node3 = sort_by_story[counter + 2][0]
+            node4 = sort_by_story[counter + 3][0]
             # print(node1,node2,node3,node4)
-            stories_nodes[f"Level {i}"][node1] = sort_by_historie[counter][1]
-            stories_nodes[f"Level {i}"][node2] = sort_by_historie[counter +
+            stories_nodes[f"Level {i}"][node1] = sort_by_story[counter][1]
+            stories_nodes[f"Level {i}"][node2] = sort_by_story[counter +
                                                                   1][1]
-            stories_nodes[f"Level {i}"][node3] = sort_by_historie[counter +
+            stories_nodes[f"Level {i}"][node3] = sort_by_story[counter +
                                                                   2][1]
-            stories_nodes[f"Level {i}"][node4] = sort_by_historie[counter +
+            stories_nodes[f"Level {i}"][node4] = sort_by_story[counter +
                                                                   3][1]
             counter += 4
         heights.insert(
@@ -1746,7 +1931,6 @@ class ModelInfo:
     def give_model_info(self):
         # read file
         file = open(f"{self.folder_info}/model_info.csv", "r")
-
         # get number of nodes and number of elements
         info = [[row for row in line.split(" ")] for line in file]
         nnodes = int(info[0][4])
