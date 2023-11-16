@@ -30,7 +30,10 @@ def computeInputFromH5DRMFile(input_type, input = 'input.h5drm'):
                 output_file = f'{input_type}_{ids[i]}.txt'
                 with open(output_file, 'w') as file:
                     for item in df[col]:
-                        file.write(f"{item}\n")
+                        if input_type == 'velocity':
+                            file.write(f"{item/2}\n")
+                        elif input_type == 'acceleration':
+                            file.write(f"{item}\n")
                 print(f'Archivo {output_file} creado con éxito.')
 
             #NOTE:DEPRECATED LINE, ADD ONLY IF YOU WANNA INCLUDE IT IN THE DT COLUMN

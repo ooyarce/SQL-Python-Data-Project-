@@ -8,7 +8,9 @@ SELECT * FROM structure_abs_acceleration WHERE IDAbsAcceleration >=0;
 
 SELECT * FROM structure_max_drift_per_floor  WHERE IDMaxDriftPerFloor >= 0;
 SELECT * FROM simulation_sm_input  WHERE IDSM_Input >= 0;
-
+SELECT * FROM sm_input_pga WHERE IDPGA >= 0;
+SELECT * FROM sm_input_spectrum WHERE IDSpectrum >= 0;
+SELECT * FROM simulation_type WHERE IDType >= 0;
 # To setup all index autoincrement from 0:
 #ALTER TABLE tu_tabla AUTO_INCREMENT = 1;
 
