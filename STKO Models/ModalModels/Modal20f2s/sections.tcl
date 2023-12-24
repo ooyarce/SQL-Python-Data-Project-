@@ -3,7 +3,7 @@ section Elastic 1 23025203.6 0.25 0.005208333333333333 0.005208333333333333 9593
 section ElasticMembranePlateSection 2 23025203.6 0.2 0.15 4.1 1.0
 section ElasticMembranePlateSection 3 23025203.6 0.2 0.15 5.45 1.0
 section ElasticMembranePlateSection 4 23025203.6 0.2 0.15 6.8 1.0
-section ElasticMembranePlateSection 5 23025203.6 0.2 0.45 2.4 1.0
+section ElasticMembranePlateSection 5 23025203.6 0.2 0.45 0.0 1.0
 section ElasticMembranePlateSection 6 23025203.6 0.2 0.4 2.4 1.0
 section ElasticMembranePlateSection 7 23025203.6 0.2 0.4 2.4 1.0
 section ElasticMembranePlateSection 8 23025203.6 0.2 0.3 2.4 1.0

@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=OptMesh    # Job name
+#SBATCH --job-name=FBNM   # Job name
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=16
-#SBATCH --output=Test_OptimizedMesh.log   # Standard output and error log
+#SBATCH --output=log.log   # Standard output and error log
 pwd; hostname; date
 
 export OMP_NUM_THREADS=1
