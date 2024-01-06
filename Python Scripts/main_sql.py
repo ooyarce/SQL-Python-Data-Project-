@@ -58,10 +58,10 @@ first_time       = False
 upload_data      = True
 
 # Query the data from the database
-query_drift         = True
-query_input_spectra = True
-query_story_spectra = True
-query_base_spectra  = True
+query_drift         = False
+query_input_spectra = False
+query_story_spectra = False
+query_base_spectra  = False
 query_time_shear    = True
 
 # Conditions
@@ -72,11 +72,11 @@ if upload_data:
     Model.simulation()
 
 
+cursor   = Model.Manager.cursor
 # ===================================================================================================
 # ==================================== QUERY THE DRIFT PER FLOOR ====================================
 # ====================================================================================================
 if query_drift:
-    cursor   = Model.Manager.cursor
     query    = "SELECT * FROM structure_max_drift_per_floor "
     cursor.execute(query)
     data     = cursor.fetchall() # list of tuples, where every tuple is a row, where every value is a column
@@ -99,7 +99,7 @@ if query_drift:
 # ==================================== QUERY THE INPUT SPECTRUM =====================================
 # ====================================================================================================
 if query_input_spectra:
-    cursor   = Model.Manager.cursor
+    #cursor   = Model.Manager.cursor
     query    = "SELECT * FROM sm_input_spectrum "
     cursor.execute(query)
     data     = cursor.fetchall() # list of tuples, where every tuple is a row, where every value is a column
@@ -118,8 +118,8 @@ if query_input_spectra:
 
 #FIXME: THIS IS MADE BY LOCAL MODEL DATA, YOU SHOULD DO THIS VIA A QUERY(abs_accelerations table)
 # ===================================================================================================
-# ===================================== QUERY STRUCTURE SPECTRUM ====================================
-# ====================================================================================================
+# ===================================== LOCAL STRUCTURE SPECTRUM ====================================
+# ===================================================================================================
 stories_df = Model.story_nodes_df.iloc[8:] # Get df with nodes from story 0 to roof
 accel_df   = Model.accel_mdf
 T = np.linspace(0.003, 2.5, 1000)
@@ -133,13 +133,20 @@ if query_story_spectra:
     save_path = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Story Spectrums'
     for dir_ in dirs_lst:
         plotter = Plotting(Model, save_path)
-        plotter.plotStoriesSpectrums(Model, dir_, accel_df, stories_df, stories_lst, T)
+        plotter.plotLocalStoriesSpectrums(Model, dir_, accel_df, stories_df, stories_lst, T)
 
 if query_base_spectra:
     # Plotting the base spectrum
     save_path = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Spectrums'
     plotter = Plotting(Model, save_path)
-    plotter.plotBaseSpectrum(Model, accel_df, stories_df, T, spectrum_modes, plot_z=False)
+    plotter.plotLocalBaseSpectrum(Model, accel_df, stories_df, T, spectrum_modes, plot_z=False)
+
+# ===================================================================================================
+# ===================================== QUERY STRUCTURE SPECTRUM ====================================
+# ===================================================================================================
+
+
+
 
 #FIXME: THIS IS MADE BY LOCAL MODEL DATA, YOU SHOULD DO THIS VIA A QUERY(shear base table)
 # ====================================================================================================
@@ -159,10 +166,10 @@ if query_time_shear:
 
     # Plot X
     plotter = Plotting(Model, save_path)
-    ax      = plotter.plotShearBaseOverTime(time, time_shear_x_fma, time_shear_x_react, 'x')
+    ax      = plotter.plotLocalShearBaseOverTime(time, time_shear_x_fma, time_shear_x_react, 'x')
 
     # Plot Y
     plotter = Plotting(Model, save_path)
-    ax      = plotter.plotShearBaseOverTime(time, time_shear_y_fma, time_shear_y_react, 'y')
+    ax      = plotter.plotLocalShearBaseOverTime(time, time_shear_y_fma, time_shear_y_react, 'y')
 
 
