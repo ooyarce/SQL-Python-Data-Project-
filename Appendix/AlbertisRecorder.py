@@ -17,7 +17,7 @@ def makeXObjectMetaData():
 		a.group = group
 		a.description = (
 			html_par(html_begin()) +
-			html_par(html_boldtext(name)+'<br/>') + 
+			html_par(html_boldtext(name)+'<br/>') +
 			html_par(descr) +
 			html_par(html_href('','')+'<br/>') +
 			html_end()
@@ -34,8 +34,8 @@ def makeXObjectMetaData():
 		html_par(html_href('https://opensees.berkeley.edu/wiki/index.php/Node_Recorder','Node Recorder')+'<br/>') +
 		html_end()
 		)
-	#at_file_name.setDefault(None)	
- 
+	#at_file_name.setDefault(None)
+
 	# -file
 	at_file = MpcAttributeMetaData()
 	at_file.type = MpcAttributeType.Boolean
@@ -85,7 +85,7 @@ def makeXObjectMetaData():
 		html_end()
 		)
 	at_extension.setDefault('.txt')
-	
+
 	# -dof_X
 	at_dof_X = MpcAttributeMetaData()
 	at_dof_X.type = MpcAttributeType.Boolean
@@ -132,7 +132,7 @@ def makeXObjectMetaData():
 	at_nodes.group = 'Nodes'
 	at_nodes.description = (
 		html_par(html_begin()) +
-		html_par(html_boldtext('node')+'<br/>') + 
+		html_par(html_boldtext('node')+'<br/>') +
 		html_par('Tags of nodes whose response is being recorded')+
 		html_par(html_href('https://opensees.berkeley.edu/wiki/index.php/Node_Recorder','Node Recorder')+'<br/>') +
 		html_end()
@@ -341,11 +341,11 @@ def makeXObjectMetaData():
 		html_end()
 		)
 	at_deltaT.setDefault(1.0)
-	
-	
+
+
 	xom = MpcXObjectMetaData()
 	xom.name = 'AlbertisRecorder'
-	
+
 	#File
 	xom.addAttribute(at_file_name)
 	xom.addAttribute(at_file)
@@ -409,15 +409,15 @@ def writeTcl(pinfo):
 	doc = PyMpc.App.caeDocument()
 	if(doc is None):
 		raise Exception('null cae document')
-	
+
 	ClassName = xobj.name
 	if pinfo.currentDescription != ClassName:
 		pinfo.out_file.write('\n{}# {} {}\n'.format(pinfo.indent, xobj.Xnamespace, ClassName))
 		pinfo.currentDescription = ClassName
 
 
- 
- 
+
+
 	#-----------------------------------------------------------|
 	#------------------FILE CONFIGURATION-----------------------S|
 	#-----------------------------------------------------------|
@@ -432,14 +432,14 @@ def writeTcl(pinfo):
 	if(at_extension is None):
 		raise Exception('Error: cannot find "Extension" attribute')
 	extension = at_extension.string
- 
+
 	if '.' not in extension:
 		raise Exception('Extension not valid')
 
 	# File type definition
 	file_type = ''
 	at_file_type = xobj.getAttribute('-file')
- 
+
 	if(at_file_type is None):
 		raise Exception('Error: cannot find "-file" attribute')
 	file_type += '-file' if at_file_type.boolean else ''
@@ -461,28 +461,31 @@ def writeTcl(pinfo):
 	file_type += '-binary' if at_file_type.boolean else ''
 	if only_type and at_file_type.boolean:
 		raise Exception('Only one type of file can be selected')
-	
+
+
+
+
 	#-----------------------------------------------------------|
 	#---------------------------NODES---------------------------|
 	#-----------------------------------------------------------|
- 
+
 	# Get nodes
 	nodes_at = xobj.getAttribute('-node')
 	if(nodes_at is None):
 		raise Exception('Error: cannot find "nodes" attribute')
-	SelectionSets = nodes_at.indexVector	
+	SelectionSets = nodes_at.indexVector
 
 	# Get node tags
 	nodes_tags = []
 	ele_tags = []
 	for selection_set_id in SelectionSets:
-		if not selection_set_id in doc.selectionSets: 
+		if not selection_set_id in doc.selectionSets:
 			continue
 		selection_set = doc.selectionSets[selection_set_id]
 
 		for geometry_id, geometry_subset in selection_set.geometries.items():
 			mesh_of_geom = doc.mesh.meshedGeometries[geometry_id]
-			
+
 			for domain_id in geometry_subset.vertices:
 				domain = mesh_of_geom.vertices[domain_id]
 				if domain.id not in nodes_tags:
@@ -492,7 +495,7 @@ def writeTcl(pinfo):
 				domain = mesh_of_geom.edges[domain_id]
 				extract_tags(pinfo, domain, nodes_tags, xobj)
 				#extract_eletags(pinfo, domain, nodes_tags, xobj)
-			
+
 			for domain_id in geometry_subset.faces:
 				domain = mesh_of_geom.faces[domain_id]
 				extract_tags(pinfo, domain, ele_tags, xobj)
@@ -505,7 +508,7 @@ def writeTcl(pinfo):
 		for interaction_id in selection_set.interactions:
 			domain = doc.mesh.meshedInteractions[interaction_id]
 			extract_tags(pinfo, domain, nodes_tags, xobj)
-	
+
 	# Defining responses types
 	respType = ''
 	def_respTypes = [' disp',' vel',' accel',' incrDisp','eigen',' reaction',' rayleighForces']
@@ -543,7 +546,7 @@ def writeTcl(pinfo):
 	if(at_time is None):
 		raise Exception('Error: cannot find "-time" attribute')
 	sopt += ' -time ' if at_time.boolean else ''
- 
+
 	# Optionals 2
 	at_precision = xobj.getAttribute('precision')
 	at_nSD = xobj.getAttribute('$nSD')
@@ -557,23 +560,24 @@ def writeTcl(pinfo):
 	nodes_number = len(doc.mesh.nodes)
 	ele_number = len(doc.mesh.elements)
 	partitions = pinfo.process_count
- 
+
+
+
+
+
 	#-----------------------------------------------------------|
 	#------------------WRITE RECORDER---------------------------|
 	#-----------------------------------------------------------|
 	# Create 'Results' folders
 	path = os.path.abspath(pinfo.out_dir)
-	
 
-
- 
 	# Create folder for Partitions Info files and check model
 	os.makedirs(f'{path}/PartitionsInfo/info', exist_ok=True)
 	with open(f'{path}\\PartitionsInfo\\info\\model_info.csv', 'w') as info_file:
 		info_file.write(f'Number of nodes = {nodes_number}\n')
 		info_file.write(f'Number of elements = {ele_number}\n')
 		info_file.write(f'Number of partitions = {partitions}\n')
-	
+
 	# Parallel computing
 	if pinfo.process_count > 1:
 		process_block_count = 0
@@ -582,7 +586,7 @@ def writeTcl(pinfo):
 			#Check if directories exist and create them if not
 			os.makedirs(f'{path}/PartitionsInfo/coords', exist_ok=True)
 			os.makedirs(f'{path}/PartitionsInfo/{respType[1:]}', exist_ok=True)
-   
+
 			#Add coordinate info
 			if respType == ' disp':
 				os.makedirs(f'{path}/Displacements', exist_ok=True)
@@ -597,7 +601,7 @@ def writeTcl(pinfo):
 						coords_file.write("{} {} {} {} \n".format(node_id, nodex,nodey,nodez))
 			elif respType == ' accel': os.makedirs(f'{path}/Accelerations', exist_ok=True)
 			elif respType == ' reaction': os.makedirs(f'{path}/Reactions', exist_ok=True)
-   
+
 			#Add info about accelerations, displacements and reactions
 			with open(f'{path}/PartitionsInfo/{respType[1:]}/{respType[1:]}_nodes_part-{process_id}.csv','w') as results_file:
 				for node_id in nodes_tags:
@@ -605,7 +609,7 @@ def writeTcl(pinfo):
 					if doc.mesh.partitionData.nodePartition(node_id) != process_id:
 						continue
 					results_file.write(f'{node_id}\n')
-		
+
 					#This lines are about getting the output
 					if not first_done:
 						if process_block_count == 0:
@@ -619,7 +623,7 @@ def writeTcl(pinfo):
 				if process_block_count > 0 and first_done:
 					str_tcl += '{}{}'.format(pinfo.indent, '}')
 
-
+ 	#TODO: this is not well implement
 	# Secuencial computing
 	else:
 		os.makedirs(f'{path}/coords', exist_ok=True)
@@ -635,11 +639,11 @@ def writeTcl(pinfo):
 
 		with open(f'{path}/{respType[1:]}/{respType[1:]}_nodes.csv','w') as results_file:
 			for node_id in nodes_tags:
-				results_file.write(f'{node_id}\n')	
+				results_file.write(f'{node_id}\n')
 				node_str += f' {node_id}'
 				str_tcl += '{}recorder Node {} "{}{}" -node {}{} -dof{}{}'.format(pinfo.indent,file_type,file_name,extension, node_str , sopt,dofs, respType,'\n')
 	str_tcl += '{}{}'.format(pinfo.indent,'\n')
 	pinfo.out_file.write(str_tcl)
 
-		
+
 

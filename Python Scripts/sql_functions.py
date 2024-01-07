@@ -83,6 +83,8 @@ class ModelSimulation:
         self._bench_comments    = kwargs.get("bench_comments", "No comments")
         self._perf_comments     = kwargs.get("perf_comments", "No comments")
         self._specs_comments    = kwargs.get("specs_comments", "No comments")
+        self._box_comments      = kwargs.get("box_comments", "No comments")
+        self._gspecs_comments   = kwargs.get("gspecs_comments", "No comments")
         self._pga_units         = kwargs.get("pga_units", "m/s/s")
         self._resp_spectrum     = kwargs.get("resp_spectrum", "m/s/s")
         self._abs_acc_units     = kwargs.get("abs_acc_units", "m/s/s")
@@ -110,8 +112,8 @@ class ModelSimulation:
             self.loadModelInfo()
             self.loadDataFrames()
 
+
         # Connect to Dabase
-        print("Attempting to establish the SSH Tunnel...")
         self._test_mode  = kwargs.get("windows_os", False)
         self.db_user     = user
         self.db_password = password
@@ -267,11 +269,6 @@ class ModelSimulation:
         cursor = self.Manager.cursor
         comments = kwargs.get("specs_comments", self._specs_comments)
 
-        # Check if the linearity parameter is correct
-        if self._linearity < 1 or self._linearity > 2:
-            raise TypeError(
-                "The Linearity parameter can only take 1 or 2 values(int).")
-
         # Upload results to the database
         insert_query = (
             "INSERT INTO model_specs_structure ("
@@ -280,6 +277,14 @@ class ModelSimulation:
         values = (self._linearity,self.nnodes,self.nelements,self.stories,self.subs,json.dumps(self.heights),comments)
         cursor.execute(insert_query, values)
         print("model_specs_structure table updated correctly!\n")
+
+    #TODO: THIS FUNCTION IS NOT FINISHED YET
+    def model_specs_box(self, **kwargs):
+        pass
+
+    #TODO: THIS FUNCTION IS NOT FINISHED YET
+    def model_specs_global(self, **kwargs):
+        pass
 
     def model_structure_perfomance(self, **kwargs):
         """
@@ -641,7 +646,7 @@ class ModelSimulation:
         self.base_story_df             = self._computeBaseDF()[0]
         self.base_displ_df             = self._computeBaseDF()[1]
         self.input_df                  = self._computeInputAccelerationsDF()
-
+        print('Done!\n')
     # ==================================================================================
     # COMPUTE DATAFRAMES FOR ACCELERATIONS AND DISPLACEMENTS
     # ==================================================================================
@@ -1068,12 +1073,12 @@ class ModelSimulation:
         """
         import time
         if self._test_mode:
+            print('Connecting to the database...')
             ModelSimulation.initialize_ssh_tunnel()
             time.sleep(1)
             self.Manager = DataBaseManager(self.db_user, self.db_password, self.db_host,
                                                 self.db_database)
-            print("Database Manager initialized correctly!")
-            print(f"Connected to {self.db_database} database as {self.db_user}.")
+            print(f"Succesfully connected to '{self.db_database}' database as '{self.db_user}'.")
 
     #DEPRECATED METHOD
     def get_sm_id(self):
@@ -1415,17 +1420,17 @@ class ModelSimulation:
 
             # Search for the local port in the netstat output
             if re.search(rf'\b{local_port}\b', netstat_output):
-                print(f"El puerto {local_port} ya está en uso, lo que indica que el túnel puede estar activo.")
-                return False  # The tunnel is already active
+                print("SSH tunnel already established and operational...")
 
-            # If the local port is not in use, open the tunnel
-            command = f"ssh  -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
-            subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
+            else:
+                # If the local port is not in use, open the tunnel
+                print("Attempting to establish the SSH Tunnel...")
+                command = f"ssh  -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
+                subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
 
         except Exception as e:
-            print(f"Error trying to open cmd:  {e}")
-            return False
-        return True
+            raise DatabaseError(f"Error trying to open cmd:  {e}")
+
 
 
 # ==================================================================================
