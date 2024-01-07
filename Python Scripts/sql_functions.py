@@ -1,6 +1,7 @@
 # ==================================================================================
 # IMPORT LIBRARIES
 # ==================================================================================
+from mysql.connector.errors import DatabaseError
 from matplotlib import pyplot as plt
 from pathlib import Path
 from typing import Optional
@@ -15,19 +16,56 @@ import warnings
 import pickle
 import json
 import math
+import re
+def mapSimTypeID(sim_type):
+    simulation_type_dict = {'FixBase': 1,'AbsBound': 2,'DRM': 3,}
+    st = simulation_type_dict.get(sim_type, None)
+    if st is None:
+        raise Exception(f"Unrecognized simulation type '{sim_type}'.\n"
+                        "Valid simulation types are 'FixBase', 'AbsBound', and 'DRM'.\n"
+                        "Please check that the 'Path' and 'Folder Names' are correct.")
+    return st
+def getModelKeys(project_path):
+    sim_type = project_path.parents[3].parent.name
+
+    mag      = project_path.parents[2].name[1:]
+    if mag not in ['6.5', '6.7', '6.9', '7.0']:
+        raise Exception(f"Unrecognized magnitude '{mag}'.\n"
+                        "Valid magnitudes are '6.5', '6.7', '6.9', and '7.0'.\n"
+                        "Please check that the 'Path' and 'Folder Names' are correct.")
+
+    rup      = project_path.parents[1].name[4:6]
+    if rup not in ['bl', 'ns', 'sn']:
+        raise Exception(f"Unrecognized rupture type '{rup}'.\n"
+                        "Valid rupture types are 'bl', 'ns', and 'sn'.\n"
+                        "Please check that the 'Path' and 'Folder Names' are correct.")
+
+    iter     = project_path.parents[1].name[-1]
+    if iter not in ['1', '2', '3']:
+        raise Exception(f"Unrecognized iteration '{iter}'.\n"
+                        "Valid iterations are '1', '2', and '3'.\n"
+                        "Please check that the 'Path' and 'Folder Names' are correct.")
+
+    station = project_path.parent.name[-2:]
+    if station not in ['s0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9']:
+        raise Exception(f"Unrecognized station '{station}'.\n"
+                        "Valid stations are 's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', and 's9'.\n"
+                        "Please check that the 'Path' and 'Folder Names' are correct.")
+    return sim_type, mag, rup, iter, station
+
 
 # ==================================================================================
 # MAIN CLASS
 # ==================================================================================
 # TODO: See how to get parameters from the soil region, you know that in some of the tcl data files you can find the information
-# TODO: See how to store the data such as the acceleration, displacement and reactions as pickle files, not optimized json texts
+# TODO: See how to store the data such as the acceleration, displacement and reactions as pickle files, not optimized json texts (done?)
 class ModelSimulation:
 
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
     def __init__(self,user='omarson',password='Mackbar2112!',host='localhost',database='stkodatabase',**kwargs):
-
+        print('=============================================')
         # Define generic parameters
         bench_cluster = "Esmeralda HPC Cluster by jaabell@uandes.cl"
         model_path = Path(__file__).parents[3]
@@ -55,13 +93,17 @@ class ModelSimulation:
         self._linearity         = kwargs.get("linearity", 1)
         self._time_step         = kwargs.get("time_step", 0.0025)
         self._total_time        = kwargs.get("total_time", 40)
-        self._jump              = kwargs.get("jump", 8) # Use this to reduce the size of the data
+        self._jump              = kwargs.get("jump", 8)
         self._cfactor           = kwargs.get("cfactor", 1.0)
         self._load_df_info      = kwargs.get("load_df_info", True)
+        print(f'=========== {self._model_name} =============')
+        print('=============================================')
 
         # Assert values
-        assert self._linearity in [1,2], "Linearity can only be 1 (Linear) or 2 (Non-Linear)"
-        assert self._sim_type in [1,2,3], "Simulation type can only be 1 (Fix Base), 2 (AbsBound) or 3(DRM)"
+        if self._linearity not in [1,2]:
+            raise AttributeError("Linearity can only be 1 (Linear) or 2 (Non-Linear)")
+        if self._sim_type not in [1,2,3]:
+            raise AttributeError("Simulation type can only be 1 (Fix Base), 2 (AbsBound) or 3(DRM)")
 
         # Load model info
         if self._load_df_info:
@@ -77,7 +119,13 @@ class ModelSimulation:
         self.db_database = database
         self.connect()
         print('Done!\n')
+        print('=============================================')
 
+        try:
+            self.model_linearity()
+            self.simulation_type()
+        except DatabaseError as e:
+            pass
     # ==================================================================================
     # SQL FUNCTIONS
     # ==================================================================================
@@ -100,8 +148,7 @@ class ModelSimulation:
         self.simulation_model()
         Model = cursor.lastrowid
 
-        self.simulation_sm_input()
-        SM_Input = cursor.lastrowid
+        SM_Input = self.simulation_sm_input()
 
         # Fet date
         date = datetime.datetime.now()
@@ -129,20 +176,38 @@ class ModelSimulation:
         cursor = self.Manager.cursor
         sm_input_comments = kwargs.get("sm_input_comments", self._sm_input_comments)
 
-        # PGA y Spectrum
-        Pga = self.sm_input_pga()
-        Pga = cursor.lastrowid
-        Spectrum = self.sm_input_spectrum()
-        Spectrum = cursor.lastrowid
+        # Define the values for the columns that must be unique together
+        unique_values = (self.magnitude, self.rupture, self.location, self.iteration)
 
-        # Insert data into database
-        insert_query = (
-            "INSERT INTO simulation_sm_input(idPGA, idSpectrum, Magnitude,"
-            "Rupture_type, Location, RealizationID, Comments)"
-            " VALUES(%s,%s,%s,%s,%s,%s,%s)")
-        values = (Pga,Spectrum,self.magnitude,self.rupture,self.location,self.iteration,sm_input_comments)
-        cursor.execute(insert_query, values)
-        print("simulation_sm_input table updated correctly!\n")
+        # Check if an entry already exists with these unique values
+        search_query = """
+        SELECT idSM_Input FROM simulation_sm_input
+        WHERE Magnitude = %s AND Rupture_type = %s AND Location = %s AND RealizationID = %s
+        """
+        cursor.execute(search_query, unique_values)
+        existing_entry = cursor.fetchone() # Returns None if no entry is found and the ID if it is found
+        if existing_entry:
+            # An entry with the same values already exists, so reuse its idSM_Input
+            sm_input_id = existing_entry[0]
+            print(f"Reusing existing simulation_sm_input with id: {sm_input_id}")
+        else:
+            # PGA y Spectrum
+            Pga = self.sm_input_pga()
+            Pga = cursor.lastrowid
+            Spectrum = self.sm_input_spectrum()
+            Spectrum = cursor.lastrowid
+
+            # Insert data into database
+            insert_query = (
+                "INSERT INTO simulation_sm_input(idPGA, idSpectrum, Magnitude, "
+                "Rupture_type, Location, RealizationID, Comments) "
+                "VALUES(%s,%s,%s,%s,%s,%s,%s)")
+            values = (Pga,Spectrum,self.magnitude,self.rupture,self.location,self.iteration,sm_input_comments)
+            cursor.execute(insert_query, values)
+            sm_input_id = cursor.lastrowid  # Get the new idSM_Input
+            print(f"Inserted new simulation_sm_input with id: {sm_input_id}")
+        print(f'simulation_sm_input table updated correctly!\n')
+        return sm_input_id
 
     def simulation_model(self, **kwargs):
         """
@@ -576,6 +641,7 @@ class ModelSimulation:
         self.base_story_df             = self._computeBaseDF()[0]
         self.base_displ_df             = self._computeBaseDF()[1]
         self.input_df                  = self._computeInputAccelerationsDF()
+
     # ==================================================================================
     # COMPUTE DATAFRAMES FOR ACCELERATIONS AND DISPLACEMENTS
     # ==================================================================================
@@ -1341,16 +1407,26 @@ class ModelSimulation:
         return u_t, up_t
 
     @staticmethod
-    def initialize_ssh_tunnel():
-        command = "ssh -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
+    def initialize_ssh_tunnel(server_alive_interval = 60):
+        local_port = "3306"
         try:
-            # Ejecutar el comando SSH en un nuevo terminal cmd, pero minimizado
+            # Execute netstat y capture the output
+            netstat_output = subprocess.check_output(['netstat', '-ano'], text=True)
+
+            # Search for the local port in the netstat output
+            if re.search(rf'\b{local_port}\b', netstat_output):
+                print(f"El puerto {local_port} ya está en uso, lo que indica que el túnel puede estar activo.")
+                return False  # The tunnel is already active
+
+            # If the local port is not in use, open the tunnel
+            command = f"ssh  -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
             subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
-            #print("Attempting to establish the SSH Tunnel...")
+
         except Exception as e:
             print(f"Error trying to open cmd:  {e}")
             return False
         return True
+
 
 # ==================================================================================
 # SECONDARY CLASSES
@@ -1426,12 +1502,12 @@ class ModelInfo:
             print("---------------------------------------------|")
         self.accelerations, self.acce_nodes  = self.give_accelerations()
         self.displacements, self.displ_nodes = self.give_displacements()
+        self.reactions, self.reaction_nodes  = self.give_reactions() if sim_type==1 else (None, None)
 
         if self.verbose:
             print('\n---------------------------------------------|')
             print('------------- INITIALIZING DATA -------------|')
             print('---------------------------------------------|')
-        self.reactions, self.reaction_nodes = self.give_reactions() if sim_type==1 else (None, None)
         self.nnodes, self.nelements, self.npartitions = self.give_model_info()
 
         self.coordinates,\
@@ -1806,7 +1882,8 @@ class Plotting:
     def plotLocalShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], time_shear_react:pd.Series, dir_:str):
         # Input params
         self.file_name = f'{self.sim_type}_{self.mag}_{self.rup_type}_s{self.station}_{dir_.upper()}'
-        assert dir_ in ['x','X','y','Y','e','E','n','N'], f'dir must be x, y, e or n! Current: {dir}'
+        if dir_ not in ['x','X','y','Y','e','E','n','N']:
+            raise ValueError(f'dir must be x, y, e or n! Current: {dir}')
         fig, ax, _ = self.plotConfig(self.base_shear_ss_title)
         ax.set_xlabel('Time (s)')
         ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')
@@ -1825,7 +1902,7 @@ class NCh433Error(Exception):
     def __init__(self, message):
         super().__init__(message)
 
-class NCh433_Of1996_Mod2009:
+class NCh433_2012:
 
     def __init__(self, zone, soil_category, importance):
         self.name = "NCh433_Of1996_Mod2009"
@@ -1989,49 +2066,18 @@ class NCh433_Of1996_Mod2009:
         :param W: seismic weight
         :return: minimum base shear
         """
-        g = 9.81
-        I = self.importance
+        g = self.g
+        Importance = self.importance
         Ao = self.computePGA_c6_2_3_2(self.zone)
-        Qmin = I*Ao*W/(6.*g)
+        Qmin = Importance*Ao*W/(6.*g)
         return Qmin
 
     def computeMaxBaseShear_c6_3_7_2(self, R, W):
-        I = self.importance
+        Importance = self.importance
         Cmax = self.computeCMax_c6_2_3_1_2(R)
-        Qmax = I*Cmax*W
+        Qmax = Importance*Cmax*W
         return Qmax
 
-
-    # SPECTRUM
-    def computeRast_c6_3_5_3(self, Tast, Ro):
-        """
-
-        :param Tast: fundamental period in the direction of analysis
-        :param Ro: reduction factor "Ro"
-        :return: Rast, used for reduction of the spectrum.
-        """
-        params = self.computeSoilParameters_c4_2(self.soil_category)
-        To = params["To"]
-        Rast = 1. + Tast / (0.1 * To + Tast / Ro)
-        return Rast
-
-    def computeSpectrumValues_c6_3_5_1(self, T_values, Rast):
-        Ao = self.computePGA_c6_2_3_2(self.zone)
-        params = self.computeSoilParameters_c4_2(self.soil_category)
-        S  = params['S']
-        To = params["To"]
-        p  = params["p"]
-        I  = self.importance
-
-        def computeSa(Ti):
-            # alpha = (1. + 4.5*(Ti/To)**p) / (1. + (Ti/To)**3)
-            # Sa = I * Ao * alpha / Rast
-            alpha = DS.DS61.computeAlpha_c12_2(To, Ti, p)
-            Sa    = DS.DS61.computeSa_c12_1(S, Ao, alpha, I, Rast)
-            return Sa
-
-        Sa_values = list(map(computeSa, T_values))
-        return Sa_values
 
 
 
