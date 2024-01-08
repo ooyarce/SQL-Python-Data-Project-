@@ -53,14 +53,11 @@ def getModelKeys(project_path):
                         "Please check that the 'Path' and 'Folder Names' are correct.")
     return sim_type, mag, rup, iter, station
 
-
+#TODO: Add the MaxTorsionAnglegasdfasdf asdfasdfa eafasdfadf
 # ==================================================================================
 # MAIN CLASS
 # ==================================================================================
-# TODO: See how to get parameters from the soil region, you know that in some of the tcl data files you can find the information
-# TODO: See how to store the data such as the acceleration, displacement and reactions as pickle files, not optimized json texts (done?)
 class ModelSimulation:
-
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
@@ -82,7 +79,7 @@ class ModelSimulation:
         self._bench_cluster     = kwargs.get("bench_cluster", bench_cluster)
         self._bench_comments    = kwargs.get("bench_comments", "No comments")
         self._perf_comments     = kwargs.get("perf_comments", "No comments")
-        self._specs_comments    = kwargs.get("specs_comments", "No comments")
+        self._specs_comments    = kwargs.get("str_specs_comments", "No comments")
         self._box_comments      = kwargs.get("box_comments", "No comments")
         self._gspecs_comments   = kwargs.get("gspecs_comments", "No comments")
         self._pga_units         = kwargs.get("pga_units", "m/s/s")
@@ -98,6 +95,11 @@ class ModelSimulation:
         self._jump              = kwargs.get("jump", 8)
         self._cfactor           = kwargs.get("cfactor", 1.0)
         self._load_df_info      = kwargs.get("load_df_info", True)
+        self._vs30              = kwargs.get("vs30", 750) #ms
+        self._dimentions        = kwargs.get("soil_dim", "3D")
+        self._material          = kwargs.get("soil_mat_name", "Elastoisotropic")
+        self._soil_ele_type     = kwargs.get("soil_ele_type", "SSPBrick Element")
+        self._mesh_struct       = kwargs.get("mesh_struct", "Structured")
         print(f'=========== {self._model_name} =============')
         print('=============================================')
 
@@ -107,12 +109,6 @@ class ModelSimulation:
         if self._sim_type not in [1,2,3]:
             raise AttributeError("Simulation type can only be 1 (Fix Base), 2 (AbsBound) or 3(DRM)")
 
-        # Load model info
-        if self._load_df_info:
-            self.loadModelInfo()
-            self.loadDataFrames()
-
-
         # Connect to Dabase
         self._test_mode  = kwargs.get("windows_os", False)
         self.db_user     = user
@@ -120,14 +116,20 @@ class ModelSimulation:
         self.db_host     = host
         self.db_database = database
         self.connect()
-        print('Done!\n')
         print('=============================================')
 
+        # Load model info
+        if self._load_df_info:
+            self.loadModelInfo()
+            self.loadDataFrames()
+
+        # Init database tables in case they are not created
         try:
             self.model_linearity()
             self.simulation_type()
         except DatabaseError as e:
             pass
+
     # ==================================================================================
     # SQL FUNCTIONS
     # ==================================================================================
@@ -149,6 +151,8 @@ class ModelSimulation:
         # Fills simulation and simulation_sm_input tables
         self.simulation_model()
         Model = cursor.lastrowid
+        self.model_specs_box(Model)
+        self.model_specs_global(Model)
 
         SM_Input = self.simulation_sm_input()
 
@@ -182,16 +186,12 @@ class ModelSimulation:
         unique_values = (self.magnitude, self.rupture, self.location, self.iteration)
 
         # Check if an entry already exists with these unique values
-        search_query = """
-        SELECT idSM_Input FROM simulation_sm_input
-        WHERE Magnitude = %s AND Rupture_type = %s AND Location = %s AND RealizationID = %s
-        """
-        cursor.execute(search_query, unique_values)
-        existing_entry = cursor.fetchone() # Returns None if no entry is found and the ID if it is found
+        existing_entry = self.Manager.check_if_sm_input(unique_values)
         if existing_entry:
             # An entry with the same values already exists, so reuse its idSM_Input
             sm_input_id = existing_entry[0]
             print(f"Reusing existing simulation_sm_input with id: {sm_input_id}")
+
         else:
             # PGA y Spectrum
             Pga = self.sm_input_pga()
@@ -208,7 +208,7 @@ class ModelSimulation:
             cursor.execute(insert_query, values)
             sm_input_id = cursor.lastrowid  # Get the new idSM_Input
             print(f"Inserted new simulation_sm_input with id: {sm_input_id}")
-        print(f'simulation_sm_input table updated correctly!\n')
+        print('simulation_sm_input table updated correctly!\n')
         return sm_input_id
 
     def simulation_model(self, **kwargs):
@@ -225,15 +225,14 @@ class ModelSimulation:
         Benchmark = cursor.lastrowid
         self.model_structure_perfomance()
         StructurePerfomance = cursor.lastrowid
-        self.model_specs_structure()
-        SpecsStructure = cursor.lastrowid
+        SpecsStructure = self.model_specs_structure()
 
         # Insert data into database
         insert_query = ("INSERT INTO simulation_model("
                         "idBenchmark,idStructuralPerfomance,idSpecsStructure,"
                         "ModelName,Comments) VALUES(%s,%s,%s,%s,%s)")
         values = (Benchmark,StructurePerfomance,SpecsStructure,model_name,model_comments)
-        cursor.execute(insert_query, values)
+        cursor.execute(insert_query, values) # type: ignore
         print("simulation_model table updated correctly!\n")
 
     def model_benchmark(self, **kwargs):
@@ -254,7 +253,7 @@ class ModelSimulation:
                   self.simulation_time,
                   self.memory_by_results,
                   self.memory_by_model,
-                  self.nodes,
+                  self.cluster_nodes,
                   self.threads,
                   bench_cluster,
                   comments)
@@ -268,23 +267,59 @@ class ModelSimulation:
         # Initialize parameters
         cursor = self.Manager.cursor
         comments = kwargs.get("specs_comments", self._specs_comments)
+        nnodes    = self.str_nnodes
+        nelements = self.str_nelements
+
+        # Define the values for the columns that must be unique together
+        unique_values = (self._linearity,nnodes,nelements,self.stories,self.subs,json.dumps(self.heights),comments)
+
+        # Check if an entry already exists with these unique values
+        existing_entry = self.Manager.check_if_specs_structure(unique_values)
+        if existing_entry:
+            # An entry with the same values already exists, so reuse its idSM_Input
+            model_specs_structure_id = existing_entry[0]
+            print(f"Reusing existing model_specs_structure with id: {model_specs_structure_id}")
+        else:
+            # Upload results to the database
+            insert_query = (
+                "INSERT INTO model_specs_structure ("
+                "idLinearity, Nnodes, Nelements, Nstories, Nsubs, InterstoryHeight, Comments) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s)")
+            values = (self._linearity,nnodes,nelements,self.stories,self.subs,json.dumps(self.heights),comments)
+            cursor.execute(insert_query, values) # type: ignore
+            model_specs_structure_id = cursor.lastrowid  # Get the new idSM_Input
+            print(f"Inserted new model_specs_structure with id: {model_specs_structure_id}")
+        print("model_specs_structure table updated correctly!\n")
+        return model_specs_structure_id
+
+    def model_specs_box(self, idModel, **kwargs):
+        """
+        This function is used to export data into the model_specs_box table database.
+        """
+        cursor = self.Manager.cursor
+        comments = kwargs.get("box_comments", self._box_comments)
 
         # Upload results to the database
         insert_query = (
-            "INSERT INTO model_specs_structure ("
-            "idLinearity, Nnodes, Nelements, Nstories, Nsubs,"
-            "InterstoryHeight, Comments) VALUES (%s,%s,%s,%s,%s,%s,%s)")
-        values = (self._linearity,self.nnodes,self.nelements,self.stories,self.subs,json.dumps(self.heights),comments)
+            "INSERT INTO model_specs_box ("
+            "idModel, idLinearity, Vs30, Nnodes, Nelements, Dimentions, Material, ElementType, Comments) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+        values = (idModel, self._linearity, self._vs30, self.soil_nnodes, self.soil_nelements, self._dimentions, self._material, self._soil_ele_type, comments)
         cursor.execute(insert_query, values)
-        print("model_specs_structure table updated correctly!\n")
+        print("model_specs_box table updated correctly!\n")
 
-    #TODO: THIS FUNCTION IS NOT FINISHED YET
-    def model_specs_box(self, **kwargs):
-        pass
+    def model_specs_global(self, idModel, **kwargs):
+        cursor = self.Manager.cursor
+        comments = kwargs.get("gspecs_comments", self._gspecs_comments)
 
-    #TODO: THIS FUNCTION IS NOT FINISHED YET
-    def model_specs_global(self, **kwargs):
-        pass
+        # Upload results to the database
+        insert_query = (
+            "INSERT INTO model_specs_global ("
+            "idModel, Nnodes, Nelements, Npartitions, MeshStructuration, Comments)"
+            "VALUES (%s,%s,%s,%s,%s,%s)")
+        values = (idModel, self.glob_nnodes, self.glob_nelements, self.npartitions, self._mesh_struct, comments)
+        cursor.execute(insert_query, values)
+        print("model_specs_global table updated correctly!\n")
 
     def model_structure_perfomance(self, **kwargs):
         """
@@ -314,19 +349,24 @@ class ModelSimulation:
         self.structure_max_drift_per_floor()
         MaxDriftPerFloor = cursor.lastrowid
 
+        # Fills the story accelerations
+        StoryAccelerations = pickle.dumps(self.accel_mdf)
+
+        # Fills the nodes id of the stories
+        StoryNodesDataFrame = pickle.dumps(self.story_nodes_df.iloc[8:]) # Get df with nodes from story 0 to roof
+
         # This is going to change in the future
         mta = "Not implemented yet"  # max torsion angle
-        fas = "Not implemented yet"  # floor acceleration spectra
 
         # Upload results to the database
         insert_query = (
-            "INSERT INTO model_structure_perfomance "
-            "(idBaseShear,idAbsAccelerations,idRelativeDisplacements,"
-            "idMaxBaseShear,idMaxDriftPerFloor,MaxTorsionAngle,"
-            "FloorAccelerationSpectra,Comments)"
-            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
-        values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,mta,fas,comments)  # mta and fas vars has to change
-        cursor.execute(insert_query, values)
+            "INSERT INTO model_structure_perfomance ("
+            "idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,"
+            "StoryAccelerations,StoryNodesDataFrame,MaxTorsionAngle,Comments) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+        values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,
+                  StoryAccelerations, StoryNodesDataFrame, mta, comments)  # mta and fas vars has to change
+        cursor.execute(insert_query, values) # type: ignore
         print("model_structure_perfomance table updated correctly!\n")
 
     def structure_abs_acceleration(self, **kwargs):
@@ -550,16 +590,14 @@ class ModelSimulation:
         self.path       = Path(__file__).parent
         self.timeseries = np.arange(self._time_step, self._total_time+self._time_step, self._time_step)
 
-        # Compute model info parameters
-        if verbose: print('Computing model information...')
-        self.nnodes = self.model_info.nnodes
-        self.nelements = self.model_info.nelements
-        self.npartitions = self.model_info.npartitions
+        # Compute structure  information
+        if verbose: print('Computing structure information...')
+
         # Get job name, nodes, threads and logname
         with open(self.path/"run.sh") as data:
             lines = data.readlines()
             self.jobname = lines[1].split(" ")[1].split("=")[1]
-            self.nodes = int(lines[2].split("=")[1])
+            self.cluster_nodes = int(lines[2].split("=")[1])
             self.threads = int(lines[3].split("=")[1])
             self.logname = lines[4].split("=")[1].split("#")[0].strip()
 
@@ -584,7 +622,7 @@ class ModelSimulation:
         model_name = next(model_path.glob("*.scd"))
         self.memory_by_model = f"{model_name.stat().st_size / (1024 * 1024):.2f} Mb"
 
-         # Get magnitude
+        # Get magnitude
         magnitude = Path(__file__).parents[2].name[1:]
         self.magnitude = f"{magnitude} Mw"
 
@@ -624,14 +662,28 @@ class ModelSimulation:
             self.location = "Unknown location"
         if verbose: print('Done!\n')
 
-        # Compute structure info parameters
-        if verbose: print('Computing structure information...')
+        # Final structure info properties
         self.coordinates = self.model_info.coordinates
         self.drift_nodes = self.model_info.drift_nodes
         self.story_nodes = self.model_info.stories_nodes
         self.stories = self.model_info.stories
         self.subs = self.model_info.subs
         self.heights = self.model_info.heights
+
+
+        # Compute model info parameters
+        if verbose: print('Computing model information...')
+        self.npartitions = self.model_info.npartitions
+        self.glob_nnodes         = self.model_info.glob_nnodes
+        self.glob_nelements      = self.model_info.glob_nelements
+        self.str_nnodes,\
+        self.str_nelements,\
+        self.soil_nnodes,\
+        self.soil_nelements = self.Manager.get_nodes_and_elements(self.glob_nnodes,
+                                                                  self.glob_nelements,
+                                                                  self.stories,
+                                                                  self.subs,
+                                                                  self._sim_type)
         if verbose: print('Done!\n')
 
     def loadDataFrames(self):
@@ -647,6 +699,7 @@ class ModelSimulation:
         self.base_displ_df             = self._computeBaseDF()[1]
         self.input_df                  = self._computeInputAccelerationsDF()
         print('Done!\n')
+
     # ==================================================================================
     # COMPUTE DATAFRAMES FOR ACCELERATIONS AND DISPLACEMENTS
     # ==================================================================================
@@ -1079,35 +1132,7 @@ class ModelSimulation:
             self.Manager = DataBaseManager(self.db_user, self.db_password, self.db_host,
                                                 self.db_database)
             print(f"Succesfully connected to '{self.db_database}' database as '{self.db_user}'.")
-
-    #DEPRECATED METHOD
-    def get_sm_id(self):
-        pass
-        """import os
-        path = os.path.dirname(os.path.abspath(__file__)).split("\\")
-        path = Path(__file__).resolve().parent
-        magnitude = path[-3][-3:]
-        rupture = path[-2][-4:]
-        station = int(path[-1][-1]) + 1
-        m,r = 0,0
-        if magnitude == "6.5":
-            m = 0
-        elif magnitude == "6.7":
-            m = 90
-        elif magnitude == "6.9":
-            m = 180
-        elif magnitude == "7.0":
-            m = 270
-
-        if rupture[0:2] == "bl":
-            r = (int(rupture[-1]) - 1) * 10
-        elif rupture[0:2] == "ns":
-            r = (int(rupture[-1]) - 1) * 10 + 30
-        elif rupture[0:2] == "sn":
-            r = (int(rupture[-1]) - 1) * 10 + 60
-
-        id = m + r + station
-        return id"""
+        print('Done!\n')
 
     # ==================================================================================
     # STATIC METHODS
@@ -1456,6 +1481,78 @@ class DataBaseManager:
         self.cursor.close()
         self.cnx.close()
 
+    def get_nodes_and_elements(self, glob_nnodes:int, glob_nelements:int, stories:int, subs:int, _sim_type:int):
+        """
+        This function is used to get the nodes and elements of the model.
+
+        Parameters
+        ----------
+        glob_nnodes : int
+            Number of nodes of the model.
+        glob_nelements : int
+            Number of elements of the model.
+        stories : int
+            Number of stories of the model.
+        subs : int
+            Number of subterrains of the model.
+        _sim_type : int
+            Simulation type of the model.
+
+        Returns
+        -------
+        str_nnodes : int
+            Number of nodes of the structure.
+        str_nelements : int
+            Number of elements of the structure.
+        soil_nnodes : int
+            Number of nodes of the soil.
+        soil_nelements : int
+            Number of elements of the soil.
+        """
+        if _sim_type == 1:
+            str_nnodes     = glob_nnodes
+            str_nelements  = glob_nelements
+
+        else:
+            try:
+                search_query =  f"""SELECT mss.Nnodes, mss.Nelements
+                                FROM simulation sim
+                                JOIN simulation_model sm ON sim.idModel = sm.IDModel
+                                JOIN model_specs_structure mss ON sm.idSpecsStructure = mss.IDSpecsStructure
+                                WHERE sim.idType = 1 AND mss.Nstories = {stories} AND mss.Nsubs= {subs};
+                                """
+                self.cursor.execute(search_query)
+                existing_entry = self.cursor.fetchall()
+                str_nnodes     = existing_entry[0][0] # type: ignore
+                str_nelements  = existing_entry[0][1] # type: ignore
+            except IndexError as e:
+                raise DatabaseError(f'No entries found in model_specs_structure.\n Please check if FixBaseModels are uploaded or check the query.')
+
+        soil_nnodes    = glob_nnodes    - str_nnodes    # type: ignore
+        soil_nelements = glob_nelements - str_nelements # type: ignore
+        return str_nnodes, str_nelements, soil_nnodes, soil_nelements
+
+    def check_if_sm_input(self, unique_values: tuple):
+        cursor = self.cursor
+        search_query = """
+        SELECT idSM_Input FROM simulation_sm_input
+        WHERE Magnitude = %s AND Rupture_type = %s AND Location = %s AND RealizationID = %s
+        """
+        cursor.execute(search_query, unique_values)
+        existing_entry = cursor.fetchone() # Returns None if no entry is found and the ID if it is found
+        return existing_entry
+
+    def check_if_specs_structure(self, unique_values: tuple):
+        cursor = self.cursor
+        search_query = """
+        SELECT IDSpecsStructure FROM model_specs_structure
+        WHERE idLinearity = %s AND Nnodes = %s AND Nelements = %s AND Nstories= %s AND Nsubs = %s
+        AND InterstoryHeight = %s
+        AND Comments = %s"""
+        cursor.execute(search_query, unique_values)
+        existing_entry = cursor.fetchone()
+        return existing_entry
+
 class ModelInfo:
     """
     This class is used to check the model info and extract specific data from the model.
@@ -1513,7 +1610,7 @@ class ModelInfo:
             print('\n---------------------------------------------|')
             print('------------- INITIALIZING DATA -------------|')
             print('---------------------------------------------|')
-        self.nnodes, self.nelements, self.npartitions = self.give_model_info()
+        self.glob_nnodes, self.glob_nelements, self.npartitions = self.give_model_info()
 
         self.coordinates,\
         self.drift_nodes,\
@@ -1918,7 +2015,6 @@ class NCh433_2012:
         self.importance = importance # UPDATE: A, B, C, D, E. Deprecated: (1,2,3,4)
         self.g = 9.81 # m/s2
 
-
     # INITIAL METHODS TO GET THE CONSTRUCTOR PARAMETERS
     @staticmethod
     def getSeismicZone_c4_1(loc):
@@ -2008,7 +2104,6 @@ class NCh433_2012:
     @staticmethod
     def getLimitDrift_diffMax2CM_c5_9_3():
         return 0.001
-
 
     # BASE SHEAR
     def computeCMax_c6_2_3_1_2(self, R):
