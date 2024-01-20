@@ -63,7 +63,7 @@ parameters = {
 'box_comments'      : f'Box: {sim_keys}'                        , # This value is the box comments
 'gspecs_comments'   : f'Global: {sim_keys}'                     , # This value is the ground motion specs comments
 'windows_os'        : True                                      , # This value is True if the OS is Windows, False if Linux
-'sim_type'          : st                                        , # This value is the simulation type, 1=Fix Base, 2=Absorbing Boundaries, 3=DRM
+'sim_type'          : 1                                         , # This value is the simulation type, 1=Fix Base, 2=Absorbing Boundaries, 3=DRM
 'linearity'         : 1                                         , # This value is the linearity of the analysis, 1=Linear, 2=Nonlinear
 'jump'              : 8                                         , # This value is the jumper between rows in the series, for example if a range has 10 values and jump=2, then the list will be [0,2,4,6,8]
 'vs30'              : 750                                       , # This value is the Vs30 of the soil in m/s
