@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=FBNM   # Job name
+#SBATCH --job-name=FB_validation2  # Job name
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=16
-#SBATCH --output=log.log   # Standard output and error log
+#SBATCH --ntasks-per-node=32
+#SBATCH --output=validation.log   # Standard output and error log
 pwd; hostname; date
 
 export OMP_NUM_THREADS=1

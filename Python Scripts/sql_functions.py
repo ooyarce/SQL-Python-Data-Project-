@@ -2,13 +2,14 @@
 # IMPORT LIBRARIES
 # ==================================================================================
 from mysql.connector.errors import DatabaseError
-from matplotlib import pyplot as plt
-from pathlib import Path
-from typing import Optional
+from concurrent.futures     import ThreadPoolExecutor
+from matplotlib             import pyplot as plt
+from pathlib                import Path
+from typing                 import Optional
 
-import mysql.connector
 import pandas as pd
-import numpy as np
+import numpy  as np
+import mysql.connector
 import subprocess
 import xlsxwriter
 import datetime
@@ -52,8 +53,19 @@ def getModelKeys(project_path):
                         "Valid stations are 's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', and 's9'.\n"
                         "Please check that the 'Path' and 'Folder Names' are correct.")
     return sim_type, mag, rup, iter, station
+def getBoxParams(sim_type, sim_keys):
+    box_comments  = f'Box: {sim_keys}'                    if sim_type != 1 else f'No Box: {sim_keys}'
+    soil_mat_name = 'Elastoisotropic'                     if sim_type != 1 else 'No Soil material'
+    soil_ele_type = 'SSPBrick Element'                    if sim_type != 1 else 'No Soil element'
+    mesh_struct   = 'Structured Quad Elem by 1.25 meters' if sim_type != 1 else 'No Soil mesh'
+    vs30          = '750 m/s'                             if sim_type != 1 else 'No Vs30'
+    soil_dim      = '3D'                                  if sim_type != 1 else 'No Soil dimension'
+    return box_comments, soil_mat_name, soil_ele_type, mesh_struct, vs30, soil_dim
 
-#TODO: Add the MaxTorsionAnglegasdfasdf asdfasdfa eafasdfadf
+class SQLFunctionError(Exception):
+    pass
+
+
 # ==================================================================================
 # MAIN CLASS
 # ==================================================================================
@@ -166,9 +178,11 @@ class ModelSimulation:
             "idModel, idSM_Input,"
             "idType, SimStage, SimOptions, Simdate,"
             "Comments) VALUES(%s,%s,%s,%s,%s,%s,%s)")
-        values = (Model, SM_Input,sim_type, sim_stage, sim_opt, date,sim_comments)
-        self.Manager.insert_data(insert_query, values)
-
+        values = (Model, SM_Input,sim_type, sim_stage, sim_opt, date, sim_comments)
+        try:
+            self.Manager.insert_data(insert_query, values)
+        except Exception as e:
+            raise SQLFunctionError("Error while updating simulation table") from e
         print("simulation table updated correctly!\n")
         print("---------------------------------------------|")
         print("---------------------------------------------|")
@@ -205,10 +219,13 @@ class ModelSimulation:
                 "Rupture_type, Location, RealizationID, Comments) "
                 "VALUES(%s,%s,%s,%s,%s,%s,%s)")
             values = (Pga,Spectrum,self.magnitude,self.rupture,self.location,self.iteration,sm_input_comments)
-            cursor.execute(insert_query, values)
-            sm_input_id = cursor.lastrowid  # Get the new idSM_Input
-            print(f"Inserted new simulation_sm_input with id: {sm_input_id}")
-        print('simulation_sm_input table updated correctly!\n')
+            try:
+                cursor.execute(insert_query, values)
+                print('simulation_sm_input table updated correctly!\n')
+                sm_input_id = cursor.lastrowid  # Get the new idSM_Input
+                print(f"Inserted new simulation_sm_input with id: {sm_input_id}")
+            except Exception as e:
+                raise SQLFunctionError("Error while updating simulation_sm_input table") from e
         return sm_input_id
 
     def simulation_model(self, **kwargs):
@@ -232,8 +249,11 @@ class ModelSimulation:
                         "idBenchmark,idStructuralPerfomance,idSpecsStructure,"
                         "ModelName,Comments) VALUES(%s,%s,%s,%s,%s)")
         values = (Benchmark,StructurePerfomance,SpecsStructure,model_name,model_comments)
-        cursor.execute(insert_query, values) # type: ignore
-        print("simulation_model table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values) # type: ignore
+            print("simulation_model table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating simulation_model table") from e
 
     def model_benchmark(self, **kwargs):
         # ------------------------------------------------------------------------------------------------------------------------------------
@@ -249,16 +269,22 @@ class ModelSimulation:
             "INSERT INTO model_benchmark (JobName,SimulationTime,"
             "MemoryResults,MemoryModel,ClusterNodes,CpuPerNodes,ClusterName,"
             "Comments) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
+
+
+        simulation_time = self.convert_and_store_time(self.simulation_time)
         values = (self.jobname,
-                  self.simulation_time,
+                  simulation_time,
                   self.memory_by_results,
                   self.memory_by_model,
                   self.cluster_nodes,
                   self.threads,
                   bench_cluster,
                   comments)
-        cursor.execute(insert_query, values)
-        print("model_benchmark table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("model_benchmark table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating model_benchmark table") from e
 
     def model_specs_structure(self, **kwargs):
         """
@@ -286,9 +312,12 @@ class ModelSimulation:
                 "idLinearity, Nnodes, Nelements, Nstories, Nsubs, InterstoryHeight, Comments) "
                 "VALUES (%s,%s,%s,%s,%s,%s,%s)")
             values = (self._linearity,nnodes,nelements,self.stories,self.subs,json.dumps(self.heights),comments)
-            cursor.execute(insert_query, values) # type: ignore
-            model_specs_structure_id = cursor.lastrowid  # Get the new idSM_Input
-            print(f"Inserted new model_specs_structure with id: {model_specs_structure_id}")
+            try:
+                cursor.execute(insert_query, values) # type: ignore
+                model_specs_structure_id = cursor.lastrowid  # Get the new idSM_Input
+                print(f"Inserted new model_specs_structure with id: {model_specs_structure_id}")
+            except Exception as e:
+                raise SQLFunctionError("Error while updating model_specs_structure table") from e
         print("model_specs_structure table updated correctly!\n")
         return model_specs_structure_id
 
@@ -305,8 +334,11 @@ class ModelSimulation:
             "idModel, idLinearity, Vs30, Nnodes, Nelements, Dimentions, Material, ElementType, Comments) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)")
         values = (idModel, self._linearity, self._vs30, self.soil_nnodes, self.soil_nelements, self._dimentions, self._material, self._soil_ele_type, comments)
-        cursor.execute(insert_query, values)
-        print("model_specs_box table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("model_specs_box table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating model_specs_box table") from e
 
     def model_specs_global(self, idModel, **kwargs):
         cursor = self.Manager.cursor
@@ -318,8 +350,11 @@ class ModelSimulation:
             "idModel, Nnodes, Nelements, Npartitions, MeshStructuration, Comments)"
             "VALUES (%s,%s,%s,%s,%s,%s)")
         values = (idModel, self.glob_nnodes, self.glob_nelements, self.npartitions, self._mesh_struct, comments)
-        cursor.execute(insert_query, values)
-        print("model_specs_global table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("model_specs_global table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating model_specs_global table") from e
 
     def model_structure_perfomance(self, **kwargs):
         """
@@ -355,19 +390,19 @@ class ModelSimulation:
         # Fills the nodes id of the stories
         StoryNodesDataFrame = pickle.dumps(self.story_nodes_df.iloc[8:]) # Get df with nodes from story 0 to roof
 
-        # This is going to change in the future
-        mta = "Not implemented yet"  # max torsion angle
-
         # Upload results to the database
         insert_query = (
             "INSERT INTO model_structure_perfomance ("
             "idBaseShear,idAbsAccelerations,idRelativeDisplacements,idMaxBaseShear,idMaxDriftPerFloor,"
-            "StoryAccelerations,StoryNodesDataFrame,MaxTorsionAngle,Comments) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+            "StoryAccelerations,StoryNodesDataFrame,Comments) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
         values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,
-                  StoryAccelerations, StoryNodesDataFrame, mta, comments)  # mta and fas vars has to change
-        cursor.execute(insert_query, values) # type: ignore
-        print("model_structure_perfomance table updated correctly!\n")
+                  StoryAccelerations, StoryNodesDataFrame, comments)  # mta and fas vars has to change
+        try:
+            cursor.execute(insert_query, values) # type: ignore
+            print("model_structure_perfomance table updated correctly!\n")
+        except Exception as e:
+            raise SQLFunctionError("Error while updating model_structure_perfomance table") from e
 
     def structure_abs_acceleration(self, **kwargs):
         """
@@ -388,8 +423,11 @@ class ModelSimulation:
                         "TimeSeries, AbsAccX, AbsAccY, AbsAccZ, Units) "
                         "VALUES(%s,%s,%s,%s,%s)")
         values = (time_series, matrixes[0], matrixes[1], matrixes[2], units)
-        cursor.execute(insert_query, values)
-        print("structure_abs_acceleration table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("structure_abs_acceleration table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating structure_abs_acceleration table") from e
 
     def structure_relative_displacements(self, **kwargs):
         """
@@ -410,8 +448,11 @@ class ModelSimulation:
                         "TimeSeries, DispX, DispY, DispZ, Units) "
                         "VALUES(%s,%s,%s,%s,%s)")
         values = (time_series, matrixes[0], matrixes[1], matrixes[2], units)
-        cursor.execute(insert_query, values)
-        print("structure_relative_displacements table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("structure_relative_displacements table updated correctly!\n")
+        except Exception as e:
+            raise SQLFunctionError("Error while updating structure_relative_displacements table") from e
 
     def structure_max_drift_per_floor(self, **kwargs):
         """
@@ -454,8 +495,11 @@ class ModelSimulation:
                         "MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, "
                         "MaxDriftCenterY, Units) VALUES (%s,%s,%s,%s,%s)")
         values = (pickle.dumps(corner_drifts[0]),pickle.dumps(corner_drifts[1]),pickle.dumps(center_drifts[0]),pickle.dumps(center_drifts[1]),units)
-        cursor.execute(insert_query, values)
-        print("structure_max_drift_per_floor table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("structure_max_drift_per_floor table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating structure_max_drift_per_floor table") from e
 
     def structure_base_shear(self, **kwargs):
         """
@@ -481,8 +525,11 @@ class ModelSimulation:
         # Upload results to the database
         insert_query = "INSERT INTO structure_base_shear (TimeSeries, ShearX, ShearY, ShearZ, Units) VALUES (%s,%s,%s,%s,%s)"
         values = (timeseries, matrixes[0], matrixes[1], matrixes[2],units)
-        cursor.execute(insert_query, values)
-        print("structure_base_shear table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("structure_base_shear table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating structure_base_shear table") from e
 
     def structure_max_base_shear(self, **kwargs):
         """
@@ -508,8 +555,11 @@ class ModelSimulation:
                         "MaxX, MaxY, MaxZ, Units) VALUES (%s,%s,%s,%s)")
 
         values = (f'{shear_x_ss:.2f}', f'{shear_y_ss:.2f}', f'{shear_z_ss:.2f}', units)
-        cursor.execute(insert_query, values)
-        print("structure_max_base_shear table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("structure_max_base_shear table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating structure_max_base_shear table") from e
 
     def sm_input_pga(self, **kwargs):
         """
@@ -547,8 +597,11 @@ class ModelSimulation:
         insert_query = ("INSERT INTO sm_input_pga ("
                         "PGA_X, PGA_Y, PGA_Z, Units) VALUES(%s,%s,%s,%s)")
         values = (PGAx, PGAy, PGAz, units)
-        cursor.execute(insert_query, values)
-        print("sm_input_pga table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("sm_input_pga table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating sm_input_pga table") from e
 
     def sm_input_spectrum(self, **kwargs):
         """
@@ -578,8 +631,12 @@ class ModelSimulation:
                         "SpectrumX, SpectrumY, SpectrumZ, Units) "
                         "VALUES (%s,%s,%s,%s)")
         values = (pickle.dumps(Spe), pickle.dumps(Spn), pickle.dumps(Spz), units)
-        cursor.execute(insert_query, values)
-        print("sm_input_spectrum table updated correctly!\n")
+        try:
+            cursor.execute(insert_query, values)
+            print("sm_input_spectrum table updated correctly!\n")
+        except Exception as e:
+                raise SQLFunctionError("Error while updating sm_input_spectrum table") from e
+
 
     # ==================================================================================
     # LOAD SIMULATION INFORMATION AND DATA POST PROCESSING IN PANDAS DATAFRAMES
@@ -612,10 +669,21 @@ class ModelSimulation:
 
         # Get memort by results
         folder_names = ["Accelerations", "Displacements", "PartitionsInfo"]
-        self.memory_by_results = sum(
-            sum(file.stat().st_size
-                for file in (self.path / folder).iterdir())
-            for folder in folder_names) / (1024 * 1024)
+        if self._sim_type == 1:
+            folder_names.append("Reactions")
+
+        # Función para calcular el tamaño de una carpeta
+        def tamano_carpeta(folder_name):
+            folder_path = self.path / folder_name
+            return sum(file.stat().st_size for file in folder_path.iterdir() if file.is_file())
+
+        # Calcular el tamaño en paralelo
+        with ThreadPoolExecutor() as executor:
+            tamanos = list(executor.map(tamano_carpeta, folder_names))
+
+        # Sumar los tamaños y convertir a MB
+        self.memory_by_results = sum(tamanos) / (1024 * 1024)
+        self.memory_by_results = f"{self.memory_by_results:.2f} Mb"
 
         # Get model memory
         model_path = self.path.parents[2]
@@ -1456,7 +1524,20 @@ class ModelSimulation:
         except Exception as e:
             raise DatabaseError(f"Error trying to open cmd:  {e}")
 
+    @staticmethod
+    def convert_and_store_time(time_string):
+        # Extraer el número de segundos de la cadena y convertir a entero
+        total_seconds = int(time_string.split()[0])
 
+        # Calcular días, horas, minutos y segundos
+        days, remainder  = divmod(total_seconds, 24 * 3600)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        # Construir la cadena de salida
+        readable_format = f"{days} day{'s' if days != 1 else ''}, {hours}hrs, {minutes}mins, {seconds} secs"
+
+        return str(readable_format)
 
 # ==================================================================================
 # SECONDARY CLASSES
@@ -1996,7 +2077,7 @@ class Plotting:
 
 
 # ==================================================================================
-# NORM CLASS
+# NORM CLASS (NOT IMPLEMENT, JUST TO STUDY IT)
 # ==================================================================================
 class NCh433Error(Exception):
     """Excepción personalizada para errores relacionados con la norma NCh433."""

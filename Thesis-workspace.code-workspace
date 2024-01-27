@@ -7,5 +7,7 @@
 			"path": "D:/Universidad/Tesis/FondeCyT-DataBase"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"CodeGPT.apiKey": "CodeGPT Plus Beta"
+	}
 }

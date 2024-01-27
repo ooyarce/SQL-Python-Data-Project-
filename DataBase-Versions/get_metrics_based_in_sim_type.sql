@@ -23,10 +23,10 @@ WHERE sim.idType = 1 AND mss.Nstories = 20 AND mss.Nsubs= 2;
 
 
 # Filter input
- SELECT * FROM simulation_sm_input
+SELECT * FROM simulation_sm_input
 WHERE Magnitude = '6.5 Mw' AND Rupture_type = 'Bilateral' AND Location = 'UAndes Campus' AND RealizationID = 1;
  
-SELECT * FROM model_specs_structure
+SELECT * FROM model_specs_structureidMaxDriftPerFlooridMaxDriftPerFloor
 WHERE idLinearity = 1 AND Nnodes = 26057 AND Nelements = 35972 AND Nstories= 20 AND Nsubs = 2
 AND InterstoryHeight = '[3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5]'
 AND Comments = 'Linear-elastic elements: FixBase-6.5-bl-1-s0'
