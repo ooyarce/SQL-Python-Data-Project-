@@ -1,12 +1,15 @@
 # ==================================================================================
 # IMPORT LIBRARIES
 # ==================================================================================
+# Objects
 from mysql.connector.errors import DatabaseError
 from concurrent.futures     import ThreadPoolExecutor
 from matplotlib             import pyplot as plt
 from pathlib                import Path
 from typing                 import Optional
 
+# Packages
+import concurrent.futures
 import pandas as pd
 import numpy  as np
 import mysql.connector
@@ -16,8 +19,10 @@ import datetime
 import warnings
 import pickle
 import json
+import time
 import math
 import re
+
 def mapSimTypeID(sim_type):
     simulation_type_dict = {'FixBase': 1,'AbsBound': 2,'DRM': 3,}
     st = simulation_type_dict.get(sim_type, None)
@@ -150,6 +155,7 @@ class ModelSimulation:
         This is the main function to export the simulation into the database.
         """
         # Initialize parameters
+        init_time    = time.time()
         cursor       = self.Manager.cursor
         sim_comments = kwargs.get("sim_comments", self._sim_comments)
         sim_opt      = kwargs.get("sim_opt", self._sim_opt)
@@ -183,7 +189,9 @@ class ModelSimulation:
             self.Manager.insert_data(insert_query, values)
         except Exception as e:
             raise SQLFunctionError("Error while updating simulation table") from e
+        end_time = time.time()
         print("simulation table updated correctly!\n")
+        print(f"Time elapsed: {end_time-init_time:.2f} seconds")
         print("---------------------------------------------|")
         print("---------------------------------------------|")
         print("---------------------------------------------|\n")
@@ -385,10 +393,13 @@ class ModelSimulation:
         MaxDriftPerFloor = cursor.lastrowid
 
         # Fills the story accelerations
-        StoryAccelerations = pickle.dumps(self.accel_mdf)
+        dump_data = self.paralelize_serialization([self.accel_mdf[::self._jump], self.story_nodes_df.iloc[8:]])
+        #StoryAccelerations = pickle.dumps(self.accel_mdf[::self._jump])
+        StoryAccelerations = dump_data[0]
 
         # Fills the nodes id of the stories
-        StoryNodesDataFrame = pickle.dumps(self.story_nodes_df.iloc[8:]) # Get df with nodes from story 0 to roof
+        #StoryNodesDataFrame = pickle.dumps(self.story_nodes_df.iloc[8:])
+        StoryNodesDataFrame = dump_data[1]
 
         # Upload results to the database
         insert_query = (
@@ -397,7 +408,7 @@ class ModelSimulation:
             "StoryAccelerations,StoryNodesDataFrame,Comments) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)")
         values = (BaseShear,AbsAccelerations,RelativeDisplacements,MaxBaseShear,MaxDriftPerFloor,
-                  StoryAccelerations, StoryNodesDataFrame, comments)  # mta and fas vars has to change
+                  StoryAccelerations, StoryNodesDataFrame, comments)
         try:
             cursor.execute(insert_query, values) # type: ignore
             print("model_structure_perfomance table updated correctly!\n")
@@ -413,10 +424,8 @@ class ModelSimulation:
         units = kwargs.get("abs_acc_units", self._abs_acc_units)
 
         # Convert Data to JSON format and reduce the size of the data
-        #time_series = json.dumps(self.timeseries.tolist()[::self._jump])
-        #matrixes = [json.dumps(self.accel_dfs[i].iloc[::self._jump].to_dict())for i in range(3)]
         time_series = pickle.dumps(self.timeseries[::self._jump])
-        matrixes = [pickle.dumps(self.accel_dfs[i].iloc[::self._jump])for i in range(3)]
+        matrixes    = [pickle.dumps(self.accel_dfs[i].iloc[::self._jump])for i in range(3)]
 
         # Upload results to the database
         insert_query = ("INSERT INTO structure_abs_acceleration ("
@@ -438,8 +447,6 @@ class ModelSimulation:
         units = kwargs.get("rel_displ_units", self._rel_displ_units)
 
         # Convert Data to JSON format and reduce the size of the data
-        #time_series = json.dumps(self.timeseries.tolist()[::self._jump])
-        #matrixes = [json.dumps(self.displ_dfs[i].iloc[::self._jump].to_dict())for i in range(3)]
         time_series = pickle.dumps(self.timeseries[::self._jump])
         matrixes = [pickle.dumps(self.displ_dfs[i].iloc[::self._jump])for i in range(3)]
 
@@ -482,13 +489,6 @@ class ModelSimulation:
                 corner   = drift_df.max().max()
                 center_drifts[loc].append(center)
                 corner_drifts[loc].append(corner)
-
-            #NOTE: THIS IS DEPRECATED, BUT MAYBE IT WILL BE USEFULL IN THE FUTURE
-            """
-            center_roof, corner_roof = self._computeRoofDrift(loc)
-            center_drifts[loc].append(center_roof)
-            corner_drifts[loc].append(corner_roof)
-            """
 
         # Upload results to the database
         insert_query = ("INSERT INTO structure_max_drift_per_floor ("
@@ -1538,6 +1538,19 @@ class ModelSimulation:
         readable_format = f"{days} day{'s' if days != 1 else ''}, {hours}hrs, {minutes}mins, {seconds} secs"
 
         return str(readable_format)
+
+    @staticmethod
+    def paralelize_serialization(data_frames):
+        # Función para serializar un único DataFrame
+        def serializar_df(df):
+            return pickle.dumps(df)
+
+        # Usando ThreadPoolExecutor para serializar en paralelo
+        with ThreadPoolExecutor(max_workers=6) as executor:  # Ajustado para Ryzen 5 5600X
+            resultados_serializados = list(executor.map(serializar_df, data_frames))
+
+        return resultados_serializados
+
 
 # ==================================================================================
 # SECONDARY CLASSES
