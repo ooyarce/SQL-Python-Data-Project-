@@ -2,8 +2,10 @@
 # ================================== INIT AND CONNECT TO DATABASE ==================================
 # ==================================================================================================
 # Import modules
-from sql_functions import ModelSimulation, mapSimTypeID, getModelKeys, getBoxParams
+from pyseestko.db_functions import ModelSimulation                          # type: ignore
+from pyseestko.utilities    import mapSimTypeID, getModelKeys, getBoxParams # type: ignore
 from pathlib import Path
+
 
 # Init the SeismicSimulation class
 user     = 'omarson'
@@ -44,7 +46,7 @@ parameters = {
 }
 
 # Connect the model to the database
-Model  = ModelSimulation(**parameters)
+Model  = ModelSimulation(Path(__file__), **parameters)
 
 # Upload the data to the database, for the first time or not
 upload_data = True
