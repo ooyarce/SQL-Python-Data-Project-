@@ -5,8 +5,9 @@
 from mysql.connector.errors import DatabaseError
 from concurrent.futures     import ThreadPoolExecutor
 from pathlib                import Path
-from errors                 import SQLFunctionError
-from db_manager             import DataBaseManager
+from pyseestko.errors       import SQLFunctionError
+from pyseestko.db_manager   import DataBaseManager
+from pyseestko.model_info   import ModelInfo
 
 # Packages
 import pandas as pd
@@ -28,15 +29,15 @@ class ModelSimulation:
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
-    def __init__(self,user='omarson',password='Mackbar2112!',host='localhost',database='stkodatabase',**kwargs):
+    def __init__(self, main_path:Path, user='omarson', password='Mackbar2112!', host='localhost', database='stkodatabase', **kwargs):
         print('=============================================')
         # Define generic parameters
         bench_cluster = "Esmeralda HPC Cluster by jaabell@uandes.cl"
         try:
-            self.model_path = Path(__file__).parents[3]
+            self.model_path = main_path.parents[3]
             self.stko_model_name = next(self.model_path.glob('*.scd')).name
         except StopIteration:
-            self.model_path = Path(__file__).parent
+            self.model_path = main_path.parent
             self.stko_model_name = next(self.model_path.glob('*.scd')).name
         # Simulation default parameters
         self._sim_comments      = kwargs.get("sim_comments", "No comments")
@@ -90,7 +91,7 @@ class ModelSimulation:
 
         # Load model info
         if self._load_df_info:
-            self.loadModelInfo()
+            self.loadModelInfo(main_path)
             self.loadDataFrames()
 
         # Init database tables in case they are not created
@@ -599,10 +600,10 @@ class ModelSimulation:
     # ==================================================================================
     # LOAD SIMULATION INFORMATION AND DATA POST PROCESSING IN PANDAS DATAFRAMES
     # ==================================================================================
-    def loadModelInfo(self, verbose=True):
+    def loadModelInfo(self, main_path,verbose=True):
         # Initialize Model Info
-        self.model_info = ModelInfo(sim_type=self._sim_type,verbose=verbose)
-        self.path       = Path(__file__).parent
+        self.model_info = ModelInfo(main_path, sim_type=self._sim_type,verbose=verbose)
+        self.path       = main_path.parent
         self.timeseries = np.arange(self._time_step, self._total_time+self._time_step, self._time_step)
 
         # Compute structure  information
@@ -648,7 +649,7 @@ class ModelSimulation:
         self.memory_by_model = f"{model_name.stat().st_size / (1024 * 1024):.2f} Mb"
 
         # Get magnitude
-        magnitude = Path(__file__).parents[2].name[1:]
+        magnitude = main_path.parents[2].name[1:]
         self.magnitude = f"{magnitude} Mw"
 
         # Get rupture type
@@ -656,7 +657,7 @@ class ModelSimulation:
             "bl": "Bilateral",
             "ns": "North-South",
             "sn": "South-North"}
-        folder_name = Path(__file__).parents[1].name
+        folder_name = main_path.parents[1].name
         try:
             rup_type = folder_name.split("_")[1]
             self.rupture = rupture_types.get(rup_type)
@@ -666,7 +667,7 @@ class ModelSimulation:
             self.rupture = "Unknown rupture type"
             warnings.warn("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
         # Get realization id
-        iter_name = Path(__file__).parents[1].name
+        iter_name = main_path.parents[1].name
         if len(iter_name.split("_")) == 3:
             self.iteration = iter_name.split("_")[2]
         else:
@@ -686,7 +687,7 @@ class ModelSimulation:
             8: "Far field Center",
             9: "Far field South"}
         try:
-            self.station = int((Path(__file__).parents[0].name).split("_")[1][-1])
+            self.station = int((main_path.parents[0].name).split("_")[1][-1])
             self.location = location_mapping.get(self.station, None)
             if self.location is None:
                 warnings.warn("Location code not recognized in location_mapping.")

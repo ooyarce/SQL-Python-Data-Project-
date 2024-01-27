@@ -1,9 +1,14 @@
 # ==================================================================================
 # IMPORT LIBRARIES
 # ==================================================================================
-from errors import NCh433Error
+from pyseestko.errors import NCh433Error
 import math
+import importlib.util
+import logging
 
+# ==================================================================================
+# =============================== UTILITY FUNCTIONS ================================
+# ==================================================================================
 def mapSimTypeID(sim_type):
     simulation_type_dict = {'FixBase': 1,'AbsBound': 2,'DRM': 3,}
     st = simulation_type_dict.get(sim_type, None)
@@ -12,6 +17,7 @@ def mapSimTypeID(sim_type):
                         "Valid simulation types are 'FixBase', 'AbsBound', and 'DRM'.\n"
                         "Please check that the 'Path' and 'Folder Names' are correct.")
     return st
+
 def getModelKeys(project_path):
     sim_type = project_path.parents[3].parent.name
 
@@ -39,6 +45,7 @@ def getModelKeys(project_path):
                         "Valid stations are 's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', and 's9'.\n"
                         "Please check that the 'Path' and 'Folder Names' are correct.")
     return sim_type, mag, rup, iter, station
+
 def getBoxParams(sim_type, sim_keys):
     box_comments  = f'Box: {sim_keys}'                    if sim_type != 1 else f'No Box: {sim_keys}'
     soil_mat_name = 'Elastoisotropic'                     if sim_type != 1 else 'No Soil material'
@@ -48,6 +55,63 @@ def getBoxParams(sim_type, sim_keys):
     soil_dim      = '3D'                                  if sim_type != 1 else 'No Soil dimension'
     return box_comments, soil_mat_name, soil_ele_type, mesh_struct, vs30, soil_dim
 
+def load_module(module_name, module_path):
+    """
+    To use it you have to do something like this:
+
+    # Rutas completas a los módulos que deseas importar
+    path_to_post_processing = "C:/workspace/AndesLab/AnDeS_23/pyandes_23/processing/post_processing.py"
+    path_to_etabs21_geo = "C:/workspace/AndesLab/AnDeS_23/pyandes_23/processing/etabs21_geo.py"
+
+    # Cargar los módulos
+    prs = load_module("post_processing", path_to_post_processing)
+    etabs_geo = load_module("etabs21_geo", path_to_etabs21_geo)
+    """
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec and spec.loader:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    else:
+        print(f"No se pudo cargar el módulo: {module_name}")
+        return None
+
+def setup_logger(verbose, module_name):
+    logger = logging.getLogger(module_name)
+    handler = logging.StreamHandler()
+
+    # Si verbose es 0, no se imprime nada
+    if verbose == 0:
+        logger.addHandler(logging.NullHandler())
+        return logger
+
+
+    # Define los formatters
+    formatter_level_1 = logging.Formatter('%(levelname)s: %(message)s')  # Nivel 1
+    formatter_level_2 = logging.Formatter('%(name)s - %(levelname)s: %(message)s')  # Nivel 2
+    formatter_level_3 = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                                          '%Y-%m-%d %H:%M:%S')  # Nivel 3
+
+    # Ajusta formatter y nivel basado en verbose
+    if verbose == 1:
+        handler.setFormatter(formatter_level_1)
+        logger.setLevel(logging.INFO)
+    elif verbose == 2:
+        handler.setFormatter(formatter_level_2)
+        logger.setLevel(logging.INFO)
+    elif verbose >= 3:
+        handler.setFormatter(formatter_level_3)
+        logger.setLevel(logging.DEBUG)
+
+    if not logger.handlers:
+        logger.addHandler(handler)
+
+    return logger
+
+
+# ==================================================================================
+# ================================ UTILITY CLASSES =================================
+# ==================================================================================
 class NCh433_2012:
 
     def __init__(self, zone, soil_category, importance):

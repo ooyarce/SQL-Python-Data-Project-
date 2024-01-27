@@ -1,12 +1,13 @@
-# ==================================================================================================
-# ================================== INIT AND CONNECT TO DATABASE ==================================
-# ==================================================================================================
-# Import modules
+# ==================================================================================
+# IMPORT LIBRARIES
+# ==================================================================================
 from pyseestko.db_functions import ModelSimulation                          # type: ignore
 from pyseestko.utilities    import mapSimTypeID, getModelKeys, getBoxParams # type: ignore
 from pathlib import Path
 
-
+# ==================================================================================
+# DEFINE INIT PARAMETERS
+# ==================================================================================
 # Init the SeismicSimulation class
 user     = 'omarson'
 password = 'Mackbar2112!'
@@ -17,13 +18,15 @@ database = 'stkodatabase'
 project_path                      = Path(__file__)
 sim_type, mag, rup, iter, station = getModelKeys(project_path)
 st                                = mapSimTypeID(sim_type)
+sim_keys                          = f'{sim_type}-{mag}-{rup}-{iter}-{station}'
+box_comments , soil_mat_name,\
+soil_ele_type, mesh_struct,\
+vs30         , soil_dim           = getBoxParams(st, sim_keys)
 
+# ==================================================================================
+# DEFINE INIT PARAMETERS
+# ==================================================================================
 # Remember that the Db has a max lenght is 100 characters, all units are in kN/m/s
-sim_keys = f'{sim_type}-{mag}-{rup}-{iter}-{station}'
-
-# Get the soil box parameters
-box_comments, soil_mat_name, soil_ele_type, mesh_struct, vs30, soil_dim = getBoxParams(st, sim_keys)
-
 parameters = {
 'sim_comments'      : f'Simulation:  {sim_keys}'                , # This value is the simulation comments
 'sm_input_comments' : f'H5DRM Input: {sim_keys}'                , # This value is the input comments
@@ -48,12 +51,7 @@ parameters = {
 # Connect the model to the database
 Model  = ModelSimulation(Path(__file__), **parameters)
 
-# Upload the data to the database, for the first time or not
-upload_data = True
-
 # Conditions
+upload_data = True
 if upload_data:
     Model.simulation()
-
-
-

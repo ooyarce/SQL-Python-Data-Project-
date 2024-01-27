@@ -5,7 +5,7 @@
 from matplotlib   import pyplot as plt
 from pathlib      import Path
 from typing       import Optional
-from db_functions import ModelSimulation
+from pyseestko.db_functions import ModelSimulation                       
 
 # Packages
 import pandas as pd

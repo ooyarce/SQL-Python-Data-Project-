@@ -3,7 +3,7 @@
 # ==================================================================================
 # Objects
 # Packages
-from errors import DataBaseError
+from pyseestko.errors import DataBaseError
 import mysql.connector
 
 # ==================================================================================

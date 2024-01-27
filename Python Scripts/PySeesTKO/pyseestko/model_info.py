@@ -3,6 +3,7 @@
 # ==================================================================================
 # Objects
 from pathlib import Path
+from pyseestko.errors import ModelInfoError
 
 # ==================================================================================
 # SECONDARY CLASSES
@@ -42,14 +43,14 @@ class ModelInfo:
         Returns the reactions of the model.
     """
 
-    def __init__(self, sim_type:int = 1, verbose:bool=True):
+    def __init__(self, main_path:Path, sim_type:int = 1, verbose:bool=True):
         # Set the path to the 'PartitionsInfo' subfolder
         self.verbose = verbose
-        current_path = Path(__file__).parent
-        self.path = Path(__file__).parent / "PartitionsInfo"
+        current_path = main_path.parent
+        self.path = main_path.parent / "PartitionsInfo"
         # Check if the 'PartitionsInfo' subfolder exists
         if not self.path.exists():
-            raise Exception("The PartitionsInfo folder does not exist!\n"
+            raise ModelInfoError("The PartitionsInfo folder does not exist!\n"
                             "Current path = {}".format(current_path))
         if self.verbose:
             # Call the methods to initialize the data
@@ -103,7 +104,7 @@ class ModelInfo:
             if self.verbose:
                 print("Accelerations: No nodes repeated")
         else:
-            raise Exception("WARNING: NODES REPEATED")
+            raise ModelInfoError("WARNING: NODES REPEATED")
         return accelerations, acce_nodes
 
     def give_displacements(self):
@@ -136,7 +137,7 @@ class ModelInfo:
             if self.verbose:
                 print("Displacements: No nodes repeated")
         else:
-            raise Exception("WARNING: NODES REPEATED")
+            raise ModelInfoError("WARNING: NODES REPEATED")
 
         return displacements, displ_nodes
 
@@ -169,7 +170,7 @@ class ModelInfo:
             if self.verbose:
                 print("Reactions:     No nodes repeated ")
         else:
-            raise Exception("WARNING: NODES REPEATED")
+            raise ModelInfoError("WARNING: NODES REPEATED")
         return reactions, reaction_nodes
 
     def give_coords_info(self):
