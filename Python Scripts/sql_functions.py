@@ -82,16 +82,19 @@ class ModelSimulation:
         print('=============================================')
         # Define generic parameters
         bench_cluster = "Esmeralda HPC Cluster by jaabell@uandes.cl"
-        model_path = Path(__file__).parents[3]
-        modelname = next(model_path.glob('*.scd')).name
-
+        try:
+            self.model_path = Path(__file__).parents[3]
+            self.stko_model_name = next(self.model_path.glob('*.scd')).name
+        except StopIteration:
+            self.model_path = Path(__file__).parent
+            self.stko_model_name = next(self.model_path.glob('*.scd')).name
         # Simulation default parameters
         self._sim_comments      = kwargs.get("sim_comments", "No comments")
         self._sim_opt           = kwargs.get("sim_opt", "No options yet")
         self._sim_stage         = kwargs.get("sim_stage", "No stage yet")
         self._sim_type          = kwargs.get("sim_type", 1)
         self._sm_input_comments = kwargs.get("sm_input_comments","No comments")
-        self._model_name        = kwargs.get("model_name", modelname)
+        self._model_name        = kwargs.get("model_name", 'Testing Model')
         self._model_comments    = kwargs.get("model_comments", "No comments")
         self._bench_cluster     = kwargs.get("bench_cluster", bench_cluster)
         self._bench_comments    = kwargs.get("bench_comments", "No comments")
@@ -686,8 +689,7 @@ class ModelSimulation:
         self.memory_by_results = f"{self.memory_by_results:.2f} Mb"
 
         # Get model memory
-        model_path = self.path.parents[2]
-        model_name = next(model_path.glob("*.scd"))
+        model_name = next(self.model_path.glob("*.scd"))
         self.memory_by_model = f"{model_name.stat().st_size / (1024 * 1024):.2f} Mb"
 
         # Get magnitude
@@ -700,16 +702,21 @@ class ModelSimulation:
             "ns": "North-South",
             "sn": "South-North"}
         folder_name = Path(__file__).parents[1].name
-        rup_type = folder_name.split("_")[1]
-        self.rupture = rupture_types.get(rup_type)
-        if not self.rupture:
-            raise Warning("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
-
+        try:
+            rup_type = folder_name.split("_")[1]
+            self.rupture = rupture_types.get(rup_type)
+            if not self.rupture:
+                warnings.warn("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
+        except IndexError:
+            self.rupture = "Unknown rupture type"
+            warnings.warn("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
         # Get realization id
         iter_name = Path(__file__).parents[1].name
-        self.iteration = (
-            iter_name.split("_")[2] if len(iter_name.split("_")) == 3 else
-            f"Unknown Iteration for {iter_name=}. Check folder iteration name!")
+        if len(iter_name.split("_")) == 3:
+            self.iteration = iter_name.split("_")[2]
+        else:
+            warnings.warn(f"Unknown Iteration for {iter_name=}. Check folder iteration name!")
+            self.iteration = '0'
 
         # Get location
         location_mapping = {
@@ -722,13 +729,19 @@ class ModelSimulation:
             6: "Intermediate field South",
             7: "Far field North",
             8: "Far field Center",
-            9: "Far field South",}
-        self.station = int((Path(__file__).parents[0].name).split("_")[1][-1])
-        self.location = location_mapping.get(self.station, None)
-        if self.location is None:
-            warnings.warn("Location code not recognized in location_mapping.")
+            9: "Far field South"}
+        try:
+            self.station = int((Path(__file__).parents[0].name).split("_")[1][-1])
+            self.location = location_mapping.get(self.station, None)
+            if self.location is None:
+                warnings.warn("Location code not recognized in location_mapping.")
+                self.location = "Unknown location"
+            if verbose: print('Done!\n')
+
+        except IndexError:
+            self.station  = 0
             self.location = "Unknown location"
-        if verbose: print('Done!\n')
+            warnings.warn("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
 
         # Final structure info properties
         self.coordinates = self.model_info.coordinates
@@ -1010,9 +1023,9 @@ class ModelSimulation:
         This function is used to compute the input accelerations DataFrame.
         """
         # Read each file with soil accelerations
-        acc_e = pd.read_csv(self.path/'acceleration_e.txt', sep=" ", header=None)
-        acc_n = pd.read_csv(self.path/'acceleration_n.txt', sep=" ", header=None)
-        acc_z = pd.read_csv(self.path/'acceleration_z.txt', sep=" ", header=None)
+        acc_e = pd.read_csv(self.path/'acceleration_e.txt', sep=" ", header=None)[:len(self.timeseries)]
+        acc_n = pd.read_csv(self.path/'acceleration_n.txt', sep=" ", header=None)[:len(self.timeseries)]
+        acc_z = pd.read_csv(self.path/'acceleration_z.txt', sep=" ", header=None)[:len(self.timeseries)]
 
         # Create a time step series with the same length as the accelerations
         time_steps = self.timeseries
