@@ -2,8 +2,12 @@
 # ================================== INIT AND CONNECT TO DATABASE ==================================
 # ==================================================================================================
 # Import modules
-from pyseestko.db_manager import DataBaseManager
-import numpy as np
+from pyseestko.db_manager import DataBaseManager                     #type: ignore
+from pyseestko.utilities  import initialize_ssh_tunnel, get_mappings #type: ignore
+from pyseestko.plotting   import Plotting                            #type: ignore
+from pathlib              import Path
+
+import time
 import pickle
 
 # Init the SeismicSimulation class
@@ -12,119 +16,97 @@ password = 'Mackbar2112!'
 host     = 'localhost'
 database = 'stkodatabase'
 
-DataBase = DataBaseManager
 # Connect the model to the database
-cursor   = Model.Manager.cursor
+initialize_ssh_tunnel()
+time.sleep(1)
+DataBase = DataBaseManager(user, password, host, database)
+cursor   = DataBase.cursor
+magnitude_mapping, location_mapping, ruptures_mapping = get_mappings()
 
-# Query the data from the database
-query_drift         = False
-query_input_spectra = False
-query_story_spectra = False
-query_base_spectra  = False
-query_time_shear    = True
+linearity    = 1    # 1 = Linear, 2 = Non-Linear
+sim_type     = 3    # 1 = FB,     2 = AB, 3 = DRM
+magnitude    = 6.5  # Can be '6.5', '6.7', '6.9', '7.0', 0.0 for not defined
+rupture_type = 1    # Can be 1 for 'bl', 2 for 'ns' or 3 for 'sn', put 0 for for not defined
+station      = 1    # Can be any number from 0 to 9, -1 for not defined
+stories      = 20   # For the moment, it can be 20 or 55
+plotter      = Plotting(sim_type, stories, magnitude, rupture_type, station, '')
+
+
+
 
 # ===================================================================================================
 # ==================================== QUERY THE DRIFT PER FLOOR ====================================
-# ====================================================================================================
-if query_drift:
-    query    = "SELECT * FROM structure_max_drift_per_floor "
-    cursor.execute(query)
-    data     = cursor.fetchall() # list of tuples, where every tuple is a row, where every value is a column
-    simulation_id = -1
+# ===================================================================================================
+# Init the query
+query = """
+        SELECT drift.*
+        FROM simulation sim
+        JOIN simulation_sm_input           sminput 	ON sim.idSM_Input 			 = sminput.IDSM_Input
+        JOIN simulation_model              sm       ON sim.idModel 				 = sm.IDModel
+        JOIN model_specs_structure         mss      ON sm.idSpecsStructure 		 = mss.IDSpecsStructure
+        JOIN model_structure_perfomance    msp 		ON sm.idStructuralPerfomance = msp.IDStructuralPerfomance
+        JOIN structure_max_drift_per_floor drift    ON msp.idMaxDriftPerFloor    = drift.IDMaxDriftPerFloor
+        WHERE sim.idType      = %s AND mss.idLinearity      = %s
+        AND sminput.Magnitude = %s AND sminput.Rupture_Type = %s AND sminput.Location = %s AND mss.Nstories = %s;
+        """
+cursor.execute(query, (sim_type, linearity, magnitude_mapping.get(magnitude), ruptures_mapping.get(rupture_type), location_mapping.get(station), stories))
+data = cursor.fetchall()
 
-    # Load the data
-    structure_max_drift_per_floor = data[simulation_id]
-    max_corner_x = pickle.loads(structure_max_drift_per_floor[1]) # type: ignore
-    max_corner_y = pickle.loads(structure_max_drift_per_floor[2]) # type: ignore
-    max_center_x = pickle.loads(structure_max_drift_per_floor[3]) # type: ignore
-    max_center_y = pickle.loads(structure_max_drift_per_floor[4]) # type: ignore
+# Load the data
+structure_max_drift_per_floor = data[0]
+max_corner_x = pickle.loads(structure_max_drift_per_floor[1]) # type: ignore
+max_corner_y = pickle.loads(structure_max_drift_per_floor[2]) # type: ignore
+max_center_x = pickle.loads(structure_max_drift_per_floor[3]) # type: ignore
+max_center_y = pickle.loads(structure_max_drift_per_floor[4]) # type: ignore
 
-    # Plot the data
-    save_path = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Drift Outputs'
-    plotter = Plotting(Model, save_path)
-    ax = plotter.plotModelDrift(max_corner_x, max_center_x, max_corner_y, max_center_y)
+# Plot the data
+save_path         = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Drift Outputs'
+plotter.save_path = Path(save_path)
+ax                = plotter.plotModelDrift(max_corner_x, max_center_x, max_corner_y, max_center_y)
+
+
 
 
 # ===================================================================================================
-# ==================================== QUERY THE INPUT SPECTRUM =====================================
-# ====================================================================================================
-if query_input_spectra:
-    #cursor   = Model.Manager.cursor
-    query    = "SELECT * FROM sm_input_spectrum "
-    cursor.execute(query)
-    data     = cursor.fetchall() # list of tuples, where every tuple is a row, where every value is a column
-    simulation_id = -1
-
-    # Load the data
-    sm_input_spectrum = data[simulation_id]
-    spectrum_x = pickle.loads(sm_input_spectrum[1]) # type: ignore
-    spectrum_y = pickle.loads(sm_input_spectrum[2]) # type: ignore
-    spectrum_z = pickle.loads(sm_input_spectrum[3]) # type: ignore
-
-
-    save_path = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Input Spectrums'
-    plotter = Plotting(Model, save_path)
-    ax = plotter.plotModelSpectrum(spectrum_x, spectrum_y, spectrum_z, plotNCh433=False)
-
-#FIXME: THIS IS MADE BY LOCAL MODEL DATA, YOU SHOULD DO THIS VIA A QUERY(abs_accelerations table)
+# ===================================== QUERY THE INPUT SPECTRUM ====================================
 # ===================================================================================================
-# ===================================== LOCAL STRUCTURE SPECTRUM ====================================
-# ===================================================================================================
-stories_df = Model.story_nodes_df.iloc[8:] # Get df with nodes from story 0 to roof
-accel_df   = Model.accel_mdf
-T = np.linspace(0.003, 2.5, 1000)
-spectrum_modes = [2.16, 1.44, 0.83, 0.46, 0.36, 0.29]
-if query_story_spectra:
-    # Input data
-    stories_lst = [5,10,20]
-    dirs_lst    = ['x', 'y', 'z']
+# Init the query
+query = """
+        SELECT msp.*
+        FROM simulation sim
+        JOIN simulation_sm_input           sminput 	ON sim.idSM_Input 			 = sminput.IDSM_Input
+        JOIN simulation_model              sm       ON sim.idModel 				 = sm.IDModel
+        JOIN model_specs_structure         mss      ON sm.idSpecsStructure 		 = mss.IDSpecsStructure
+        JOIN model_structure_perfomance    msp 		ON sm.idStructuralPerfomance = msp.IDStructuralPerfomance
+        JOIN structure_max_drift_per_floor drift    ON msp.idMaxDriftPerFloor    = drift.IDMaxDriftPerFloor
+        WHERE sim.idType      = %s AND mss.idLinearity      = %s
+        AND sminput.Magnitude = %s AND sminput.Rupture_Type = %s AND sminput.Location = %s AND mss.Nstories = %s;
+        """
+cursor.execute(query, (sim_type, linearity, magnitude_mapping.get(magnitude), ruptures_mapping.get(rupture_type), location_mapping.get(station), stories))
+data = cursor.fetchall() # list of tuples, where every tuple is a row, where every value is a column
 
-    # Plotting story spectrums
-    save_path = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Story Spectrums'
-    for dir_ in dirs_lst:
-        plotter = Plotting(Model, save_path)
-        plotter.plotLocalStoriesSpectrums(Model, dir_, accel_df, stories_df, stories_lst, T)
+# Load the data
+structure_max_drift_per_floor = data[0]
+accel_df       = pickle.loads(structure_max_drift_per_floor[6]) # type: ignore
+story_nodes_df = pickle.loads(structure_max_drift_per_floor[7]) # type: ignore
 
-if query_base_spectra:
-    # Plotting the base spectrum
-    save_path = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Spectrums'
-    plotter = Plotting(Model, save_path)
-    plotter.plotLocalBaseSpectrum(Model, accel_df, stories_df, T, spectrum_modes, plot_z=False)
+# Plot the data
+stories_lst       = [1,5,10,15,20]
+save_path         = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Input Spectrums'
+plotter.save_path = Path(save_path)
+ax                = plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'x', stories_lst, soften=True)
+
+
+
 
 # ===================================================================================================
-# ===================================== QUERY STRUCTURE SPECTRUM ====================================
+# ======================================= QUERY THE BASE SHEAR ======================================
 # ===================================================================================================
 
 
 
 
-#FIXME: THIS IS MADE BY LOCAL MODEL DATA, YOU SHOULD DO THIS VIA A QUERY(shear base table)
-# ====================================================================================================
-# ================================= QUERY THE TIME-SERIES SHEAR BASE =================================
-# =====================================================================================================
-if query_time_shear:
-    # Data for plots
-    save_path = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Shear Over Time'
-    time_shear_x_fma = Model._computeBaseShearByAccelerations()[0][0]
-    time_shear_y_fma = Model._computeBaseShearByAccelerations()[0][1]
-
-    reactions_df = Model.react_mdf.sum(axis=1)
-    matrixes     = [reactions_df.xs(dir, level='Dir') for dir in ['x', 'y']]
-    time_shear_x_react = matrixes[0]
-    time_shear_y_react = matrixes[1]
-    time = Model.timeseries
-
-    # Plot X
-    plotter = Plotting(Model, save_path)
-    ax      = plotter.plotLocalShearBaseOverTime(time, time_shear_x_fma, time_shear_x_react, 'x')
-
-    # Plot Y
-    plotter = Plotting(Model, save_path)
-    ax      = plotter.plotLocalShearBaseOverTime(time, time_shear_y_fma, time_shear_y_react, 'y')
-
-
-
-
-
-
-
+# ===================================================================================================
+# =========================================== END QUERIES ===========================================
+# ===================================================================================================
+DataBase.close_connection()
