@@ -55,3 +55,6 @@ Model  = ModelSimulation(Path(__file__), **parameters)
 upload_data = True
 if upload_data:
     Model.simulation()
+
+# Close the connection
+Model.Manager.close_connection()

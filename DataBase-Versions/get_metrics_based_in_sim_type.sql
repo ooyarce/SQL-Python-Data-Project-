@@ -6,12 +6,15 @@
 # Filter metrics by type and linearity but not with building type
 # In that case you will need to add Nstories and Nsubs from model_specs_structures
 # as filtering parameters.
-SELECT msp.*
+SELECT drift.*, mss.Nstories
 FROM simulation sim
-JOIN simulation_model sm ON sim.idModel = sm.IDModel
-JOIN model_specs_structure mss ON sm.idSpecsStructure = mss.IDSpecsStructure
-JOIN model_structure_perfomance msp ON sm.idStructuralPerfomance = msp.IDStructuralPerfomance
-WHERE sim.idType = 1 AND mss.idLinearity = 1;
+JOIN simulation_sm_input           sminput 	ON sim.idSM_Input 			 = sminput.IDSM_Input
+JOIN simulation_model              sm       ON sim.idModel 				 = sm.IDModel
+JOIN model_specs_structure         mss      ON sm.idSpecsStructure 		 = mss.IDSpecsStructure
+JOIN model_structure_perfomance    msp 		ON sm.idStructuralPerfomance = msp.IDStructuralPerfomance
+JOIN structure_max_drift_per_floor drift    ON msp.idMaxDriftPerFloor    = drift.IDMaxDriftPerFloor
+WHERE sim.idType = 1 		AND mss.idLinearity = 1 
+AND sminput.Magnitude = '6.5 Mw' AND sminput.Rupture_Type = 'Bilateral' AND sminput.Location = 'UAndes Campus' AND mss.Nstories = 20;
 
 
 # Filter building by simulation type, stories and subs
@@ -29,7 +32,7 @@ WHERE Magnitude = '6.5 Mw' AND Rupture_type = 'Bilateral' AND Location = 'UAndes
 SELECT * FROM model_specs_structureidMaxDriftPerFlooridMaxDriftPerFloor
 WHERE idLinearity = 1 AND Nnodes = 26057 AND Nelements = 35972 AND Nstories= 20 AND Nsubs = 2
 AND InterstoryHeight = '[3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5]'
-AND Comments = 'Linear-elastic elements: FixBase-6.5-bl-1-s0'
+AND Comments = 'Linear-elastic elements: FixBase-6.5-bl-1-s0';
 /*
 This was to make the tables with no repeated values
 
@@ -39,3 +42,6 @@ ADD CONSTRAINT unique_simulation_input UNIQUE(Magnitude, Rupture_Type, Location,
 ALTER TABLE model_specs_structure
 ADD CONSTRAINT unique_structure_specs UNIQUE(idLinearity, Nnodes, Nelements, Nstories, Nsubs, InterstoryHeight, Comments);
 */
+
+
+SELECT * FROM structure_max_drift_per_floor 

@@ -8,6 +8,7 @@ from pathlib                import Path
 from pyseestko.errors       import SQLFunctionError
 from pyseestko.db_manager   import DataBaseManager
 from pyseestko.model_info   import ModelInfo
+from pyseestko              import utilities as utl
 
 # Packages
 import pandas as pd
@@ -609,7 +610,9 @@ class ModelSimulation:
         # Compute structure  information
         if verbose: print('Computing structure information...')
 
+        # ================================================
         # Get job name, nodes, threads and logname
+        # ================================================
         with open(self.path/"run.sh") as data:
             lines = data.readlines()
             self.jobname = lines[1].split(" ")[1].split("=")[1]
@@ -617,6 +620,9 @@ class ModelSimulation:
             self.threads = int(lines[3].split("=")[1])
             self.logname = lines[4].split("=")[1].split("#")[0].strip()
 
+        # ================================================
+        # Get simulation time and memory results
+        # ================================================
         # Get simulation time
         with open(self.path/self.logname) as log:
             self.simulation_time = ""
@@ -631,14 +637,9 @@ class ModelSimulation:
         if self._sim_type == 1:
             folder_names.append("Reactions")
 
-        # Función para calcular el tamaño de una carpeta
-        def tamano_carpeta(folder_name):
-            folder_path = self.path / folder_name
-            return sum(file.stat().st_size for file in folder_path.iterdir() if file.is_file())
-
         # Calcular el tamaño en paralelo
         with ThreadPoolExecutor() as executor:
-            tamanos = list(executor.map(tamano_carpeta, folder_names))
+            tamanos = list(executor.map(utl.folder_size, [self.path] * len(folder_names), folder_names))
 
         # Sumar los tamaños y convertir a MB
         self.memory_by_results = sum(tamanos) / (1024 * 1024)
@@ -647,24 +648,29 @@ class ModelSimulation:
         # Get model memory
         model_name = next(self.model_path.glob("*.scd"))
         self.memory_by_model = f"{model_name.stat().st_size / (1024 * 1024):.2f} Mb"
-
+        
+        # ================================================
+        # Get model unique params
+        # ================================================
         # Get magnitude
         magnitude = main_path.parents[2].name[1:]
         self.magnitude = f"{magnitude} Mw"
+        if self.magnitude not in ['6.5 Mw', '6.7 Mw', '6.9 Mw', '7.0 Mw']:
+            self.magnitude = "Not defined"
 
         # Get rupture type
-        rupture_types = {
+        ruptures_mapping = {
             "bl": "Bilateral",
             "ns": "North-South",
             "sn": "South-North"}
         folder_name = main_path.parents[1].name
         try:
             rup_type = folder_name.split("_")[1]
-            self.rupture = rupture_types.get(rup_type)
+            self.rupture = ruptures_mapping.get(rup_type)
             if not self.rupture:
                 warnings.warn("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
         except IndexError:
-            self.rupture = "Unknown rupture type"
+            self.rupture = "Not defined"
             warnings.warn("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
         # Get realization id
         iter_name = main_path.parents[1].name
@@ -672,7 +678,7 @@ class ModelSimulation:
             self.iteration = iter_name.split("_")[2]
         else:
             warnings.warn(f"Unknown Iteration for {iter_name=}. Check folder iteration name!")
-            self.iteration = '0'
+            self.iteration = "0"
 
         # Get location
         location_mapping = {
@@ -699,6 +705,9 @@ class ModelSimulation:
             self.location = "Unknown location"
             warnings.warn("Folders name are not following the format rup_[bl/ns/sn]_[iteration].")
 
+        # ================================================
+        # Final structure info properties
+        # ================================================
         # Final structure info properties
         self.coordinates = self.model_info.coordinates
         self.drift_nodes = self.model_info.drift_nodes
@@ -710,9 +719,9 @@ class ModelSimulation:
 
         # Compute model info parameters
         if verbose: print('Computing model information...')
-        self.npartitions = self.model_info.npartitions
-        self.glob_nnodes         = self.model_info.glob_nnodes
-        self.glob_nelements      = self.model_info.glob_nelements
+        self.npartitions    = self.model_info.npartitions
+        self.glob_nnodes    = self.model_info.glob_nnodes
+        self.glob_nelements = self.model_info.glob_nelements
         self.str_nnodes,\
         self.str_nelements,\
         self.soil_nnodes,\
@@ -1483,24 +1492,36 @@ class ModelSimulation:
         return u_t, up_t
 
     @staticmethod
-    def initialize_ssh_tunnel(server_alive_interval = 60):
+    def initialize_ssh_tunnel(server_alive_interval=60):
         local_port = "3306"
         try:
-            # Execute netstat y capture the output
+            # Ejecutar netstat y capturar la salida
             netstat_output = subprocess.check_output(['netstat', '-ano'], text=True)
 
-            # Search for the local port in the netstat output
+            # Buscar el puerto local en la salida de netstat
             if re.search(rf'\b{local_port}\b', netstat_output):
                 print("SSH tunnel already established and operational...")
 
+                # Verificar si el proceso SSH está activo usando tasklist
+                tasklist_output = subprocess.check_output(['tasklist'], text=True)
+                if "ssh.exe" in tasklist_output:
+                    print("SSH process is running.")
+                else:
+                    print("SSH process not running. Closing all existing SSH processes and attempting to restart...")
+                    # Cerrar todos los procesos SSH
+                    subprocess.call(["taskkill", "/F", "/IM", "ssh.exe"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                    # Cerrar el túnel existente y abrir uno nuevo
+                    command = f"ssh -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
+                    subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
+
             else:
-                # If the local port is not in use, open the tunnel
+                # Si el puerto local no está en uso, abrir el túnel
                 print("Attempting to establish the SSH Tunnel...")
-                command = f"ssh  -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
+                command = f"ssh -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
                 subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
 
         except Exception as e:
-            raise DatabaseError(f"Error trying to open cmd:  {e}")
+            raise DataBaseError(f"Error trying to open cmd: {e}")
 
     @staticmethod
     def convert_and_store_time(time_string):

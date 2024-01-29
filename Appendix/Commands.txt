@@ -4,7 +4,13 @@ To check if DRM Box is well defined:
 	->  grep Accounted <name_of_log_file>.log
 To connect to DataBase:
 	-> ssh -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken
-
+To start up the DataBase:
+	-> ssh cluster
+	-> ssh kraken
+	-> sudo systemctl start mysql.service
+	-> clave: Mackbar2112
+To check the DataBase status:
+	-> sudo systemctl status mysql.service
 
 
 """

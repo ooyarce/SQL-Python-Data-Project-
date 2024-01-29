@@ -1,16 +1,8 @@
-#!/usr/bin/env python3
-#TODO: FIND HOW TO AUTOMATIZE THE GENERATION OF THE PARAMETERS DICT
-#TODO: THE IDEA BEHIND IS TO MAKE A MAIN WHERE YOU CAN GIVE SHELL PARAMS AND A CERTAIN JSON DICT TO LOAD
-#TODO: (THE JSON DICT IS THE ONE THAT CONTAINS THE PARAMETERS OF THE MODEL SUCH AS FOLLOWING).
-#TODO: SO, YOU WILL HAVE 3 TYPES OF JSON DICTS, ONE FOR THE FIX BASE, ANOTHER FOR THE ABS BOUND AND ANOTHER FOR THE DRM
-#TODO: THE UNIQUE PARAMS OF THE DICT FOREACH TYPE OF JSON DICT, ARE model_name, SO THEN YOU CAN QUERY THE DATA FROM THE DB
-#TODO: BASED ON THE model_name VALUE.
-
 # ==================================================================================================
 # ================================== INIT AND CONNECT TO DATABASE ==================================
 # ==================================================================================================
 # Import modules
-from sql_functions import ModelSimulation, Plotting
+from pyseestko.db_manager import DataBaseManager
 import numpy as np
 import pickle
 
@@ -20,36 +12,8 @@ password = 'Mackbar2112!'
 host     = 'localhost'
 database = 'stkodatabase'
 
-# Press insert key and fill the parameters you want to change the default values.
-parameters = {# Remember that the Db has a max lenght from:
-             #Here   :                                      to here ->,
-'bs_units'          : 'kN'                                           ,
-'max_bs_units'      : 'kN'                                           ,
-'rel_displ_units'   : 'm'                                            ,
-'max_drift_units'   : 'm'                                            ,
-'abs_acc_units'     : 'm/s/s'                                        ,
-'pga_units'         : 'm/s/s'                                        ,
-'resp_spectrum'     : 'm/s/s'                                        ,
-'sim_comments'      : 'Test AbsBound'                                ,
-'sm_input_comments' : 'H5DRM Input record'                           ,
-'model_comments'    : 'Model of AbsBound Test 1'                     ,
-'bench_comments'    : 'Model w/1.25 meter spacemenet structured mesh',
-'perf_comments'     : 'Model with shear,displacement & acce metrics ',
-'specs_comments'    : 'Model with linear-elastic-beam-column-shells ',
-'clustername'       : 'Esmeralda cluster HPC Uandes by jaabel       ',
-'model_name'        : 'AbsBound Test01                  '            ,
-'stage'             : 'Here it goes the simulation stage            ',
-'options'           : 'Here it goes the simulation options          ',
-'linearity'         : 1                                              , # This value is the linearity of the analysis, 1=Linear, 2=Nonlinear
-'jump'              : 8                                              , # This value is the jumper between rows in the series, for example if a list has 10 values and jump=2, then the list will be [0,2,4,6,8]
-'sim_type'          : 1                                              , # This value is the simulation type, 1=Fix Base, 2=Absorbing Boundaries, 3=DRM
-'windows_os'        : True                                           , # This value is True if the OS is Windows, False if Linux
-'time_step'         : 0.0025                                         , # This value is the time step of the analysis
-'total_time'        : 40                                               # This value is the total time of the analysis
-}
-
+DataBase = DataBaseManager
 # Connect the model to the database
-Model = ModelSimulation(**parameters)
 cursor   = Model.Manager.cursor
 
 # Query the data from the database

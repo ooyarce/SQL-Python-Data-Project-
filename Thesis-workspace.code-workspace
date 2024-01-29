@@ -8,6 +8,7 @@
 		}
 	],
 	"settings": {
-		"CodeGPT.apiKey": "CodeGPT Plus Beta"
+		"CodeGPT.apiKey": "CodeGPT Plus Beta",
+		"powershell.cwd": "Thesis-Project-Simulation-Data-Analysis"
 	}
 }

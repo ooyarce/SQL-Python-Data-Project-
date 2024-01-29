@@ -5,7 +5,7 @@
 from matplotlib   import pyplot as plt
 from pathlib      import Path
 from typing       import Optional
-from pyseestko.db_functions import ModelSimulation                       
+from pyseestko.db_functions import ModelSimulation      
 
 # Packages
 import pandas as pd
@@ -20,28 +20,30 @@ class Plotting:
     It's used to analyse quiclky the structure and get the results of the analysis.
     You use it in the main after the results are uploaded to the database.
     """
-    def __init__(self, database: ModelSimulation, path:str):
-        database.loadModelInfo(verbose=False)
-        self.path = database.path
-        self.stories = database.stories
-        self.station = database.station
-        self.rup_type = database.rupture
-        self.mag = database.magnitude
+    def __init__(self, sim_type:int,  stories:int, magnitude:float, rupture:int, station:int, path:str):
+        sim_type_map = {
+            1: 'FB',
+            2: 'AB',
+            3: 'DRM',
+        }
+        rup_type_map = {
+            1: 'BL',
+            2: 'NS',
+            3: 'SN'
+        }
+        self.sim_type  = sim_type_map.get(sim_type)
+        self.stories   = stories
+        self.magnitude = magnitude
+        self.rup_type  = rup_type_map.get(rupture)
+        self.station   = station
         self.save_path = Path(path)
-        if database._sim_type == 1:
-            self.sim_type = 'FB'
-        elif database._sim_type == 2:
-            self.sim_type = 'AB'
-        elif database._sim_type == 3:
-            self.sim_type = 'DRM'
-        if database.rupture == 'Bilateral':
-            self.rup_type = 'BL'
-        self.file_name           = f'{self.sim_type}_{self.mag[:3]}_{self.rup_type}_s{self.station}'
-        self.drift_title         = f'Drift per story plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
-        self.input_title         = f'Input Accelerations Response Spectra Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
-        self.sprectums_title     = f'Story PSa Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
-        self.base_spectrum_title = f'Base Accelerations Spectrum Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
-        self.base_shear_ss_title = f'Base Shear Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
+        
+        self.file_name   = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}'
+        self.drift_title = f'Drift per story plot | {self.sim_type} |  {self.magnitude} | {self.rup_type} | Station {self.station}'
+        #self.input_title         = f'Input Accelerations Response Spectra Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
+        #self.sprectums_title     = f'Story PSa Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
+        #self.base_spectrum_title = f'Base Accelerations Spectrum Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
+        #self.base_shear_ss_title = f'Base Shear Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
 
     def plotConfig(self, title:str, x = 19.2, y = 10.8, dpi = 100):
         fig = plt.figure(num=1, figsize=(x, y), dpi=dpi)

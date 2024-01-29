@@ -1,10 +1,13 @@
 # ==================================================================================
 # IMPORT LIBRARIES
 # ==================================================================================
-from pyseestko.errors import NCh433Error
-import math
+from pyseestko.errors import NCh433Error, DataBaseError
+from pathlib import Path
 import importlib.util
+import subprocess
 import logging
+import math
+import re
 
 # ==================================================================================
 # =============================== UTILITY FUNCTIONS ================================
@@ -107,6 +110,69 @@ def setup_logger(verbose, module_name):
         logger.addHandler(handler)
 
     return logger
+
+def initialize_ssh_tunnel(server_alive_interval=60):
+    local_port = "3306"
+    try:
+        # Ejecutar netstat y capturar la salida
+        netstat_output = subprocess.check_output(['netstat', '-ano'], text=True)
+
+        # Buscar el puerto local en la salida de netstat
+        if re.search(rf'\b{local_port}\b', netstat_output):
+            print("SSH tunnel already established and operational...")
+
+            # Verificar si el proceso SSH está activo usando tasklist
+            tasklist_output = subprocess.check_output(['tasklist'], text=True)
+            if "ssh.exe" in tasklist_output:
+                print("SSH process is running.")
+            else:
+                print("SSH process not running. Closing all existing SSH processes and attempting to restart...")
+                # Cerrar todos los procesos SSH
+                subprocess.call(["taskkill", "/F", "/IM", "ssh.exe"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                # Cerrar el túnel existente y abrir uno nuevo
+                command = f"ssh -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
+                subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
+
+        else:
+            # Si el puerto local no está en uso, abrir el túnel
+            print("Attempting to establish the SSH Tunnel...")
+            command = f"ssh -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
+            subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
+
+    except Exception as e:
+        raise DataBaseError(f"Error trying to open cmd: {e}")
+
+def folder_size(path:Path, folder_name:str):
+    folder_path = path / folder_name
+    return sum(file.stat().st_size for file in folder_path.iterdir() if file.is_file())
+
+def get_mappings():
+    magnitude_mapping = {
+        0.0: "Not defined",
+        6.5: "6.5 Mw",
+        6.7: "6.7 Mw",
+        6.9: "6.9 Mw",
+        7.0: "7.0 Mw"}
+
+    location_mapping = {
+        -1: 'Not defined',
+        0: "UAndes Campus",
+        1: "Near field North",
+        2: "Near field Center",
+        3: "Near field South",
+        4: "Intermediate field North",
+        5: "Intermediate field Center",
+        6: "Intermediate field South",
+        7: "Far field North",
+        8: "Far field Center",
+        9: "Far field South"}
+
+    ruptures_mapping = {
+        0: "Not defined",
+        1: "Bilateral",
+        2: "North-South",
+        3: "South-North"}
+    return magnitude_mapping, location_mapping, ruptures_mapping
 
 
 # ==================================================================================
