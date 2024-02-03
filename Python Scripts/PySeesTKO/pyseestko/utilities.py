@@ -2,15 +2,16 @@
 # IMPORT LIBRARIES
 # ==================================================================================
 from pyseestko.errors import NCh433Error, DataBaseError
-from pathlib import Path
+from pathlib          import Path
+
+import numpy          as np
 import importlib.util
 import subprocess
 import logging
 import math
 import re
-
 # ==================================================================================
-# =============================== UTILITY FUNCTIONS ================================
+# =============================== GETTERS FUNCTIONS ================================
 # ==================================================================================
 def mapSimTypeID(sim_type):
     simulation_type_dict = {'FixBase': 1,'AbsBound': 2,'DRM': 3,}
@@ -57,6 +58,38 @@ def getBoxParams(sim_type, sim_keys):
     vs30          = '750 m/s'                             if sim_type != 1 else 'No Vs30'
     soil_dim      = '3D'                                  if sim_type != 1 else 'No Soil dimension'
     return box_comments, soil_mat_name, soil_ele_type, mesh_struct, vs30, soil_dim
+
+def get_mappings():
+    magnitude_mapping = {
+        0.0: "Not defined",
+        6.5: "6.5 Mw",
+        6.7: "6.7 Mw",
+        6.9: "6.9 Mw",
+        7.0: "7.0 Mw"}
+
+    location_mapping = {
+        -1: 'Not defined',
+        0: "UAndes Campus",
+        1: "Near field North",
+        2: "Near field Center",
+        3: "Near field South",
+        4: "Intermediate field North",
+        5: "Intermediate field Center",
+        6: "Intermediate field South",
+        7: "Far field North",
+        8: "Far field Center",
+        9: "Far field South"}
+
+    ruptures_mapping = {
+        0: "Not defined",
+        1: "Bilateral",
+        2: "North-South",
+        3: "South-North"}
+    return magnitude_mapping, location_mapping, ruptures_mapping
+
+# ==================================================================================
+# =============================== UTILITY FUNCTIONS ================================
+# ==================================================================================
 
 def load_module(module_name, module_path):
     """
@@ -146,50 +179,79 @@ def folder_size(path:Path, folder_name:str):
     folder_path = path / folder_name
     return sum(file.stat().st_size for file in folder_path.iterdir() if file.is_file())
 
-def get_mappings():
-    magnitude_mapping = {
-        0.0: "Not defined",
-        6.5: "6.5 Mw",
-        6.7: "6.7 Mw",
-        6.9: "6.9 Mw",
-        7.0: "7.0 Mw"}
+# ==================================================================================
+# ================================ MATH FUNCTIONS ==================================
+# ==================================================================================
 
-    location_mapping = {
-        -1: 'Not defined',
-        0: "UAndes Campus",
-        1: "Near field North",
-        2: "Near field Center",
-        3: "Near field South",
-        4: "Intermediate field North",
-        5: "Intermediate field Center",
-        6: "Intermediate field South",
-        7: "Far field North",
-        8: "Far field Center",
-        9: "Far field South"}
+def pwl(vector_a, w, chi,step=0.04):
+    """
+    Use step = 0.04 for 1000 values
+    Use step = 0.02 for 2000 values
+    Use step = 0.01 for 4000 values
+    Use step = 0.005 for 8000 values
+    Use step = 0.0025 for 16000 values
+    """
+    # Precompute constants
+    h = step
+    m = 1
+    w_d = w * np.sqrt(1 - chi**2)  # 1/s
 
-    ruptures_mapping = {
-        0: "Not defined",
-        1: "Bilateral",
-        2: "North-South",
-        3: "South-North"}
-    return magnitude_mapping, location_mapping, ruptures_mapping
+    # Define functions
+    sin = np.sin(w_d * h)
+    cos = np.cos(w_d * h)
+    e = np.exp(-chi * w * h)
+    raiz = np.sqrt(1 - chi**2)
+    division = 2 * chi / (w * h)
+
+    A = e * (chi * sin / raiz + cos)
+    B = e * (sin / w_d)
+    C = (1 / w**2) * (division + e * (((1 - (2 * chi**2)) / (w_d * h) - chi / raiz) * sin - (1 + division) * cos))
+    D = (1 / w**2) * (1 - division + e * ((2 * chi**2 - 1) * sin / (w_d * h) + division * cos))
+
+    A1 = -e * ((w * sin) / raiz)
+    B1 = e * (cos - chi * sin / raiz)
+    C1 = (1 / w**2) * (-1 / h + e * ((w / raiz + chi / (h * raiz)) * sin + cos / h))
+    D1 = (1 / w**2) * (1 / h - (e / h * (chi * sin / raiz + cos)))
+
+    # Initialize vectors
+    u_t = np.zeros(len(vector_a))
+    up_t = np.zeros(len(vector_a))
+
+    # Compute the first two values of the vectors
+    for i in range(len(vector_a) - 1):
+        pi = -vector_a[i] * m
+        pi1 = -vector_a[i + 1] * m
+
+        ui = u_t[i]
+        vi = up_t[i]
+
+        u_t[i + 1] = A * ui + B * vi + C * pi + D * pi1
+        up_t[i + 1] = A1 * ui + B1 * vi + C1 * pi + D1 * pi1
+    return u_t, up_t
 
 
 # ==================================================================================
 # ================================ UTILITY CLASSES =================================
 # ==================================================================================
 class NCh433_2012:
-
+    # ===================================================
+    # INIT PARAMETERS
+    # ===================================================
     def __init__(self, zone, soil_category, importance):
-        self.name = "NCh433_Of1996_Mod2009"
-
         # Parameters
-        self.zone = zone # (1,2,3)
+        self.zone          = self.getSeismicZone_c4_1(zone) # (1,2,3)
         self.soil_category = soil_category # (1,2,3,4)
-        self.importance = importance # UPDATE: A, B, C, D, E. Deprecated: (1,2,3,4)
-        self.g = 9.81 # m/s2
-
+        self.importance    = importance # UPDATE: A, B, C, D, E. Deprecated: (1,2,3,4)
+        self.g  = 9.81 # m/s2
+        self.R  = 7.0 # R factor from table 5.1
+        self.Ro = 11.0 # Ro factor from table 5.1 
+        
+        
+        
+        
+    # ===================================================
     # INITIAL METHODS TO GET THE CONSTRUCTOR PARAMETERS
+    # ===================================================
     @staticmethod
     def getSeismicZone_c4_1(loc):
         citiesZone1 = set(["Curarrehue", "Lonquimay", "Melipeuco", "Pucon"])
@@ -239,49 +301,47 @@ class NCh433_2012:
     @staticmethod
     def computeSoilParameters_c4_2(soil_category):
         soil_parameters = {
-            'A':{'S' : 0.9, 'To' : 0.15,'Tp' : 0.2,'n'  : 1.,'p'  : 2.},
-            'B':{'S':1., 'To':0.3, 'Tp':0.35, 'n':1.33, 'p':1.5},
-            'C':{'S':1.05, 'To':0.4, 'Tp':0.45, 'n':1.4, 'p':1.6},
-            'D':{'S':1.2, 'To':0.75, 'Tp':0.85, 'n':1.8, 'p':1.},
-            'E':{'S':1.3, 'To':1.2, 'Tp':1.35, 'n':1.8, 'p':1.}}
-        if soil_category in soil_parameters:
-            return soil_parameters[soil_category]
-        else:
-            raise NCh433Error(f"UE: NCh433 soil parameters: category '{soil_category}' is not valid. Must be either A, B, C, D or E")
-
+            'A':{'S':0.9,  'To': 0.15, 'Tp': 0.2, 'n': 1.,  'p': 2.},
+            'B':{'S':1.,   'To':0.3,   'Tp':0.35, 'n':1.33, 'p':1.5},
+            'C':{'S':1.05, 'To':0.4,   'Tp':0.45, 'n':1.4,  'p':1.6},
+            'D':{'S':1.2,  'To':0.75,  'Tp':0.85, 'n':1.8,  'p':1.},
+            'E':{'S':1.3,  'To':1.2,   'Tp':1.35, 'n':1.8,  'p':1.}}
+        if soil_category not in soil_parameters: raise NCh433Error(f'NCh433 soil category: category {soil_category} is not valid. Must be either A, B, C, D or E.')
+        return soil_parameters[soil_category]
+    
     @staticmethod
     def computeImportanceFactor_c4_3(occupation_category):
         # Mapeo de categoría de ocupación a factor de importancia
         importance_factors = {1: 0.6, 2: 1.0, 3: 1.2, 4: 1.2}
 
         # Retorna el factor de importancia basado en la categoría de ocupación
-        if occupation_category in importance_factors:
-            return importance_factors[occupation_category]
-        else:
-            raise NCh433Error(f"NCh433 importance factor: category '{occupation_category}' is not valid. Must be either 1, 2, 3 or 4")
-
+        if occupation_category not in importance_factors: raise NCh433Error(f"NCh433 importance factor: category '{occupation_category}' is not valid. Must be either 1, 2, 3 or 4")
+        return importance_factors[occupation_category]
+    
+    @staticmethod
+    def compute_Tast(direction):
+        if direction not in ['x', 'y', 'z']: raise NCh433Error(f"NCh433 Tast: direction '{direction}' is not valid. Must be either 'x', 'y' or 'z'")
+        Tast_mapping     ={
+            'x': 1.44514,
+            'y': 2.16259,
+            'z': 0.292927}
+        return Tast_mapping[direction]
+    
     def computePGA_c6_2_3_2(self, Z):
         # Mapeo de la zona sísmica al factor Ao multiplicado por g
         seismic_zones = {1: 0.2 * self.g, 2: 0.3 * self.g, 3: 0.4 * self.g}
 
         # Retorna el valor de Ao basado en la zona sísmica
-        if Z in seismic_zones:
-            return seismic_zones[Z]
-        else:
-            raise NCh433Error(f"UE: NCh433 compute PGA: seismic zone '{Z}' is not valid. Must be either 1, 2 or 3")
+        if Z not in seismic_zones: raise NCh433Error(f"NCh433 PGA: zone '{Z}' is not valid. Must be either 1, 2 or 3")
+        return seismic_zones[Z]
+    
 
-    # DRIFT LIMITS
-    @staticmethod
-    def getLimitDrift_CM_c5_9_2():
-        return 0.002
-
-    @staticmethod
-    def getLimitDrift_diffMax2CM_c5_9_3():
-        return 0.001
-
+    # ===================================================
     # BASE SHEAR
-    def computeCMax_c6_2_3_1_2(self, R):
+    # ===================================================
+    def computeCMax_c6_2_3_1_2(self):
         # parameters
+        R = self.R
         g = self.g
         soil_params = self.computeSoilParameters_c4_2(self.soil_category)
         S = soil_params["S"]
@@ -290,19 +350,21 @@ class NCh433_2012:
         # compute the Cmax
         Cmax = None
         tol = 1e-3  # Tolerancia para la comparación
-        if math.isclose(R, 2., abs_tol=tol):   Cmax = 0.9 * S * Ao / g
-        elif math.isclose(R, 3., abs_tol=tol): Cmax = 0.6 * S * Ao / g
-        elif math.isclose(R, 4., abs_tol=tol): Cmax = 0.55 * S * Ao / g
-        elif math.isclose(R, 5.5, abs_tol=tol): Cmax = 0.4 * S * Ao / g
-        elif math.isclose(R, 6., abs_tol=tol): Cmax = 0.35 * S * Ao / g
-        elif math.isclose(R, 7., abs_tol=tol): Cmax = 0.35 * S * Ao / g
+        if   math.isclose(R, 2.0, abs_tol=tol):  Cmax = 0.9  * S * Ao / g
+        elif math.isclose(R, 3.0, abs_tol=tol):  Cmax = 0.6  * S * Ao / g
+        elif math.isclose(R, 4.0, abs_tol=tol):  Cmax = 0.55 * S * Ao / g
+        elif math.isclose(R, 5.5, abs_tol=tol):  Cmax = 0.4  * S * Ao / g
+        elif math.isclose(R, 6.0, abs_tol=tol):  Cmax = 0.35 * S * Ao / g
+        elif math.isclose(R, 7.0, abs_tol=tol):  Cmax = 0.35 * S * Ao / g
         else:
             raise NCh433Error("UE: NCh433 compute CMax: R factor must be either 2, 3, 4, 5.5, 6 or 7")
 
         return Cmax
 
-    def computeSeismicCoefficient_c6_2_3_1(self, Tast, R):
+    def computeSeismicCoefficient_c6_2_3_1(self, direction):
         # compute variables
+        Tast = self.compute_Tast(direction)
+        R = self.R
         g = self.g
         Ao = self.computePGA_c6_2_3_2(self.zone)
         soil_params = self.computeSoilParameters_c4_2(self.soil_category)
@@ -317,12 +379,12 @@ class NCh433_2012:
         C = max(C, Cmin)
 
         # [6.2.3.1.2] limit by maximum
-        Cmax = self.computeCMax_c6_2_3_1_2(R)
+        Cmax = self.computeCMax_c6_2_3_1_2()
         C = min(C, Cmax)
 
         return C
 
-    def computeStaticBaseShear_c6_2_3(self, Tast, R, W):
+    def computeStaticBaseShear_c6_2_3(self, direction, W):
         """
 
         :param Tast: fundamental period in the direction of analysis
@@ -330,7 +392,8 @@ class NCh433_2012:
         :param W: seismic weight, associated to the seismic mass sources.
         :return: static base shear.
         """
-        C = self.computeSeismicCoefficient_c6_2_3_1(Tast, R)
+        R = self.R
+        C = self.computeSeismicCoefficient_c6_2_3_1(direction)
         I = self.importance
         Q = C * I * W
         return Q
@@ -346,9 +409,9 @@ class NCh433_2012:
         Qmin = Importance*Ao*W/(6.*g)
         return Qmin
 
-    def computeMaxBaseShear_c6_3_7_2(self, R, W):
+    def computeMaxBaseShear_c6_3_7_2(self, W):
         Importance = self.importance
-        Cmax = self.computeCMax_c6_2_3_1_2(R)
+        Cmax = self.computeCMax_c6_2_3_1_2()
         Qmax = Importance*Cmax*W
         return Qmax
 

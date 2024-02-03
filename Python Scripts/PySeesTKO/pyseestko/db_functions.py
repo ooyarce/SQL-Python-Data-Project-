@@ -23,10 +23,42 @@ import time
 import re
 
 
+
+
 # ==================================================================================
 # MAIN CLASS
 # ==================================================================================
 class ModelSimulation:
+    """
+    This class is used to manage the connection to the database.
+    It's used to upload the results of the analysis to the database.
+    It works with the ModelInfo class to get the data from the model.
+    Also it works with the DataBaseManager class to connect to the database.
+    The main function is simulation, which uploads the results to the database.
+    The other functions are used to upload the results to the database.
+    The algorithm is the following:
+        1. Connect to the database
+        2. Get the data from the model
+        3. Upload the data to the database
+    The parameters are the following:
+    
+    Parameters
+    ----------
+    main_path : Path
+        Path to the main file of the model.
+    user : str, optional
+        User of the database. The default is 'omarson'.
+    password : str, optional
+    host : str, optional
+        Host of the database. The default is 'localhost'.
+    database : str, optional
+        Database name. The default is 'stkodatabase'.
+    kwargs : dict, optional
+        Dictionary with the parameters of the simulation. There are a lot of parameters, so it's better to see the code.
+    """
+    
+    
+    
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
@@ -574,15 +606,15 @@ class ModelSimulation:
 
         # Spectrum East
         ae = self.input_df.xs('x', level='Dir')['Acceleration'].to_list()[::16]
-        Spe = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [self.pwl(ae, wi, nu)]]
+        Spe = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [utl.pwl(ae, wi, nu)]]
 
         # Spectrum North
         an = self.input_df.xs('y', level='Dir')['Acceleration'].to_list()[::16]
-        Spn = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [self.pwl(an, wi, nu)]]
+        Spn = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [utl.pwl(an, wi, nu)]]
 
         # Spectrum Vertical
         az = self.input_df.xs('z', level='Dir')['Acceleration'].to_list()[::16]
-        Spz = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [self.pwl(az, wi, nu)]]
+        Spz = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [utl.pwl(az, wi, nu)]]
 
         # Upload results to the database
         insert_query = ("INSERT INTO sm_input_spectrum("
@@ -744,6 +776,59 @@ class ModelSimulation:
         self.base_story_df             = self._computeBaseDF()[0]
         self.base_displ_df             = self._computeBaseDF()[1]
         self.input_df                  = self._computeInputAccelerationsDF()
+        print('Done!\n')
+
+    def model_linearity(self):
+        """
+        This function is used to create the model_linearity table database.
+        """
+        # initialize parameters
+        cursor = self.Manager.cursor
+        cnx = self.Manager.cnx
+
+        # create table
+        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
+        values = ("Linear", )
+        cursor.execute(insert_query, values)
+        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
+        values = ("Non Linear", )
+        cursor.execute(insert_query, values)
+        cnx.commit()
+        print("model_linearity created correctly!\n")
+
+    def simulation_type(self):
+        """
+        This function is used to create the simulation_type table database.
+        """
+        # initialize parameters
+        cursor = self.Manager.cursor
+        cnx = self.Manager.cnx
+
+        # create table
+        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
+        values = ("Fix Base Model", )
+        cursor.execute(insert_query, values)
+        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
+        values = ("Absorbing Boundaries Model", )
+        cursor.execute(insert_query, values)
+        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
+        values = ("DRM Model", )
+        cursor.execute(insert_query, values)
+        cnx.commit()
+        print("simulation_type created correctly!\n")
+
+    def connect(self):
+        """
+        This function is used to connect to the database.
+        """
+        import time
+        if self._test_mode:
+            print('Connecting to the database...')
+            ModelSimulation.initialize_ssh_tunnel()
+            time.sleep(1)
+            self.Manager = DataBaseManager(self.db_user, self.db_password, self.db_host,
+                                                self.db_database)
+            print(f"Succesfully connected to '{self.db_database}' database as '{self.db_user}'.")
         print('Done!\n')
 
 
@@ -1133,65 +1218,6 @@ class ModelSimulation:
     # ==================================================================================
     # EXTERNAL FILES GENERATIONS AND COMPLEMENTARY METHODS
     # ==================================================================================
-    def model_linearity(self):
-        """
-        This function is used to create the model_linearity table database.
-        """
-        # initialize parameters
-        cursor = self.Manager.cursor
-        cnx = self.Manager.cnx
-
-        # create table
-        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
-        values = ("Linear", )
-        cursor.execute(insert_query, values)
-        insert_query = "INSERT INTO model_linearity(Type) VALUES (%s)"
-        values = ("Non Linear", )
-        cursor.execute(insert_query, values)
-        cnx.commit()
-        print("model_linearity created correctly!\n")
-
-    def simulation_type(self):
-        """
-        This function is used to create the simulation_type table database.
-        """
-        # initialize parameters
-        cursor = self.Manager.cursor
-        cnx = self.Manager.cnx
-
-        # create table
-        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
-        values = ("Fix Base Model", )
-        cursor.execute(insert_query, values)
-        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
-        values = ("Absorbing Boundaries Model", )
-        cursor.execute(insert_query, values)
-        insert_query = "INSERT INTO simulation_type(Type) VALUES (%s)"
-        values = ("DRM Model", )
-        cursor.execute(insert_query, values)
-        cnx.commit()
-        print("simulation_type created correctly!\n")
-
-    def connect(self):
-        """
-        This function is used to connect to the database.
-        """
-        import time
-        if self._test_mode:
-            print('Connecting to the database...')
-            ModelSimulation.initialize_ssh_tunnel()
-            time.sleep(1)
-            self.Manager = DataBaseManager(self.db_user, self.db_password, self.db_host,
-                                                self.db_database)
-            print(f"Succesfully connected to '{self.db_database}' database as '{self.db_user}'.")
-        print('Done!\n')
-
-
-
-
-    # ==================================================================================
-    # STATIC METHODS
-    # ==================================================================================
     def create_reaction_xlsx(self):
         import os
 
@@ -1445,53 +1471,6 @@ class ModelSimulation:
         workbook.close()
 
     @staticmethod
-    def pwl(vector_a, w, chi,step=0.04):
-        """
-        Use step = 0.04 for 1000 values
-        Use step = 0.02 for 2000 values
-        Use step = 0.01 for 4000 values
-        Use step = 0.005 for 8000 values
-        Use step = 0.0025 for 16000 values
-        """
-        # Precompute constants
-        h = step
-        m = 1
-        w_d = w * np.sqrt(1 - chi**2)  # 1/s
-
-        # Define functions
-        sin = np.sin(w_d * h)
-        cos = np.cos(w_d * h)
-        e = np.exp(-chi * w * h)
-        raiz = np.sqrt(1 - chi**2)
-        division = 2 * chi / (w * h)
-
-        A = e * (chi * sin / raiz + cos)
-        B = e * (sin / w_d)
-        C = (1 / w**2) * (division + e * (((1 - (2 * chi**2)) / (w_d * h) - chi / raiz) * sin - (1 + division) * cos))
-        D = (1 / w**2) * (1 - division + e * ((2 * chi**2 - 1) * sin / (w_d * h) + division * cos))
-
-        A1 = -e * ((w * sin) / raiz)
-        B1 = e * (cos - chi * sin / raiz)
-        C1 = (1 / w**2) * (-1 / h + e * ((w / raiz + chi / (h * raiz)) * sin + cos / h))
-        D1 = (1 / w**2) * (1 / h - (e / h * (chi * sin / raiz + cos)))
-
-        # Initialize vectors
-        u_t = np.zeros(len(vector_a))
-        up_t = np.zeros(len(vector_a))
-
-        # Compute the first two values of the vectors
-        for i in range(len(vector_a) - 1):
-            pi = -vector_a[i] * m
-            pi1 = -vector_a[i + 1] * m
-
-            ui = u_t[i]
-            vi = up_t[i]
-
-            u_t[i + 1] = A * ui + B * vi + C * pi + D * pi1
-            up_t[i + 1] = A1 * ui + B1 * vi + C1 * pi + D1 * pi1
-        return u_t, up_t
-
-    @staticmethod
     def initialize_ssh_tunnel(server_alive_interval=60):
         local_port = "3306"
         try:
@@ -1549,12 +1528,3 @@ class ModelSimulation:
             resultados_serializados = list(executor.map(serializar_df, data_frames))
 
         return resultados_serializados
-
-
-
-
-
-
-
-
-

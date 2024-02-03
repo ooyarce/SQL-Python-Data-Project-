@@ -6,13 +6,13 @@
 # Filter metrics by type and linearity but not with building type
 # In that case you will need to add Nstories and Nsubs from model_specs_structures
 # as filtering parameters.
-SELECT drift.*, mss.Nstories
+SELECT msp.*
 FROM simulation sim
 JOIN simulation_sm_input           sminput 	ON sim.idSM_Input 			 = sminput.IDSM_Input
 JOIN simulation_model              sm       ON sim.idModel 				 = sm.IDModel
 JOIN model_specs_structure         mss      ON sm.idSpecsStructure 		 = mss.IDSpecsStructure
 JOIN model_structure_perfomance    msp 		ON sm.idStructuralPerfomance = msp.IDStructuralPerfomance
-JOIN structure_max_drift_per_floor drift    ON msp.idMaxDriftPerFloor    = drift.IDMaxDriftPerFloor
+JOIN structure_base_shear 		   sbs      ON msp.idBaseShear           = sbs.IDBaseShear
 WHERE sim.idType = 1 		AND mss.idLinearity = 1 
 AND sminput.Magnitude = '6.5 Mw' AND sminput.Rupture_Type = 'Bilateral' AND sminput.Location = 'UAndes Campus' AND mss.Nstories = 20;
 
