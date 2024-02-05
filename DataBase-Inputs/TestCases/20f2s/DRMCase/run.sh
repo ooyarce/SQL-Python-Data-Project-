@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=DRM_Omar   # Job name
+#SBATCH --job-name=DRM20f2s   # Job name
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=32
 #SBATCH --output=log.log   # Standard output and error log

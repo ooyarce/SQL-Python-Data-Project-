@@ -1,0 +1,61 @@
+================================================================================================
+=============================== SHELL AND MYSQL IMPORTANT COMMANDS =============================
+================================================================================================
+To change direct access to DRM input:
+	-> ln -sf /mnt/krakenschest/home/FSR_DRM_Motions/<name_of_DRM_file>.h5drm input.h5drm
+To check if DRM Box is well defined:
+	->  grep Accounted <name_of_log_file>.log
+To connect to DataBase:
+	-> ssh -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken
+To start up the DataBase:
+	-> ssh cluster
+	-> ssh kraken
+	-> sudo systemctl start mysql.service
+	-> clave: Mackbar2112
+To check the DataBase status:
+	-> sudo systemctl status mysql.service
+
+
+================================================================================================
+====================================== CURRENT PROJECT STATE ===================================
+================================================================================================
+1.- 20stories models sent to compute with only rupt bilateral iteration1 (rup_bl_1). 
+2.- FB, AB and DRM cases where include, but DRM20f4s was not included cause the model has a minor problem to fix.
+3.- Once the models are ok we can include the following iterations.
+4.- So next step is to fix the DRM model, and upload the results to the database.
+5.- REMEMBER that, to compute in automated way, you have to upload the model to every folder, incluiding the correct import_hdf5.py and the run.sh files. The script that you will use is input.sh and one of the other to copy the model data into the folder structure.
+"""
+
+
+THE DEFAULT INPUT PARAMETERS FOR THE CURRENT MODEL SIMULATION ARE THE FOLLOWING:
+
+        # Simulation default parameters
+        "sim_comments"     : "No comments"
+        "sim_opt"          : "No options yet"
+        "sim_stage"        : "No stage yet"
+        "sm_input_comments": "No comments"
+        "model_comments"   : "No comments"
+        "bench_comments"   : "No comments"
+        "perf_comments"    : "No comments"
+        "specs_comments"   : "No comments"
+        "box_comments"     : "No comments"
+        "gspecs_comments"  : "No comments"
+        "pga_units"        : "m/s/s"
+        "resp_spectrum"    : "m/s/s"
+        "abs_acc_units"    : "m/s/s"
+        "rel_displ_units"  : "m"
+        "max_drift_units"  : "m"
+        "max_bs_units"     : "kN"
+        "bs_units"         : "kN"
+        "linearity"        : 1      # This value is the linearity of the analysis, 1=Linear, 2=Nonlinear
+        "time_step"        : 0.0025 # This value is the time step of the analysis
+        "total_time"       : 40     # This value is the total time of the analysis
+        "jump"             : 8      # This value is the jumper between rows in the series, for example if a range has 10 values and jump=2, then the list will be [0,2,4,6,8]
+        "cfactor"          : 1.0    # Value to increase the input acceleration; usefull when change in units is needed
+        "load_df_info"     : True
+        'soil_dim'         : 'Dimentions'
+        'soil_mat_name     : 'Material
+        "soil_ele_type     : 'Element type'
+        'vs30'             : '750' # This value is the Vs30 of the soil in m/s
+        'mesh_struct'      : 'Structured mesh'
+"""
