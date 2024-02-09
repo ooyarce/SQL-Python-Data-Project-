@@ -8,6 +8,12 @@ class NCh433Error(Exception):
 class DataBaseError(Exception):
     pass
 
+class ModelInfoError(Exception):
+    pass
+
+class PlottingError(Exception):
+    pass
+
 
 
 
