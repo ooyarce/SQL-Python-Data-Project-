@@ -54,7 +54,11 @@ Model  = ModelSimulation(Path(__file__), **parameters)
 # Conditions
 upload_data = True
 if upload_data:
-    Model.simulation()
+    try:
+        Model.simulation()
+        # Close the connection
+        Model.Manager.close_connection()
 
-# Close the connection
-Model.Manager.close_connection()
+    except Exception as e:
+        Model.Manager.close_connection()
+        raise Exception(f'Error: {e}')

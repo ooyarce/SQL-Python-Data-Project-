@@ -47,7 +47,7 @@ class Plotting:
         self.rup_type  = rup_type_map.get(rupture)
         self.station   = station
         #self.save_path = Path(path) # old way of doing it
-        self.save_path = ''
+        self.save_path = Path('')
         
         
         self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}'
