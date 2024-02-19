@@ -24,12 +24,13 @@ cursor   = DataBase.cursor
 magnitude_mapping, location_mapping, ruptures_mapping = get_mappings()
 
 linearity    = 1    # 1 = Linear, 2 = Non-Linear
-sim_type     = 3    # 1 = FB,     2 = AB, 3 = DRM
-magnitude    = 6.5  # Can be '6.5', '6.7', '6.9', '7.0', 0.0 for not defined
+sim_type     = 2    # 1 = FB,     2 = AB, 3 = DRM
+magnitude    = 6.7  # Can be '6.5', '6.7', '6.9', '7.0', 0.0 for not defined
 rupture_type = 1    # Can be 1 for 'bl', 2 for 'ns' or 3 for 'sn', put 0 for for not defined
-station      = 1    # Can be any number from 0 to 9, -1 for not defined
+station      = 0    # Can be any number from 0 to 9, -1 for not defined
 stories      = 20   # For the moment, it can be 20 or 55
-plotter      = Plotting(sim_type, stories, magnitude, rupture_type, station, '')
+subs         = 4    # For the moment, it can be 2 or 4
+plotter      = Plotting(sim_type, stories, magnitude, rupture_type, station)
 
 
 
@@ -47,9 +48,10 @@ query = """
         JOIN model_structure_perfomance    msp      ON sm.idStructuralPerfomance = msp.IDStructuralPerfomance
         JOIN structure_max_drift_per_floor drift    ON msp.idMaxDriftPerFloor    = drift.IDMaxDriftPerFloor
         WHERE sim.idType      = %s AND mss.idLinearity      = %s
-        AND sminput.Magnitude = %s AND sminput.Rupture_Type = %s AND sminput.Location = %s AND mss.Nstories = %s;
+        AND sminput.Magnitude = %s AND sminput.Rupture_Type = %s AND sminput.Location = %s AND mss.Nstories = %s
+        AND mss.Nsubs = %s;
         """
-cursor.execute(query, (sim_type, linearity, magnitude_mapping.get(magnitude), ruptures_mapping.get(rupture_type), location_mapping.get(station), stories))
+cursor.execute(query, (sim_type, linearity, magnitude_mapping.get(magnitude), ruptures_mapping.get(rupture_type), location_mapping.get(station), stories, subs))
 data = cursor.fetchall()
 
 # Load the data

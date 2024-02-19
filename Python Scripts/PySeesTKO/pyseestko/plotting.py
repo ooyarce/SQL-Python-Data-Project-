@@ -30,7 +30,7 @@ class Plotting:
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
-    def __init__(self, sim_type:int,  stories:int, magnitude:float, rupture:int, station:int, path:str):
+    def __init__(self, sim_type:int,  stories:int, magnitude:float, rupture:int, station:int):
         sim_type_map = {
             1: 'FB',
             2: 'AB',
@@ -46,7 +46,9 @@ class Plotting:
         self.magnitude = magnitude
         self.rup_type  = rup_type_map.get(rupture)
         self.station   = station
-        self.save_path = Path(path)
+        #self.save_path = Path(path) # old way of doing it
+        self.save_path = ''
+        
         
         self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}'
         self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type} | Station {self.station}'
