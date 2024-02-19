@@ -6,7 +6,7 @@
 # Filter metrics by type and linearity but not with building type
 # In that case you will need to add Nstories and Nsubs from model_specs_structures
 # as filtering parameters.
-SELECT msp.*
+SELECT sbs.*
 FROM simulation sim
 JOIN simulation_sm_input           sminput 	ON sim.idSM_Input 			 = sminput.IDSM_Input
 JOIN simulation_model              sm       ON sim.idModel 				 = sm.IDModel

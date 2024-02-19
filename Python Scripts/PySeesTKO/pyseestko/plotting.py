@@ -8,6 +8,8 @@ from typing              import Optional
 from scipy.signal        import savgol_filter  # Para suavizado
 from pyseestko.errors    import PlottingError
 from pyseestko.utilities import pwl
+from adjustText          import adjust_text
+
 # Packages
 import pandas as pd
 import numpy  as np
@@ -83,7 +85,8 @@ class Plotting:
         ax.set_xlim(xlim_inf, xlim_sup)
 
         # Plot corner drift
-        y = [i for i in range(1, self.stories)]
+        y = [i for i in range(1, self.stories+1)]
+        ax.set_yticks(y)
         ax.plot(max_corner_x, y, label='max_corner_x', color='blue')
         ax.plot(max_center_x, y, label='max_center_x',linestyle='--', color='red')
 
@@ -105,6 +108,7 @@ class Plotting:
         self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}_{direction.upper()}'
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
         line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
+        texts          = []
         
         # Check input and raise errors
         if direction not in ['x', 'y', 'z']: raise PlottingError(f'Dir must be x, y or z! Current: {direction}')
@@ -140,9 +144,11 @@ class Plotting:
             # Write the maximum values of the spectrum
             max_value = max(Spe)
             max_index = np.argmax(Spe)
-            ax.annotate(f'{max_value:.2f}', xy=(T[max_index], max_value), textcoords="offset points", xytext=(0,10), ha='center')
+            annotation = ax.annotate(f'{max_value:.2f}', xy=(T[max_index], max_value), textcoords="offset points", xytext=(0,10), ha='center')
+            texts.append(annotation)
             ax.plot(T, Spe, label=f'{method}: Story {story}', linestyle=line_style, color=color)
             
+        #adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
         ax.legend()
         if plot:
             self.plotSave(fig)

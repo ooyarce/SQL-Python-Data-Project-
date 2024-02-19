@@ -468,12 +468,12 @@ class ModelSimulation:
 
         # Compute Inter-Storey Drifts
         for loc, df in enumerate(displacements[:2]):
-            # Inter-storey drifts
-            for i in range(1,self.stories):
+            # Inter-storey drifts between the i-esim and (i-1)-esim storeys
+            for i in range(self.stories, 0, -1):
                 story_nodes      = self.story_nodes_df.loc[i].index
-                next_story_nodes = self.story_nodes_df.loc[i+1].index
+                lowwer_story_nodes = self.story_nodes_df.loc[i-1].index
                 compute_drifts   = [self._computeDriftBetweenNodes(df[current_node], df[following_node], self.heights[i-1], loc)
-                                    for current_node, following_node in zip(story_nodes, next_story_nodes)]
+                                    for current_node, following_node in zip(story_nodes, lowwer_story_nodes)]
                 drift_df = pd.concat(compute_drifts, axis=1)
                 center   = drift_df.mean(axis=1).max()
                 corner   = drift_df.max().max()
@@ -905,13 +905,13 @@ class ModelSimulation:
                         model_dic[20]['areas']['columns_sup']     *  model_dic[20]['thickness']['columns_sup'][2]     * density/2},
                      50:{}}
         mass_sub = {20: {k-1:
-                    model_dic[20]['areas']["sub_slabs_area"]  *  model_dic[20]['thickness']["slabs_sub"][k]       * density1 +
-                    model_dic[20]['areas']["perimetral_wall"] *  model_dic[20]['thickness']["perimetral_wall"][k] * density1 +
-                    model_dic[20]['areas']['columns_sub']     *  model_dic[20]['thickness']['columns_sub'][k]     * density1
-                    for k in range(self.subs-1)},
+                        model_dic[20]['areas']["sub_slabs_area"]  *  model_dic[20]['thickness']["slabs_sub"][k]       * density1 +
+                        model_dic[20]['areas']["perimetral_wall"] *  model_dic[20]['thickness']["perimetral_wall"][k] * density1 +
+                        model_dic[20]['areas']['columns_sub']     *  model_dic[20]['thickness']['columns_sub'][k]     * density1
+                    for k in range(0, -(self.subs-1), -1)},
                     50: {}}
-
-        self.masses_series = pd.Series({**mass_sub[self.stories], **mass_base[self.stories], **mass_sup[self.stories]}).sort_index()*1.025
+        factor = {20:{2:1.025, 4:1.025}} # Factor of 4 subs may change cause it's not studied yet
+        self.masses_series = pd.Series({**mass_sub[self.stories], **mass_base[self.stories], **mass_sup[self.stories]}).sort_index()*factor[self.stories][self.subs]
 
         # For each story, compute the mean acceleration in the 4 nodes of the story
         mean_accel_df = self.story_mean_accel_df[self.story_mean_accel_df.columns[1:]]
