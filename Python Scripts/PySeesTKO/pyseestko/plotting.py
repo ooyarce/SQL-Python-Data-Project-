@@ -24,13 +24,10 @@ class Plotting:
     You use it in the main after the results are uploaded to the database.
     """
     
-    
-    
-    
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
-    def __init__(self, sim_type:int,  stories:int, magnitude:float, rupture:int, station:int):
+    def __init__(self, sim_type:int,  stories:int, nsubs:int, magnitude:float, rupture:int, station:int):
         sim_type_map = {
             1: 'FB',
             2: 'AB',
@@ -46,12 +43,13 @@ class Plotting:
         self.magnitude = magnitude
         self.rup_type  = rup_type_map.get(rupture)
         self.station   = station
+        self.nsubs     = nsubs
         #self.save_path = Path(path) # old way of doing it
         self.save_path = Path('')
         
         
         self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}'
-        self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type} | Station {self.station}'
+        self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type} | Station {self.station} | {self.stories} stories - {self.nsubs} subs'
         self.drift_title     = f'Drift per story plot | {self.id}'
         self.spectrums_title = f'Story PSa plot | {self.id}'
         self.base_shear_ss_title = f'Base Shear Plot | {self.id}'
@@ -89,12 +87,12 @@ class Plotting:
         # Plot corner drift
         y = [i for i in range(1, self.stories+1)]
         ax.set_yticks(y)
-        ax.plot(max_corner_x, y, label='max_corner_x', color='blue')
-        ax.plot(max_center_x, y, label='max_center_x',linestyle='--', color='red')
+        ax.plot(max_corner_x, y, label='max_corner_x', color='red')
+        ax.plot(max_center_x, y, label='max_center_x',linestyle='--', color='green')
 
         # Plot center drift
-        ax.plot(max_corner_y, y, label='max_corner_y', color='cyan')
-        ax.plot(max_center_y, y, label='max_center_y',linestyle='--', color='magenta')
+        ax.plot(max_corner_y, y, label='max_corner_y', color='blue')
+        ax.plot(max_center_y, y, label='max_center_y',linestyle='--', color='orange')
 
         # Plot NCH433 limits
         ax.axvline(x=0.002, color='black', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Limit - 5.9.2 = 0.002')

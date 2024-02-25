@@ -479,7 +479,8 @@ class ModelSimulation:
                 corner   = drift_df.max().max()
                 center_drifts[loc].append(center)
                 corner_drifts[loc].append(corner)
-
+            center_drifts[loc].reverse()
+            corner_drifts[loc].reverse()
         # Upload results to the database
         insert_query = ("INSERT INTO structure_max_drift_per_floor ("
                         "MaxDriftCornerX, MaxDriftCornerY, MaxDriftCenterX, "
