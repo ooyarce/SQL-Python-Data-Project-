@@ -1,22 +1,24 @@
 #!/bin/bash
 
 # Iterar sobre cada número del 0 al 5
-for j in $(seq 1 3);do
-    for i in $(seq 0 2); do
+for j in $(seq 1 1);do
+    for i in $(seq 3 9); do
         # Copy config
         cp run.sh                     "rup_bl_$j/station_s$i"
         cp timeSeries.txt             "rup_bl_$j/station_s$i"
         cp import_h5py.py             "rup_bl_$j/station_s$i" 
 
         # Delete old folders
-	    rm -rf "rup_bl_$j/station_s$i/Accelerations"
+	rm -rf "rup_bl_$j/station_s$i/Accelerations"
         rm -rf "rup_bl_$j/station_s$i/Displacements"
         rm -rf "rup_bl_$j/station_s$i/PartitionsInfo"
+        rm -rf "rup_bl_$j/station_s$i/Reactions"
 
         # Copy the new folders
-	    cp -r Accelerations           "rup_bl_$j/station_s$i"
+	cp -r Accelerations           "rup_bl_$j/station_s$i"
         cp -r Displacements           "rup_bl_$j/station_s$i"
         cp -r PartitionsInfo          "rup_bl_$j/station_s$i"
+        cp -r Reactions               "rup_bl_$j/station_s$i"
 
         # Copy and replace new files
         cp analysis_steps.tcl         "rup_bl_$j/station_s$i"
@@ -30,10 +32,10 @@ for j in $(seq 1 3);do
     done
 done
 
-for j in $(seq 1 3);do
+for j in $(seq 1 1);do
     echo "Entrando a rup_bl_$j"
     cd rup_bl_$j
-    for i in $(seq 0 2); do
+    for i in $(seq 3 9); do
         # Navegar a la carpeta correspondiente
         cd "station_s$i" || continue
 
@@ -46,7 +48,7 @@ for j in $(seq 1 3);do
 
         # Correr el archivo
         sbatch run.sh
-        
+
         # Imprimir el mensaje indicando la ejecución
         echo "Command: $comando executed in station$i folder"
 
