@@ -1,8 +1,6 @@
 # ==================================================================================
 # IMPORT LIBRARIES
 # ==================================================================================
-# Objects
-# Packages
 from pyseestko.errors import DataBaseError
 import mysql.connector
 

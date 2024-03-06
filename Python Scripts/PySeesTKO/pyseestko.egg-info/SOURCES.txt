@@ -6,6 +6,7 @@ pyseestko/db_manager.py
 pyseestko/errors.py
 pyseestko/model_info.py
 pyseestko/plotting.py
+pyseestko/queries.py
 pyseestko/utilities.py
 pyseestko.egg-info/PKG-INFO
 pyseestko.egg-info/SOURCES.txt

@@ -2,9 +2,9 @@
 # ================================== INIT AND CONNECT TO DATABASE ==================================
 # ==================================================================================================
 # Import modules
-from pyseestko.queries    import ProjectQueries #type: ignore
-from pyseestko.utilities  import get_mappings   #type: ignore
-from pyseestko.plotting   import Plotting       #type: ignore
+from pyseestko.queries    import ProjectQueries            #type: ignore
+from pyseestko.utilities  import get_mappings #type: ignore
+from pyseestko.plotting   import Plotting                  #type: ignore
 
 # DataBase user params
 user     = 'omarson'
@@ -32,21 +32,20 @@ stories      = 20
 nsubs_lst    = [2,4]
 mag_map, loc_map, rup_map = get_mappings()
 
-
 # Define paths to save the plots
 save_drift       = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Drift Outputs'
-save_spectra     = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Story Spectra Output'
-save_b_shear     = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Shear Output'
+save_spectra     = None #'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Story Spectra Output'
+save_b_shear     = None #'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Shear Output'
 structure_weight = 37134.5 # kN
 zone             = 'Las Condes'
 soil_category    = 'B'
 importance       = 2
 
 # Iterate over the subs, then over the sim_type and then over the stations so we can get all the results
-for nsubs in nsubs_lst:
-    for sim_type in sim_types:
+for sim_type in sim_types:
+    for station in stations:
         for iteration in iterations:
-            for station in stations:
+            for nsubs in nsubs_lst:
                 # Init the classes
                 plotter = Plotting(sim_type, stories,                    # The class that plots the data
                                    nsubs, magnitude,
@@ -59,10 +58,4 @@ for nsubs in nsubs_lst:
                                         loc_map.get(station,      'None'),
                                         stories, nsubs, plotter, windows=False)
                 query.getAllResults(save_drift, save_spectra, save_b_shear, structure_weight, zone, soil_category, importance)
-
-
-
-
-
-
 
