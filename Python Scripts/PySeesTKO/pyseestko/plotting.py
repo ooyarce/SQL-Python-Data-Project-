@@ -23,11 +23,15 @@ class Plotting:
     It's used to analyse quiclky the structure and get the results of the analysis.
     You use it in the main after the results are uploaded to the database.
     """
-    
+
     # ==================================================================================
     # INIT PARAMS
     # ==================================================================================
-    def __init__(self, sim_type:int,  stories:int, nsubs:int, magnitude:float, rupture:int, station:int):
+    def __init__(
+            self, sim_type:int,
+            stories:int, nsubs:int,
+            magnitude:float, iteration:int,
+            rupture:int, station:int):
         sim_type_map = {
             1: 'FB',
             2: 'AB',
@@ -41,20 +45,18 @@ class Plotting:
         self.sim_type  = sim_type_map.get(sim_type)
         self.stories   = stories
         self.magnitude = magnitude
+        self.iteration = iteration
         self.rup_type  = rup_type_map.get(rupture)
         self.station   = station
         self.nsubs     = nsubs
-        #self.save_path = Path(path) # old way of doing it
         self.save_path = Path('')
-        
-        
-        self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}'
-        self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type} | Station {self.station} | {self.stories} stories - {self.nsubs} subs'
+
+
+        self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}'
+        self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type}{self.iteration} | Station {self.station} | {self.stories} stories - {self.nsubs} subs'
         self.drift_title     = f'Drift per story plot | {self.id}'
         self.spectrums_title = f'Story PSa plot | {self.id}'
         self.base_shear_ss_title = f'Base Shear Plot | {self.id}'
-        #self.input_title         = f'Input Accelerations Response Spectra Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
-        #self.base_spectrum_title = f'Base Accelerations Spectrum Plot | {self.sim_type} |  {self.mag[:3]} | {self.rup_type} | Station {self.station}'
 
     def plotConfig(self, title:str, x = 19.2, y = 10.8, dpi = 100):
         fig = plt.figure(num=1, figsize=(x, y), dpi=dpi)
@@ -109,11 +111,11 @@ class Plotting:
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
         line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
         texts          = []
-        
+
         # Check input and raise errors
         if direction not in ['x', 'y', 'z']: raise PlottingError(f'Dir must be x, y or z! Current: {direction}')
         if len(stories_lst) > len(colors):   raise PlottingError(f'Not enough colors for the number of stories! Current: {len(stories_lst)}\n Try adding less stories.')
-        
+
         # Plot config
         if ax is None: fig, ax, _ = self.plotConfig(self.spectrums_title)
         else:
@@ -129,7 +131,7 @@ class Plotting:
         for i, story in enumerate(stories_lst):
             # Setup color and linestyle
             color = colors[i % len(colors)]
-            line_style = line_styles[i % len(line_styles)] 
+            line_style = line_styles[i % len(line_styles)]
 
             # Obtain the spectrum
             df = accel_df[story_nodes_df.loc[story].index].copy()
@@ -137,32 +139,33 @@ class Plotting:
             adir = df.xs(direction, level='Dir')['Average'][::16]
             Spe = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [pwl(adir.values, wi, nu)]]
             Spe = np.array(Spe)
-            
+
             # Soften the spectrum
-            if soften and len(Spe) > 50: Spe = savgol_filter(Spe, 51, 3) 
-            
+            if soften and len(Spe) > 50: Spe = savgol_filter(Spe, 51, 3)
+
             # Write the maximum values of the spectrum
             max_value = max(Spe)
             max_index = np.argmax(Spe)
             annotation = ax.annotate(f'{max_value:.2f}', xy=(T[max_index], max_value), textcoords="offset points", xytext=(0,10), ha='center')
             texts.append(annotation)
             ax.plot(T, Spe, label=f'{method}: Story {story}', linestyle=line_style, color=color)
-            
+
+        #NOTE: This is just an implementation to correct the pos of the comments in plot
         #adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
         ax.legend()
         if plot:
             self.plotSave(fig)
         return ax
-    
+
     def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmin:float, Qmax:float, dir_:str):
         # Input params
         if dir_ not in ['x','X','y','Y']: raise ValueError(f'dir must be x, y! Current: {dir}')
         self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}_{dir_.upper()}'
-        
+
         fig, ax, _ = self.plotConfig(self.base_shear_ss_title)
         ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1')
         ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=2, alpha = 0.9, label=None)
-        
+
         ax.set_xlabel('Time (s)')
         ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')
         ax.plot(time, time_shear_fma, label='Method: F=ma')
@@ -192,7 +195,7 @@ class Plotting:
         ax.legend()
         self.plotSave(fig)
         return ax
-    
+
     def plotLocalBaseSpectrum(self, ModelSimulation: ModelSimulation, accel_df:pd.DataFrame, stories_df:pd.DataFrame,
                          T:np.ndarray, spectrum_modes:list[float], plot_z:bool=True):
         # Input params
@@ -233,7 +236,7 @@ class Plotting:
 
     # ==================================================================================
     # AUXIALIARY FUNCTIONS
-    # ==================================================================================   
+    # ==================================================================================
     @staticmethod
     def NCh433Spectrum(ax, S = 1, To = 0.3, p = 1.5, Ao = 0.3 *9.81 , Io = 1.2, R = 5):
         # Input params
