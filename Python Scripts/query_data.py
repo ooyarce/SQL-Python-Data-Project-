@@ -22,7 +22,7 @@ stations: Can be any number from 0 to 9, -1 for not defined
 stories: For the moment, it can be 20 or 55
 nsubs_lst: For the moment, it can be 2 or 4
 """
-sim_types    = [2,3]
+sim_types    = [2]
 linearity    = 1
 magnitude    = 6.7
 rupture_type = 1
@@ -53,6 +53,9 @@ for nsubs in nsubs_lst:
                                     loc_map.get(station, 'None'),
                                     stories, nsubs, plotter)
             query.getAllResults(save_drift, save_spectra, save_b_shear, structure_weight, zone, soil_category, importance)
+
+
+
 
 
 
