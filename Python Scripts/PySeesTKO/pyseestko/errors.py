@@ -14,8 +14,8 @@ class ModelInfoError(Exception):
 class PlottingError(Exception):
     pass
 
-
-
+class DataBaseError(Exception):
+    pass
 
 
 

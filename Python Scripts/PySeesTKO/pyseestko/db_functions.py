@@ -5,7 +5,7 @@
 from mysql.connector.errors import DatabaseError
 from concurrent.futures     import ThreadPoolExecutor
 from pathlib                import Path
-from pyseestko.errors       import SQLFunctionError
+from pyseestko.errors       import SQLFunctionError, DataBaseError
 from pyseestko.db_manager   import DataBaseManager
 from pyseestko.model_info   import ModelInfo
 from pyseestko              import utilities as utl
@@ -70,8 +70,12 @@ class ModelSimulation:
             self.model_path = main_path.parents[3]
             self.stko_model_name = next(self.model_path.glob('*.scd')).name
         except StopIteration:
-            self.model_path = main_path.parent
-            self.stko_model_name = next(self.model_path.glob('*.scd')).name
+            try:
+                self.model_path = main_path.parent
+                self.stko_model_name = next(self.model_path.glob('*.scd')).name
+            except StopIteration:
+                self.model_path = main_path.parent
+                self.stko_model_name = 'No model name found'
         # Simulation default parameters
         self._sim_comments      = kwargs.get("sim_comments", "No comments")
         self._sim_opt           = kwargs.get("sim_opt", "No options yet")
@@ -1140,23 +1144,29 @@ class ModelSimulation:
         # Exclude cases where the simulation is not DRM (sim_type = 2)
         if self._sim_type == 1:
             return 0,0
+
         # Compute Relative Displ for x
-        rel_zdispl_x1 = self.base_displ_df[self.base_story_df.index[0]] - self.base_displ_df[self.base_story_df.index[2]]
-        rel_zdispl_x2 = self.base_displ_df[self.base_story_df.index[1]] - self.base_displ_df[self.base_story_df.index[3]]
-        rel_zdispl_x = (rel_zdispl_x1 + rel_zdispl_x2)/2
+        rel_zdispl_x1 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[0])] - \
+                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[2])]
+        rel_zdispl_x2 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[1])] - \
+                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[3])]
+        rel_zdispl_x = (rel_zdispl_x1 + rel_zdispl_x2) / 2
 
         # Compute Relative Displ for y
-        rel_zdispl_y1 = self.base_displ_df[self.base_story_df.index[0]] - self.base_displ_df[self.base_story_df.index[1]]
-        rel_zdispl_y2 = self.base_displ_df[self.base_story_df.index[2]] - self.base_displ_df[self.base_story_df.index[3]]
-        rel_zdispl_y = (rel_zdispl_y1 + rel_zdispl_y2)/2
+        rel_zdispl_y1 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[0])] - \
+                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[1])]
+        rel_zdispl_y2 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[2])] - \
+                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[3])]
+        rel_zdispl_y = (rel_zdispl_y1 + rel_zdispl_y2) / 2
 
         # Compute distances between nodes for x and y directions
-        x_dist = self.base_story_df['x'][0]-self.base_story_df['x'][2]
-        y_dist = self.base_story_df['y'][0]-self.base_story_df['y'][1]
+        x_dist = self.base_story_df['x'].iloc[0] - self.base_story_df['x'].iloc[2]
+        y_dist = self.base_story_df['y'].iloc[0] - self.base_story_df['y'].iloc[1]
 
         # Compute base rotation for x and y directions
-        base_rot_x = np.arctan(rel_zdispl_x/x_dist)
-        base_rot_y = np.arctan(rel_zdispl_y/y_dist)
+        base_rot_x = np.arctan(rel_zdispl_x / x_dist)
+        base_rot_y = np.arctan(rel_zdispl_y / y_dist)
+
         return base_rot_x, base_rot_y
 
     def _computeRoofDrift(self, loc):
@@ -1475,15 +1485,15 @@ class ModelSimulation:
     def initialize_ssh_tunnel(server_alive_interval=60):
         local_port = "3306"
         try:
-            # Ejecutar netstat y capturar la salida
-            netstat_output = subprocess.check_output(['netstat', '-ano'], text=True)
+            # Ejecutar netstat y capturar la salida con una codificación adecuada
+            netstat_output = subprocess.check_output(['netstat', '-ano'], text=True, encoding='cp1252')
 
             # Buscar el puerto local en la salida de netstat
             if re.search(rf'\b{local_port}\b', netstat_output):
                 print("SSH tunnel already established and operational...")
 
                 # Verificar si el proceso SSH está activo usando tasklist
-                tasklist_output = subprocess.check_output(['tasklist'], text=True)
+                tasklist_output = subprocess.check_output(['tasklist'], text=True, encoding='cp1252')
                 if "ssh.exe" in tasklist_output:
                     print("SSH process is running.")
                 else:
@@ -1500,6 +1510,8 @@ class ModelSimulation:
                 command = f"ssh -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
                 subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
 
+        except subprocess.CalledProcessError as e:
+            raise DataBaseError(f"Error executing a system command: {e}")
         except Exception as e:
             raise DataBaseError(f"Error trying to open cmd: {e}")
 
