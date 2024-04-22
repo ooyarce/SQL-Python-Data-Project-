@@ -33,7 +33,6 @@ class ModelSimulation:
     This class is used to manage the connection to the database.
     It's used to upload the results of the analysis to the database.
     It works with the ModelInfo class to get the data from the model.
-    Also it works with the DataBaseManager class to connect to the database.
     The main function is simulation, which uploads the results to the database.
     The other functions are used to upload the results to the database.
     The algorithm is the following:
@@ -876,10 +875,7 @@ class ModelSimulation:
                             'perimetral_wall':np.array([0.45] * self.subs)                               ,
                             "columns_sup"    :np.array([0.8**2]*6 + [0.7**2]*5 + [0.6**2]*3 + [0.5**2]*3 + [0.4**2]*3),
                             "columns_sub"    :np.array([0.9**2]*self.subs)}}, # this is not a thickness is the area of the columns}
-
-                    50:{'areas':{},
-                        'thickness':{},
-                        'masses':{}}}
+                    }
 
         # Compute Story Mases in a dict
         mass_sup = {20: {k+1:
@@ -914,7 +910,7 @@ class ModelSimulation:
                         model_dic[20]['areas']["perimetral_wall"] *  model_dic[20]['thickness']["perimetral_wall"][k] * density1 +
                         model_dic[20]['areas']['columns_sub']     *  model_dic[20]['thickness']['columns_sub'][k]     * density1
                     for k in range(0, -(self.subs-1), -1)},
-                    50: {}}
+                    }
         factor = {20:{2:1.025, 4:1.025}} # Factor of 4 subs may change cause it's not studied yet
         self.masses_series = pd.Series({**mass_sub[self.stories], **mass_base[self.stories], **mass_sup[self.stories]}).sort_index()*factor[self.stories][self.subs]
 
@@ -1141,7 +1137,7 @@ class ModelSimulation:
         """
         This function is used to compute the base rotation DataFrame.
         """
-        # Exclude cases where the simulation is not DRM (sim_type = 2)
+        # Exclude cases where the simulation is not DRM nor AB (sim_type = 2, 3)
         if self._sim_type == 1:
             return 0,0
 

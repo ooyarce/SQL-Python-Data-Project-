@@ -5,7 +5,7 @@
 from mysql.connector.errors import DatabaseError
 from concurrent.futures     import ThreadPoolExecutor
 from pathlib                import Path
-from pyseestko.errors       import SQLFunctionError
+from pyseestko.errors       import SQLFunctionError, DataBaseError
 from pyseestko.db_manager   import DataBaseManager
 from pyseestko.model_info   import ModelInfo
 from pyseestko              import utilities as utl
@@ -70,8 +70,12 @@ class ModelSimulation:
             self.model_path = main_path.parents[3]
             self.stko_model_name = next(self.model_path.glob('*.scd')).name
         except StopIteration:
-            self.model_path = main_path.parent
-            self.stko_model_name = next(self.model_path.glob('*.scd')).name
+            try:
+                self.model_path = main_path.parent
+                self.stko_model_name = next(self.model_path.glob('*.scd')).name
+            except StopIteration:
+                self.model_path = main_path.parent
+                self.stko_model_name = 'No model name found'
         # Simulation default parameters
         self._sim_comments      = kwargs.get("sim_comments", "No comments")
         self._sim_opt           = kwargs.get("sim_opt", "No options yet")

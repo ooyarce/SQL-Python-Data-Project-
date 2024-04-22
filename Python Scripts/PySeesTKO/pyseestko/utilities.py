@@ -3,13 +3,21 @@
 # ==================================================================================
 from pyseestko.errors import NCh433Error, DataBaseError
 from pathlib          import Path
+from typing           import List
 
 import numpy          as np
 import importlib.util
 import subprocess
 import logging
+import shutil
+import time
 import math
+import sys
 import re
+
+
+
+
 # ==================================================================================
 # =============================== GETTERS FUNCTIONS ================================
 # ==================================================================================
@@ -87,10 +95,13 @@ def get_mappings():
         3: "South-North"}
     return magnitude_mapping, location_mapping, ruptures_mapping
 
+
+
+
+
 # ==================================================================================
 # =============================== UTILITY FUNCTIONS ================================
 # ==================================================================================
-
 def load_module(module_name, module_path):
     """
     To use it you have to do something like this:
@@ -145,17 +156,32 @@ def setup_logger(verbose, module_name):
     return logger
 
 def initialize_ssh_tunnel(server_alive_interval=60):
+    """
+    This function initializes an SSH tunnel to the Kraken server. If the tunnel is already established, the function
+    will check if the SSH process is running. If the process is not running, the function will close all existing SSH
+    processes and attempt to restart the tunnel.
+    
+    Parameters:
+    -----------
+    server_alive_interval: int
+        The interval in seconds to send a keepalive message to the server. The default value is 60 seconds.
+        
+    Raises:
+    -------
+    DataBaseError:
+        If an error occurs while trying to open the cmd.
+    """
     local_port = "3306"
     try:
-        # Ejecutar netstat y capturar la salida
-        netstat_output = subprocess.check_output(['netstat', '-ano'], text=True)
+        # Ejecutar netstat y capturar la salida con una codificación adecuada
+        netstat_output = subprocess.check_output(['netstat', '-ano'], text=True, encoding='cp1252')
 
         # Buscar el puerto local en la salida de netstat
         if re.search(rf'\b{local_port}\b', netstat_output):
             print("SSH tunnel already established and operational...")
 
             # Verificar si el proceso SSH está activo usando tasklist
-            tasklist_output = subprocess.check_output(['tasklist'], text=True)
+            tasklist_output = subprocess.check_output(['tasklist'], text=True, encoding='cp1252')
             if "ssh.exe" in tasklist_output:
                 print("SSH process is running.")
             else:
@@ -172,17 +198,160 @@ def initialize_ssh_tunnel(server_alive_interval=60):
             command = f"ssh -o ServerAliveInterval={server_alive_interval} -L 3306:localhost:3307 cluster ssh -L 3307:kraken:3306 kraken"
             subprocess.call(["cmd.exe", "/c", "start", "/min", "cmd.exe", "/k", command])
 
+    except subprocess.CalledProcessError as e:
+        raise DataBaseError(f"Error executing a system command: {e}")
     except Exception as e:
         raise DataBaseError(f"Error trying to open cmd: {e}")
 
+
 def folder_size(path:Path, folder_name:str):
+    """
+    This function calculates the size of a folder in bytes.
+    
+    Parameters:
+    -----------
+    path: Path
+        The path where the folder is located.
+    folder_name: str
+        The name of the folder to calculate the size.
+        
+    Returns:
+    --------
+    int:
+        The size of the folder in bytes.
+    """
     folder_path = path / folder_name
     return sum(file.stat().st_size for file in folder_path.iterdir() if file.is_file())
+
+def single_sim_files_to_delete(
+    path:Path, 
+    files_to_delte:list=["analysis_steps.tcl",
+                         "elements.tcl",
+                         "main.tcl",
+                         "materials.tcl",
+                         "nodes.tcl",
+                         "sections.tcl",
+                         "*.mpco",
+                         "*.mpco.cdata",
+                         "import_h5py.py",
+                         "input.h5drm"]
+    )-> None:
+    """
+    This function deletes the files specified in the list files_to_delete
+    in the path specified. If the files are not found, the function will
+    print a message indicating that the files are not found.
+    
+    Parameters:
+    -----------
+    path: Path
+        The path where the files are located.
+    files_to_delete: list
+        A list of strings with the files to delete. The function will
+        use the glob function to find the files to delete.
+    """
+    for file in files_to_delte:
+        for file_path in path.glob(file):
+            try:
+                file_path.unlink()
+                print(f"File {file_path} succesfully deleted.")
+            except Exception as e:
+                print(f"Files already deleted or non existant in {file_path}: {e}")
+
+def run_main_sql_simulations(
+    root_path         : Path,
+    new_main_sql_path : Path,
+    sim_types         : List[str],
+    structure_types   : List[str],
+    rupture_iters     : List[int],
+    stations          : List[str],
+    )- > None:
+    """
+    This function updates the main_sql.py file in the specified path and runs the simulation
+    for each simulation type, structure type, rupture iteration, and station specified. If the
+    simulation is executed successfully, the function will delete the files specified in the
+    single_sim_files_to_delete function.
+    
+    Parameters:
+    -----------
+    root_path: Path
+        The root path where the simulation folders are located. 
+    new_main_sql_path: Path
+        The path to the new main_sql.py file that will be copied to the simulation folders. If
+        None, then the function will not update the main_sql.py file.
+    sim_types: List[str]
+        A list of strings with the simulation types. The function will iterate over each
+        simulation type in the list.
+    structure_types: List[str]
+        A list of strings with the structure types. The function will iterate over each
+        structure type in the list.
+    rupture_iters: List[int]
+        A list of integers with the rupture iterations. The function will iterate over each
+        rupture iteration in the list.
+    stations: List[str]
+        A list of strings with the stations. The function will iterate over each station in
+        the list.
+    """
+    # Start the timer to measure the execution time
+    start_time = time.time()
+    
+    # Iterate over each simulation type
+    for sim_type in sim_types:
+        
+        # Iterate over each structure type inside the simulation type folder
+        for structure in structure_types:
+            magnitude = 'm6.7'
+            path_to_magnitude =  root_path / sim_type / structure / magnitude
+            if not path_to_magnitude.exists():
+                continue
+            
+            # Iterate over each rupture type inside the magnitude folder
+            for rup_iter in rupture_iters:
+                rup = f'rup_bl_{rup_iter}'
+                rup_path = path_to_magnitude / rup
+                if not rup_path.exists():
+                    continue
+                
+                # Iterate over each station inside the rupture type folder
+                for station in stations:
+                    path_to_station = rup_path / station
+                    if not path_to_station.exists():
+                        continue
+
+                    # Copy the new main_sql.py file to the station folder
+                    path_to_paste = path_to_station / "main_sql.py"
+                    if new_main_sql_path is not None:
+                        copy_paste_file(new_main_sql_path, path_to_paste)
+
+                    # Try to run the main_sql.py file in the station folder and delete the files specified
+                    try:
+                        print(f"Running {path_to_paste}...")
+                        result = subprocess.run(["python", str(path_to_paste)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                        if result.returncode == 0:  # Verify if the script was executed successfully
+                            print(result.stdout)
+                            single_sim_files_to_delete(path_to_station)  # Delete the files specified in the function
+                        else:
+                            print("Error in python code:", file=sys.stderr)
+                            print(result.stderr, file=sys.stderr)
+                    except Exception as e:
+                        print(f"Error executing {path_to_paste}: {e}", file=sys.stderr)
+                    print('====================================================\n')
+    end_time = time.time()
+    print(f"Total execution time: {end_time - start_time} seconds.")
+
+def copy_paste_file(origin:Path, destination:Path):
+    """
+    This function copies the file specified in the origin path to the destination path.
+    """
+    shutil.copy(origin, destination)
+
+    # Print that the file was updated
+    print('====================================================')
+    print(f"File main_sql.py updated in {destination}")
+
 
 # ==================================================================================
 # ================================ MATH FUNCTIONS ==================================
 # ==================================================================================
-
 def pwl(vector_a, w, chi,step=0.04):
     """
     Use step = 0.04 for 1000 values
@@ -228,6 +397,8 @@ def pwl(vector_a, w, chi,step=0.04):
         u_t[i + 1] = A * ui + B * vi + C * pi + D * pi1
         up_t[i + 1] = A1 * ui + B1 * vi + C1 * pi + D1 * pi1
     return u_t, up_t
+
+
 
 
 # ==================================================================================
