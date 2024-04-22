@@ -5,6 +5,7 @@ from pyseestko.errors import NCh433Error, DataBaseError
 from pathlib          import Path
 from typing           import List
 
+from shutil           import SameFileError
 import numpy          as np
 import importlib.util
 import subprocess
@@ -45,10 +46,15 @@ def getModelKeys(project_path):
                         "Valid rupture types are 'bl', 'ns', and 'sn'.\n"
                         "Please check that the 'Path' and 'Folder Names' are correct.")
 
-    iter     = project_path.parents[1].name[-1]
-    if iter not in ['1', '2', '3']:
+    # Extraer y validar la iteración
+    iter_name = project_path.parents[1].name
+    match = re.search(r"_(\d+)$", iter_name)
+    if not match:
+        raise Exception("No iteration number found in the folder name.")
+    iter = int(match.group(1))
+    if iter not in range(1, 11):
         raise Exception(f"Unrecognized iteration '{iter}'.\n"
-                        "Valid iterations are '1', '2', and '3'.\n"
+                        "Valid iterations are from 1 to 10.\n"
                         "Please check that the 'Path' and 'Folder Names' are correct.")
 
     station = project_path.parent.name[-2:]
@@ -225,7 +231,7 @@ def folder_size(path:Path, folder_name:str):
 
 def single_sim_files_to_delete(
     path:Path, 
-    files_to_delte:list=["analysis_steps.tcl",
+    files_to_delete:list=["analysis_steps.tcl",
                          "elements.tcl",
                          "main.tcl",
                          "materials.tcl",
@@ -249,7 +255,7 @@ def single_sim_files_to_delete(
         A list of strings with the files to delete. The function will
         use the glob function to find the files to delete.
     """
-    for file in files_to_delte:
+    for file in files_to_delete:
         for file_path in path.glob(file):
             try:
                 file_path.unlink()
@@ -264,7 +270,18 @@ def run_main_sql_simulations(
     structure_types   : List[str],
     rupture_iters     : List[int],
     stations          : List[str],
-    )- > None:
+    files_to_delete    :list=[
+                        "analysis_steps.tcl",
+                        "elements.tcl",
+                        "main.tcl",
+                        "materials.tcl",
+                        "nodes.tcl",
+                        "sections.tcl",
+                        "*.mpco",
+                        "*.mpco.cdata",
+                        "import_h5py.py",
+                        "input.h5drm"]
+    ) -> None:
     """
     This function updates the main_sql.py file in the specified path and runs the simulation
     for each simulation type, structure type, rupture iteration, and station specified. If the
@@ -328,7 +345,7 @@ def run_main_sql_simulations(
                         result = subprocess.run(["python", str(path_to_paste)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                         if result.returncode == 0:  # Verify if the script was executed successfully
                             print(result.stdout)
-                            single_sim_files_to_delete(path_to_station)  # Delete the files specified in the function
+                            single_sim_files_to_delete(path_to_station, files_to_delete)  # Delete the files specified in the function
                         else:
                             print("Error in python code:", file=sys.stderr)
                             print(result.stderr, file=sys.stderr)
@@ -342,8 +359,10 @@ def copy_paste_file(origin:Path, destination:Path):
     """
     This function copies the file specified in the origin path to the destination path.
     """
-    shutil.copy(origin, destination)
-
+    try:
+        shutil.copy(origin, destination)
+    except SameFileError:
+        print(f'File: {origin}\nIs the same as:\n {destination}.\nSkipping copy...')
     # Print that the file was updated
     print('====================================================')
     print(f"File main_sql.py updated in {destination}")
