@@ -6,15 +6,17 @@
 # Filter metrics by type and linearity but not with building type
 # In that case you will need to add Nstories and Nsubs from model_specs_structures
 # as filtering parameters.
-SELECT sbs.*
+SELECT mss.*
 FROM simulation sim
 JOIN simulation_sm_input           sminput 	ON sim.idSM_Input 			 = sminput.IDSM_Input
 JOIN simulation_model              sm       ON sim.idModel 				 = sm.IDModel
 JOIN model_specs_structure         mss      ON sm.idSpecsStructure 		 = mss.IDSpecsStructure
 JOIN model_structure_perfomance    msp 		ON sm.idStructuralPerfomance = msp.IDStructuralPerfomance
 JOIN structure_base_shear 		   sbs      ON msp.idBaseShear           = sbs.IDBaseShear
-WHERE sim.idType = 1 		AND mss.idLinearity = 1 
-AND sminput.Magnitude = '6.5 Mw' AND sminput.Rupture_Type = 'Bilateral' AND sminput.Location = 'UAndes Campus' AND mss.Nstories = 20;
+WHERE sim.idType = 3 		AND mss.idLinearity = 1 
+AND sminput.Magnitude = '6.7 Mw' AND sminput.Rupture_Type = 'Bilateral' 
+AND sminput.RealizationID = 1 AND sminput.Location = 'UAndes Campus'
+AND mss.Nstories = 20 AND mss.Nsubs = 4  
 
 
 # Filter building by simulation type, stories and subs

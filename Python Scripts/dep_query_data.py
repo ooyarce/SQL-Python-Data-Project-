@@ -3,6 +3,7 @@
 # ==================================================================================================
 # Import modules
 from pyseestko.db_manager import DataBaseManager
+from pyseestko.plotting   import Plotting                  #type: ignore
 import numpy as np
 import pickle
 
@@ -12,16 +13,16 @@ password = 'Mackbar2112!'
 host     = 'localhost'
 database = 'stkodatabase'
 
-DataBase = DataBaseManager
+Model = DataBaseManager
 # Connect the model to the database
 cursor   = Model.Manager.cursor
 
 # Query the data from the database
-query_drift         = False
+query_drift         = True
 query_input_spectra = False
 query_story_spectra = False
 query_base_spectra  = False
-query_time_shear    = True
+query_time_shear    = False
 
 # ===================================================================================================
 # ==================================== QUERY THE DRIFT PER FLOOR ====================================

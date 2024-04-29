@@ -1142,17 +1142,17 @@ class ModelSimulation:
             return 0,0
 
         # Compute Relative Displ for x
-        rel_zdispl_x1 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[0])] - \
-                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[2])]
-        rel_zdispl_x2 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[1])] - \
-                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[3])]
+        rel_zdispl_x1 = self.base_displ_df[self.base_story_df.index[0]] - \
+                        self.base_displ_df[self.base_story_df.index[2]]
+        rel_zdispl_x2 = self.base_displ_df[self.base_story_df.index[1]] - \
+                        self.base_displ_df[self.base_story_df.index[3]]
         rel_zdispl_x = (rel_zdispl_x1 + rel_zdispl_x2) / 2
 
         # Compute Relative Displ for y
-        rel_zdispl_y1 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[0])] - \
-                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[1])]
-        rel_zdispl_y2 = self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[2])] - \
-                        self.base_displ_df.iloc[self.base_story_df.index.get_loc(self.base_story_df.index[3])]
+        rel_zdispl_y1 = self.base_displ_df[self.base_story_df.index[0]] - \
+                        self.base_displ_df[self.base_story_df.index[1]]
+        rel_zdispl_y2 = self.base_displ_df[self.base_story_df.index[2]] - \
+                        self.base_displ_df[self.base_story_df.index[3]]
         rel_zdispl_y = (rel_zdispl_y1 + rel_zdispl_y2) / 2
 
         # Compute distances between nodes for x and y directions
@@ -1160,36 +1160,10 @@ class ModelSimulation:
         y_dist = self.base_story_df['y'].iloc[0] - self.base_story_df['y'].iloc[1]
 
         # Compute base rotation for x and y directions
-        base_rot_x = np.arctan(rel_zdispl_x / x_dist)
-        base_rot_y = np.arctan(rel_zdispl_y / y_dist)
+        base_rot_x = np.arctan2(rel_zdispl_x, x_dist)
+        base_rot_y = np.arctan2(rel_zdispl_y, y_dist)
 
         return base_rot_x, base_rot_y
-
-    def _computeRoofDrift(self, loc):
-        """
-        This function is used to compute the roof drift DataFrame.
-
-        loc: int
-            The location of the drift. 0 for x, 1 for y.
-        """
-        # Initialize parameters
-        df = self.displ_dfs[loc]
-        roof_nodes    = self.story_nodes_df.loc[self.stories]
-        base_nodes    = self.story_nodes_df.loc[0]
-        max_height    = self.story_nodes_df.loc[self.stories]['z'][0]
-        loc_drifts = []
-
-        # Compute drift for every timestep
-        for base_node, roof_node in zip(base_nodes.index, roof_nodes.index):
-            nodes_angle = np.arctan((df[roof_node] - df[base_node])/max_height)
-            nodes_angle_adjusted = nodes_angle - self._computeBaseRotationDF()[loc]
-            drift = pd.Series(np.tan(nodes_angle_adjusted))
-            drift_abs = drift.abs()
-            loc_drifts.append(drift_abs)
-        drift_df = pd.concat(loc_drifts, axis=1)
-        center   = drift_df.mean(axis=1).max()
-        corner   = drift_df.max().max()
-        return center, corner
 
     def _computeDriftBetweenNodes(self, node1_ss:pd.Series, node2_ss:pd.Series, height:float, loc:int) -> pd.Series:
         """
@@ -1213,7 +1187,7 @@ class ModelSimulation:
         pd.Series
             The absolute drift between the two nodes in the given direction.
         """
-        nodes_angle = np.arctan((node1_ss - node2_ss)/height)
+        nodes_angle = np.arctan2((node1_ss - node2_ss), height)
         nodes_angle_adjusted = nodes_angle - self._computeBaseRotationDF()[loc]
         drift = pd.Series(np.tan(nodes_angle_adjusted))
         drift_abs = drift.abs()

@@ -60,7 +60,7 @@ class ProjectQueries:
         data = self._execute_query(query, self.values)
 
         # Load the data
-        structure_max_drift_per_floor = data[0]
+        structure_max_drift_per_floor = data[-1]
         max_corner_x = pickle.loads(structure_max_drift_per_floor[1]) # type: ignore
         max_corner_y = pickle.loads(structure_max_drift_per_floor[2]) # type: ignore
         max_center_x = pickle.loads(structure_max_drift_per_floor[3]) # type: ignore
@@ -84,7 +84,7 @@ class ProjectQueries:
         data = self._execute_query(query, self.values)
 
         # Load the data
-        structure_perfomance = data[0]
+        structure_perfomance = data[-1]
         accel_df       = pickle.loads(structure_perfomance[6]) # type: ignore
         story_nodes_df = pickle.loads(structure_perfomance[7]) # type: ignore
 
@@ -107,7 +107,7 @@ class ProjectQueries:
         data = self._execute_query(query, self.values)
 
         # Load the data
-        base_shear_over_time = data[0]
+        base_shear_over_time = data[-1]
         time_series = pickle.loads(base_shear_over_time[1]) # type: ignore
         shear_x     = pickle.loads(base_shear_over_time[2]) # type: ignore
         shear_y     = pickle.loads(base_shear_over_time[3]) # type: ignore

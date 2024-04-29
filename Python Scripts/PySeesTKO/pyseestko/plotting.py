@@ -8,7 +8,6 @@ from typing              import Optional
 from scipy.signal        import savgol_filter  # Para suavizado
 from pyseestko.errors    import PlottingError
 from pyseestko.utilities import pwl
-from adjustText          import adjust_text
 
 # Packages
 import pandas as pd
@@ -17,12 +16,32 @@ import numpy  as np
 # ==================================================================================
 # SECONDARY CLASSES
 # ==================================================================================
+"""
+This class is used to perform the seismic analysis of the structure.
+It's used to analyse quiclky the structure and get the results of the analysis.
+You use it in the main after the results are uploaded to the database.
+
+Parameters
+----------
+sim_type : int
+    Simulation type of the model.
+stories : int
+    Number of stories of the model.
+nsubs : int
+    Number of subterrains of the model.
+magnitude : float
+    Magnitude of the earthquake.
+    An example of the magnitude is 6.7.
+iteration : int
+    Iteration of the simulation.
+rupture : int
+    Rupture type of the earthquake.
+    An example of the rupture is 1 for 'bl'.
+station : int
+    Station of the earthquake.
+    An example of the station is 0.
+"""
 class Plotting:
-    """
-    This class is used to perform the seismic analysis of the structure.
-    It's used to analyse quiclky the structure and get the results of the analysis.
-    You use it in the main after the results are uploaded to the database.
-    """
 
     # ==================================================================================
     # INIT PARAMS
@@ -105,13 +124,14 @@ class Plotting:
 
     def plotLocalStoriesSpectrums(self,
                             accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int],
-                            plot:bool=True, ax:Optional[plt.Axes]=None, method:str='Fix Base', soften:bool=False):   #linestyle:str='--'
+                            plot:bool=True, ax:Optional[plt.Axes]=None, soften:bool=False):   #linestyle:str='--'
         # Init params
         self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}_{direction.upper()}'
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
         line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
         texts          = []
-
+        method         = self.sim_type
+        
         # Check input and raise errors
         if direction not in ['x', 'y', 'z']: raise PlottingError(f'Dir must be x, y or z! Current: {direction}')
         if len(stories_lst) > len(colors):   raise PlottingError(f'Not enough colors for the number of stories! Current: {len(stories_lst)}\n Try adding less stories.')
@@ -148,7 +168,7 @@ class Plotting:
             max_index = np.argmax(Spe)
             annotation = ax.annotate(f'{max_value:.2f}', xy=(T[max_index], max_value), textcoords="offset points", xytext=(0,10), ha='center')
             texts.append(annotation)
-            ax.plot(T, Spe, label=f'{method}: Story {story}', linestyle=line_style, color=color)
+            ax.plot(T, Spe, label=f'Story {story}', linestyle=line_style, color=color)
 
         #NOTE: This is just an implementation to correct the pos of the comments in plot
         #adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
