@@ -6,8 +6,9 @@ from pyseestko.plotting   import Plotting               #type: ignore
 from pyseestko.utilities  import NCh433_2012            #type: ignore
 from pyseestko.utilities  import initialize_ssh_tunnel  #type: ignore
 from pathlib              import Path
-import time
+import pandas as pd
 import pickle
+import time
 
 class ProjectQueries:
     def __init__(
@@ -130,19 +131,22 @@ class ProjectQueries:
         soil_category    :str,
         importance       :int
                       ):
+        # Init params
+        start_time = time.time()
+        drift_results_df   = pd.DataFrame(columns=['CM x', 'CM y', 'Max x', 'Max y']).rename_axis('Time Step')
+        spectra_results_df = None
+        
         # ===================================================================================================
         # ==================================== QUERY THE DRIFT PER FLOOR ====================================
         # ===================================================================================================
         if save_drift is not None:
             # Init the query
-            start_time = time.time()
-            max_corner_x, max_corner_y,\
-            max_center_x, max_center_y = self.story_drift()
+            max_corner_x, max_corner_y, max_center_x, max_center_y = self.story_drift()
 
             # Plot the data
             self.plotter.save_path = Path(save_drift)
             ax                = self.plotter.plotModelDrift(max_corner_x, max_center_x, max_corner_y, max_center_y)
-
+            drift_results_df  = pd.DataFrame({'CM x': max_center_x, 'CM y': max_center_y, 'Max x': max_corner_x, 'Max y': max_corner_y}, index=range(1, len(max_corner_x)+1)).rename_axis('Time Step')
 
         # ===================================================================================================
         # ===================================== QUERY THE STORY SPECTRUM ====================================
@@ -154,8 +158,9 @@ class ProjectQueries:
             # Plot the data
             self.plotter.save_path = Path(save_spectra)
             stories_lst = [1,5,10,15,20]
-            ax = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'x', stories_lst, soften=True)
-            ax = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'y', stories_lst, soften=True)
+            ax, T, Spx = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'x', stories_lst, soften=True)
+            ax, _, Spy = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'y', stories_lst, soften=True)
+            spectra_results_df = pd.DataFrame({'Spectrum X': Spx, 'Spectrum Y': Spy}, index=T).rename_axis('Period [T]')
 
 
         # ===================================================================================================
@@ -181,4 +186,6 @@ class ProjectQueries:
         end_time = time.time()
         self.close_connection()
         print(f'Elapsed time: {end_time - start_time} seconds.')
+        
+
 

@@ -146,7 +146,8 @@ class Plotting:
         nu = 0.05
         T = np.linspace(0.003, 2, 1000)
         w  = 2 * np.pi / np.array(T)
-
+        
+        
         # Make plot spectrum
         for i, story in enumerate(stories_lst):
             # Setup color and linestyle
@@ -175,7 +176,7 @@ class Plotting:
         ax.legend()
         if plot:
             self.plotSave(fig)
-        return ax
+        return ax, T, Spe
 
     def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmin:float, Qmax:float, dir_:str):
         # Input params

@@ -891,27 +891,25 @@ class ModelSimulation:
                     + model_dic[20]['areas']["internal_core_x"] *  model_dic[20]['thickness']["internal_core_x"][k+1] * density/2
                     + model_dic[20]['areas']["internal_core_y"] *  model_dic[20]['thickness']["internal_core_y"][k+1] * density/2
                     + model_dic[20]['areas']['columns_sup']     *  model_dic[20]['thickness']['columns_sup']    [k+1] * density/2)
-                    for k in range(self.stories)},
-                    50:{}}
+                    for k in range(self.stories)}}
         mass_base = {20:{
                         0:
-                        model_dic[20]['areas']["sub_slabs_area"]  *  model_dic[20]['thickness']["slabs_sub"][1]         * density1   +
+                        model_dic[20]['areas']["sub_slabs_area"]  *  model_dic[20]['thickness']["slabs_sub"][1]       * density1   +
                         # Add bottom mass
-                        model_dic[20]['areas']["perimetral_wall"] *  model_dic[20]['thickness']["perimetral_wall"][1]   * density/2 +
-                        model_dic[20]['areas']['columns_sub']     *  model_dic[20]['thickness']['columns_sub'][1]       * density/2 +
+                        model_dic[20]['areas']["perimetral_wall"] *  model_dic[20]['thickness']["perimetral_wall"][1] * density/2 +
+                        model_dic[20]['areas']['columns_sub']     *  model_dic[20]['thickness']['columns_sub'][1]     * density/2 +
                         # Add top mass
                         model_dic[20]['areas']["external_core"]   *  model_dic[20]['thickness']["external_core"][2]   * density/2 +
                         model_dic[20]['areas']["internal_core_x"] *  model_dic[20]['thickness']["internal_core_x"][2] * density/2 +
                         model_dic[20]['areas']["internal_core_y"] *  model_dic[20]['thickness']["internal_core_y"][2] * density/2 +
-                        model_dic[20]['areas']['columns_sup']     *  model_dic[20]['thickness']['columns_sup'][2]     * density/2},
-                     50:{}}
+                        model_dic[20]['areas']['columns_sup']     *  model_dic[20]['thickness']['columns_sup'][2]     * density/2}}
         mass_sub = {20: {k-1:
                         model_dic[20]['areas']["sub_slabs_area"]  *  model_dic[20]['thickness']["slabs_sub"][k]       * density1 +
                         model_dic[20]['areas']["perimetral_wall"] *  model_dic[20]['thickness']["perimetral_wall"][k] * density1 +
                         model_dic[20]['areas']['columns_sub']     *  model_dic[20]['thickness']['columns_sub'][k]     * density1
                     for k in range(0, -(self.subs-1), -1)},
                     }
-        factor = {20:{2:1.025, 4:1.025}} # Factor of 4 subs may change cause it's not studied yet
+        factor = {20:{2:0.93, 4:0.97}} # Factor of 4 subs may change cause it's not studied yet
         self.masses_series = pd.Series({**mass_sub[self.stories], **mass_base[self.stories], **mass_sup[self.stories]}).sort_index()*factor[self.stories][self.subs]
 
         # For each story, compute the mean acceleration in the 4 nodes of the story

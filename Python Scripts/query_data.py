@@ -22,25 +22,25 @@ stations: Can be any number from 0 to 9, -1 for not defined
 stories: For the moment, it can be 20 or 55
 nsubs_lst: For the moment, it can be 2 or 4
 """
-sim_types    = [1]
-linearity    = 1
-magnitude    = 6.7
-rupture_type = 1
-iterations   = [1,2,3]
-stations     = [0,1,2]#,3,4,5,6,7,8,9]
-stories      = 20
-nsubs_lst    = [2,4]
+magnitude    = 6.7      # Constant
+rupture_type = 1        # Constant       
+linearity    = 1        # Constant
+stories      = 20       # Constant      
+nsubs_lst    = [4]      # 2,4
+sim_types    = [3]      # 1 = FB, 2 = AB, 3 = DRM
+iterations   = [1,2]#,4,5,6,7,8,9,10]      # 1,2,3,4,5,6,7,8,9,10
+stations     = [0,1,2,3,4,5,6,7,8,9]
 mag_map, loc_map, rup_map = get_mappings()
 
 # Define paths to save the plots
 save_drift       = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Drift Outputs'
-save_spectra     = None #'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Story Spectra Output'
-save_b_shear     = None #'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Shear Output'
-structure_weight = 37134.5 # kN
+save_spectra     = None#'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Story Spectra Output'
+save_b_shear     = None#'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Shear Output'
+structure_weight = 24531.7 # kN
 zone             = 'Las Condes'
 soil_category    = 'B'
 importance       = 2
-
+windows          = True # True if the OS is Windows, False if Linux
 # Iterate over the subs, then over the sim_type and then over the stations so we can get all the results
 for sim_type in sim_types:
     for station in stations:
@@ -56,6 +56,9 @@ for sim_type in sim_types:
                                         mag_map.get(magnitude,    'None'),
                                         rup_map.get(rupture_type, 'None'), iteration,
                                         loc_map.get(station,      'None'),
-                                        stories, nsubs, plotter, windows=False)
+                                        stories, nsubs, plotter, windows=windows)
                 query.getAllResults(save_drift, save_spectra, save_b_shear, structure_weight, zone, soil_category, importance)
+
+
+
 
