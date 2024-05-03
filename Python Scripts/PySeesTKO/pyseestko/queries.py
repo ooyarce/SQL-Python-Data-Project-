@@ -14,49 +14,7 @@ import time
 # ==================================================================================================
 # MAIN FUNCTION
 # ==================================================================================================
-"""
-This function will execute the main query to get the results from the database
-The logic is the following:
-1. Iterate over the simulation types
-2. Iterate over the stations
-3. Iterate over the iterations
-4. Iterate over the number of substructures
-5. Query the database
-6. Append the results to the lists
-7. Return the lists
 
-Params:
-- sim_types: List of simulation types
-- stations: List of stations
-- iterations: List of iterations
-- nsubs_lst: List of number of substructures
-- mag_map: Dictionary with the mapping of the magnitudes
-- loc_map: Dictionary with the mapping of the locations
-- rup_map: Dictionary with the mapping of the rupture types
-- user: User of the database
-- password: Password of the database
-- host: Host of the database
-- database: Name of the database
-
-Optional params:
-- linearity: Linearity of the model, always 1 for linear, 2 for non-linear, default is 1
-- stories: Number of stories, default is 20
-- magnitude: Magnitude of the earthquake, default is 6.7
-- rupture_type: Type of rupture, default is 1
-- save_drift: Path to save the drift plots if None, it will not save the plots nor the data
-- save_spectra: Path to save the spectra plots, if None, it will not save the plots nor the data
-- save_b_shear: Path to save the base shear plots, if None, it will not save the plots nor the data
-- windows: True if the OS is Windows, False if Linux
-
-Returns:
-- drifts_df_lst: List of drift dataframes
-- spectra_df_lst: List of spectra dataframes
-- base_shear_df_lst: List of base shear dataframes
-
-Note:
-This is mean to be used for statistical analysis, so this is the main fuction to access to the specific data
-and then analyze it with diverse statistical methods such as ANOVA, POWER ANALYSIS OR MANOVA.
-"""
 def executeMainQuery(
     # Params
     sim_types   : List[int], 
@@ -79,7 +37,51 @@ def executeMainQuery(
     save_drift  : str  = None, 
     save_spectra: str  = None, 
     save_b_shear: str  = None, 
-    windows     : bool = True):
+    windows     : bool = True
+    ) -> Tuple[List[pd.DataFrame], List[pd.DataFrame], List[pd.DataFrame]]:
+    """
+    This function will execute the main query to get the results from the database
+    The logic is the following:
+    1. Iterate over the simulation types
+    2. Iterate over the stations
+    3. Iterate over the iterations
+    4. Iterate over the number of substructures
+    5. Query the database
+    6. Append the results to the lists
+    7. Return the lists
+
+    Params:
+    - sim_types: List of simulation types
+    - stations: List of stations
+    - iterations: List of iterations
+    - nsubs_lst: List of number of substructures
+    - mag_map: Dictionary with the mapping of the magnitudes
+    - loc_map: Dictionary with the mapping of the locations
+    - rup_map: Dictionary with the mapping of the rupture types
+    - user: User of the database
+    - password: Password of the database
+    - host: Host of the database
+    - database: Name of the database
+
+    Optional params:
+    - linearity: Linearity of the model, always 1 for linear, 2 for non-linear, default is 1
+    - stories: Number of stories, default is 20
+    - magnitude: Magnitude of the earthquake, default is 6.7
+    - rupture_type: Type of rupture, default is 1
+    - save_drift: Path to save the drift plots if None, it will not save the plots nor the data
+    - save_spectra: Path to save the spectra plots, if None, it will not save the plots nor the data
+    - save_b_shear: Path to save the base shear plots, if None, it will not save the plots nor the data
+    - windows: True if the OS is Windows, False if Linux
+
+    Returns:
+    - drifts_df_lst: List of drift dataframes
+    - spectra_df_lst: List of spectra dataframes
+    - base_shear_df_lst: List of base shear dataframes
+
+    Note:
+    This is mean to be used for statistical analysis, so this is the main fuction to access to the specific data
+    and then analyze it with diverse statistical methods such as ANOVA, POWER ANALYSIS OR MANOVA.
+    """
     
     # Iterative params
     drifts_df_lst     = []
@@ -115,6 +117,216 @@ def executeMainQuery(
                     base_shear_df_lst.append(base_shear)
     print('Done!')
     return drifts_df_lst, spectra_df_lst, base_shear_df_lst
+
+def getDriftDFs(drifts_df_lst:List[pd.DataFrame]):
+    """
+    This function will get the drifts dataframes of the x and y directions
+    and return the drifts dataframe of the x direction, the drifts dataframe of the y direction
+    and the concatenation of both dataframes.
+    It's input is a list of drifts dataframes and it will return the global drifts dataframes based
+    on the maximum drifts of the x and y directions.
+    of the x and y directions.
+    It's supposed to be used after the main query is executed.
+    
+    Parameters
+    ----------
+    drifts_df_lst : List[pd.DataFrame]
+        List of drifts dataframes.
+        
+    Returns
+    -------
+    df1 : pd.DataFrame
+        Drifts dataframe of the x direction.
+    df2 : pd.DataFrame
+        Drifts dataframe of the y direction.
+    drift_df : pd.DataFrame
+        Concatenation of df1 and df2.
+    """
+    #X Direction
+    max_drifts_lst_X = [dfx[['CM x']] for dfx in drifts_df_lst]
+    df1 = pd.concat(max_drifts_lst_X, axis=1)
+    df1 = df1.set_index(pd.Index(['drift'] * len(df1), name='Metric'), append=True)
+    df1 = df1.set_index(pd.Index(['x'] * len(df1), name='Dir'), append=True)
+    df1.columns = pd.Index([f'rep_{i+1}' for i in range(len(max_drifts_lst_X))])
+
+    #Y Direction
+    max_drifts_lst_Y = [dfy[['CM y']] for dfy in drifts_df_lst]
+    df2 = pd.concat(max_drifts_lst_Y, axis=1)
+    df2 = df2.set_index(pd.Index(['drift'] * len(df2), name='Metric'), append=True)
+    df2 = df2.set_index(pd.Index(['y'] * len(df2), name='Dir'), append=True)
+    df2.columns = pd.Index([f'rep_{i+1}' for i in range(len(max_drifts_lst_Y))])
+
+    # Concatenate X and Y
+    drift_df = pd.concat([df1, df2], axis=0)
+    
+    return df1, df2, drift_df
+
+def getReplicaCummStatisticDriftDFs(drifts_df_lst:List[pd.DataFrame], statistic:str='mean'):
+    """
+    This function will get the cummultive mean drifts dataframes of the x and y directions, for each story as index,
+    based on the max value for each replica, given a certain type of simulation,
+    certain type of structure and certain location. That means, the first column gives the mean given 1 replica, 
+    the second column gives the mean given 2 replicas and so on.
+    
+    Parameters
+    ----------
+    drifts_df_lst : List[pd.DataFrame]
+        List of drifts dataframes.
+        
+    Returns
+    -------
+    df1 : pd.DataFrame
+        Mean drifts dataframe of the x direction.
+    df2 : pd.DataFrame
+        Mean drifts dataframe of the y direction.
+    drift_df : pd.DataFrame
+        Concatenation of df1 and df2.
+    """
+    # Check input
+    if statistic not in ['mean', 'std']:
+        raise ValueError(f'Statistic must be mean or std, current: {statistic}')
+    
+    # Init params
+    drift_x_df, drift_y_df, drift_df = getDriftDFs(drifts_df_lst)
+    
+    #X Direction
+    stories_statistic_lst = []
+    for i, column in enumerate(drift_x_df.columns):
+        if statistic == 'mean':
+            stories_statistic_lst.append(drift_x_df[drift_x_df.columns[:i+1]].mean(axis=1).loc[[1,5,10,15,20]])
+        elif statistic == 'std':
+            stories_statistic_lst.append(drift_x_df[drift_x_df.columns[:i+1]].std(axis=1).loc[[1,5,10,15,20]])
+    df1 = pd.concat(stories_statistic_lst, axis=1)
+    df1 = df1.droplevel((1,2))
+    
+    #Y Direction
+    stories_statistic_lst = []
+    for i, column in enumerate(drift_y_df.columns):
+        if statistic == 'mean':
+            stories_statistic_lst.append(drift_y_df[drift_y_df.columns[:i+1]].mean(axis=1).loc[[1,5,10,15,20]])
+        elif statistic == 'std':
+            stories_statistic_lst.append(drift_y_df[drift_y_df.columns[:i+1]].std(axis=1).loc[[1,5,10,15,20]])
+    df2 = pd.concat(stories_statistic_lst, axis=1)
+    df2 = df2.droplevel((1,2))
+    
+    # Concatenate X and Y
+    drift_df = pd.concat([df1, df2], axis=0)
+    
+    return df1, df2, drift_df        
+
+def getSpectraDfs(spectra_df_lst:List[pd.DataFrame]):
+    """
+    This function will get the mean spectra dataframes of the x and y directions}
+    and return the spectra dataframe of the x direction, the spectra dataframe of the y direction
+    and the concatenation of both dataframes.
+    It's input is a list of spectra dataframes and it will return the mean spectra dataframes
+    of the x and y directions.
+    It's supposed to be used after the main query is executed.
+    
+    Parameters
+    ----------
+    spectra_df_lst : List[pd.DataFrame]
+        List of spectra dataframes.
+        
+    Returns
+    -------
+    df1 : pd.DataFrame
+        Spectra dataframe of the x direction.
+    df2 : pd.DataFrame
+        Spectra dataframe of the y direction.
+    spectra_df : pd.DataFrame
+        Concatenation of df1 and df2.
+    """
+    # X Direction
+    max_spectra_lst_X = [(dfx[0][['Story 1', 'Story 5', 'Story 10', 'Story 15', 'Story 20']].T.set_index(pd.Index([1, 5, 10, 15, 20], name='Story')).max(axis=1)) 
+                        for dfx in spectra_df_lst]
+    df1 = pd.concat(max_spectra_lst_X, axis=1)
+    df1.columns = pd.Index([f'rep_{i+1}' for i in range(len(max_spectra_lst_X))])
+    df1 = df1.set_index(pd.Index(['spectrum'] * len(df1), name='Metric'), append=True)
+    df1 = df1.set_index(pd.Index(['x'] * len(df1), name='Dir'), append=True)
+
+    #Y Direction
+    max_spectra_lst_Y = [(dfy[0][['Story 1', 'Story 5', 'Story 10', 'Story 15', 'Story 20']].T.set_index(pd.Index([1, 5, 10, 15, 20], name='Story')).max(axis=1)) 
+                        for dfy in spectra_df_lst]
+    df2 = pd.concat(max_spectra_lst_Y, axis=1)
+    df2.columns = pd.Index([f'rep_{i+1}' for i in range(len(max_spectra_lst_Y))])
+    df2 = df2.set_index(pd.Index(['spectrum'] * len(df2), name='Metric'), append=True)
+    df2 = df2.set_index(pd.Index(['y'] * len(df2), name='Dir'), append=True)
+    spectra_df = pd.concat([df1, df2], axis=0)
+
+    return df1, df2, spectra_df
+
+def getCummStatisticSpectraDFs(spectra_df_lst:List[pd.DataFrame], statistic:str='mean'):
+    """
+    This function will get the cummultive mean spectra dataframes of the x and y directions, for each story as index,
+    based on the max value for each replica, given a certain type of simulation,
+    certain type of structure and certain location. That means, the first column gives the mean given 1 replica,
+    the second column gives the mean given 2 replicas and so on.
+    
+    Parameters
+    ----------
+    spectra_df_lst : List[pd.DataFrame]
+        List of spectra dataframes.
+
+    Returns
+    -------
+    df1 : pd.DataFrame
+        Mean spectra dataframe of the x direction.
+    df2 : pd.DataFrame
+        Mean spectra dataframe of the y direction.
+    spectra_df : pd.DataFrame
+        Concatenation of df1 and df2.
+    """
+    # Check input
+    if statistic not in ['mean', 'std']:
+        raise ValueError(f'Statistic must be mean or std, current: {statistic}')
+    
+    # Init params
+    spectra_x_df, spectra_y_df, spectra_df = getSpectraDfs(spectra_df_lst)
+    
+    #X Direction
+    stories_statistic_lst = []
+    for i, column in enumerate(spectra_x_df.columns):
+        if statistic == 'mean':
+            stories_statistic_lst.append(spectra_x_df[spectra_x_df.columns[:i+1]].mean(axis=1))
+        elif statistic == 'std':
+            stories_statistic_lst.append(spectra_x_df[spectra_x_df.columns[:i+1]].std(axis=1))
+    df1 = pd.concat(stories_statistic_lst, axis=1)
+    df1 = df1.droplevel((1,2))
+    
+    #Y Direction
+    stories_statistic_lst = []
+    for i, column in enumerate(spectra_y_df.columns):
+        if statistic == 'mean':
+            stories_statistic_lst.append(spectra_y_df[spectra_y_df.columns[:i+1]].mean(axis=1))
+        elif statistic == 'std':
+            stories_statistic_lst.append(spectra_y_df[spectra_y_df.columns[:i+1]].std(axis=1))
+    df2 = pd.concat(stories_statistic_lst, axis=1)
+    df2 = df2.droplevel((1,2))
+    
+    # Concatenate X and Y
+    spectra_df = pd.concat([df1, df2], axis=0)
+    
+    return df1, df2, spectra_df
+
+def getReplicaCummStatisticBaseShearDFs(base_shear_df_lst:List[pd.DataFrame], statistic:str='mean'):
+    # Check input
+    if statistic not in ['mean', 'std']:
+        raise ValueError(f'Statistic must be mean or std, current: {statistic}')
+    
+    # Init params
+    spectra_x_lst = [df['Shear X'].max() for df in base_shear_df_lst]
+    spectra_y_lst = [df['Shear Y'].max() for df in base_shear_df_lst]
+
+    # Create a one row DataFrame, with index name equal to "Base Shear"
+    max_shear_x_df = pd.DataFrame([spectra_x_lst], index=['Base Shear'], columns=[f'rep_{i}' for i in range(1,11)])
+    max_shear_y_df = pd.DataFrame([spectra_y_lst], index=['Base Shear'], columns=[f'rep_{i}' for i in range(1,11)])
+    
+    # Concatenate X and Y
+    max_shear_df = pd.concat([max_shear_x_df, max_shear_y_df], axis=0)
+    
+    return max_shear_x_df, max_shear_y_df, max_shear_df
+
 
 # ==================================================================================================
 # CLASS TO QUERY THE DATABASE
@@ -273,12 +485,11 @@ class ProjectQueries:
             # Plot the data
             self.plotter.save_path = Path(save_spectra)
             stories_lst = [1,5,10,15,20]
-            ax, T, Spx = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'x', stories_lst, soften=True)
-            ax, _, Spy = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'y', stories_lst, soften=True)
-            spectra_results_df = pd.DataFrame({'Spectrum X': Spx, 
-                                               'Spectrum Y': Spy}, 
-                                              index=T).rename_axis('Period [T]')
-
+            ax, spa_x_df = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'x', stories_lst, soften=True)
+            ax, spa_y_df = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'y', stories_lst, soften=True)
+            
+            # Convert to df where the index is the period
+            spectra_results_df = [spa_x_df, spa_y_df]
 
         # ===================================================================================================
         # ======================================= QUERY THE BASE SHEAR ======================================
@@ -309,5 +520,6 @@ class ProjectQueries:
         print(f'Elapsed time: {end_time - start_time} seconds.')
         return drift_results_df, spectra_results_df, base_shear_results_df
         
+
 
 

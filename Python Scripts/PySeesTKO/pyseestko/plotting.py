@@ -8,13 +8,89 @@ from typing              import Optional
 from scipy.signal        import savgol_filter  # Para suavizado
 from pyseestko.errors    import PlottingError
 from pyseestko.utilities import pwl
+from typing              import List
 
 # Packages
 import pandas as pd
 import numpy  as np
+# ==================================================================================
+# MAIN FUNCTIONS CLASS
+# ==================================================================================
+def plotConfig(title:str, x = 19.2, y = 10.8, dpi = 100):
+    fig = plt.figure(num=1, figsize=(x, y), dpi=dpi)
+    ax = fig.add_subplot(1, 1, 1)
+    ax.grid(True)
+    ax.set_title(title)
+    return fig, ax
+
+def plotStatisticByReplicas(df:pd.DataFrame, statistic:str, title:str, ylabel:str,  x = 19.2, y = 10.8, dpi = 100):
+    """
+    This function plots the mean values of the replicas of the dataframe.
+    It is supossed to use the query.getCummStatisticalDFs() functions to get the dataframes.
+    So, df is supossed to have only a story as index, and the cummulative value of the drifts or spectra
+    over the replicas as columns.
+    As a example, the df could be like this:
+    | Story | Replica 1 | Replica 2 | Replica 3 | ... | Replica 10 |
+    |-------|-----------|-----------|-----------|-----|------------|
+    | 1     | 0.001     | 0.002     | 0.003     | ... | 0.001      |
+    | 2     | 0.002     | 0.003     | 0.004     | ... | 0.002      |
+    | 3     | 0.003     | 0.004     | 0.005     | ... | 0.003      |
+    | ...   | ...       | ...       | ...       | ... | ...        |
+    | 10    | 0.010     | 0.011     | 0.012     | ... | 0.010      |
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe with the mean values of the replicas.
+    statistic : str
+        Statistic to plot. The options are 'mean' and 'std'.
+    title : str
+        Title of the plot.  
+    x : float, optional
+        Width of the plot. The default is 19.2.
+    y : float, optional
+        Height of the plot. The default is 10.8.
+    dpi : int, optional
+        Dots per inch of the plot. The default is 100.
+        
+    Returns
+    -------
+    fig : plt.Figure
+        Figure of the plot.
+    ax : plt.Axes
+        Axes of the plot.
+    """
+    # Check input
+    if statistic not in ['mean', 'std']: raise ValueError(f'Statistic must be mean or std! Current: {statistic}')
+    
+    # Plot config
+    fig, ax = plotConfig(title, x, y, dpi)
+    
+    # Plot the statistic value over the replicas for a given story
+    for i in df.index:
+        replicas  = [1,2,3,4,5,6,7,8,9,10]
+        mean_vals = df.loc[i].values 
+        plt.plot(replicas, mean_vals, label=f'Story {i}')
+        
+    # Set x values in [1,2,3,4,5,6,7,8,9,10]
+    plt.xticks([1,2,3,4,5,6,7,8,9,10])
+    plt.xlabel('Number of replicas')
+    plt.ylabel(ylabel)
+    
+    # Write a vline segmented in red color in x=[3,5,10]
+    plt.axvline(x=3, color ='black', linestyle=':')
+    plt.axvline(x=5, color ='black', linestyle=':')
+    plt.axvline(x=10, color='black', linestyle=':')
+    
+    # Set legend and grid
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    return fig, ax
+
 
 # ==================================================================================
-# SECONDARY CLASSES
+# PLOTTING METRICS CLASS
 # ==================================================================================
 """
 This class is used to perform the seismic analysis of the structure.
@@ -126,7 +202,7 @@ class Plotting:
                             accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int],
                             plot:bool=True, ax:Optional[plt.Axes]=None, soften:bool=False):   #linestyle:str='--'
         # Init params
-        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}_{direction.upper()}'
+        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{direction.upper()}'
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
         line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
         texts          = []
@@ -146,7 +222,7 @@ class Plotting:
         nu = 0.05
         T = np.linspace(0.003, 2, 1000)
         w  = 2 * np.pi / np.array(T)
-        
+        spa_lst = []
         
         # Make plot spectrum
         for i, story in enumerate(stories_lst):
@@ -160,6 +236,7 @@ class Plotting:
             adir = df.xs(direction, level='Dir')['Average'][::16]
             Spe = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [pwl(adir.values, wi, nu)]]
             Spe = np.array(Spe)
+            spa_lst.append(Spe)
 
             # Soften the spectrum
             if soften and len(Spe) > 50: Spe = savgol_filter(Spe, 51, 3)
@@ -171,17 +248,20 @@ class Plotting:
             texts.append(annotation)
             ax.plot(T, Spe, label=f'Story {story}', linestyle=line_style, color=color)
 
+        # Compute df
+        spa_df = pd.DataFrame({f'Story {story}': spa for story, spa in zip(stories_lst, spa_lst)}, index=T)
+        
         #NOTE: This is just an implementation to correct the pos of the comments in plot
         #adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
         ax.legend()
         if plot:
             self.plotSave(fig)
-        return ax, T, Spe
+        return ax, spa_df
 
     def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmin:float, Qmax:float, dir_:str):
         # Input params
         if dir_ not in ['x','X','y','Y']: raise ValueError(f'dir must be x, y! Current: {dir}')
-        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}_s{self.station}_{dir_.upper()}'
+        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{dir_.upper()}'
 
         fig, ax, _ = self.plotConfig(self.base_shear_ss_title)
         ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1')
@@ -193,87 +273,3 @@ class Plotting:
         ax.legend()
         self.plotSave(fig)
 
-
-
-
-
-
-
-    """
-    def plotModelSpectrum(self, spectrum_x:list[float], spectrum_y:list[float], spectrum_z:list[float], plotNCh433:bool = True):
-        # Input params
-        fig, ax, y = self.plotConfig(self.input_title)
-        ax.set_xlabel('T (s)')
-        ax.set_ylabel('Acceleration (m/s/s)')
-
-        # Plot Spectrums
-        if plotNCh433:
-            ax = self.NCh433Spectrum(ax)
-        x = np.linspace(0.003, 2, 1000)
-        ax.plot(x, spectrum_x, label='Spectrum X')
-        ax.plot(x, spectrum_y, label='Spectrum Y')
-        ax.plot(x, spectrum_z, label='Spectrum Z')
-        ax.legend()
-        self.plotSave(fig)
-        return ax
-
-    def plotLocalBaseSpectrum(self, ModelSimulation: ModelSimulation, accel_df:pd.DataFrame, stories_df:pd.DataFrame,
-                         T:np.ndarray, spectrum_modes:list[float], plot_z:bool=True):
-        # Input params
-        fig, ax, _ = self.plotConfig(self.base_spectrum_title)
-        ax.set_xlabel('T (s)')
-        ax.set_ylabel('Acceleration (m/s/s)')
-        nu = 0.05
-        w  = 2 * np.pi / np.array(T)
-        df = accel_df[stories_df.loc[0].index].copy()
-        df.loc[:,'Average'] = df.mean(axis=1)
-
-        # Compute and plot spectrum
-        ae = df.xs('x', level='Dir')['Average'][::16]
-        an = df.xs('y', level='Dir')['Average'][::16]
-        Spe = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [pwl(ae.values, wi, nu)]]
-        Spn = [max(max(u_y), abs(min(u_y))) * wi**2 for wi in w for u_y, _ in [pwl(an.values, wi, nu)]]
-        ax.plot(T, Spe, label='Dir X')
-        ax.plot(T, Spn, label='Dir Y')
-
-        # Plot z if desired
-        if plot_z:
-            az = df.xs('z', level='Dir')['Average'][::16]
-            Spz = [max(max(u_z), abs(min(u_z))) * wi**2 for wi in w for u_z, _ in [pwl(az.values, wi, nu)]]
-            ax.plot(T, Spz, label='Dir Z')
-
-        # Plot the modes in vertical lines with squares or crosses
-        for i, mode in enumerate(spectrum_modes):
-            ax.axvline(x=mode, linestyle='--', label=f'Mode{i} = {mode}',color='red')
-
-        ax.legend()
-        self.plotSave(fig)
-        return ax
-
-
-
-
-
-
-    # ==================================================================================
-    # AUXIALIARY FUNCTIONS
-    # ==================================================================================
-    @staticmethod
-    def NCh433Spectrum(ax, S = 1, To = 0.3, p = 1.5, Ao = 0.3 *9.81 , Io = 1.2, R = 5):
-        # Input params
-        T = np.linspace(0,2.,1000)
-        Sah = np.zeros(1000)
-        Sav = np.zeros(1000)
-
-        # Compute spectrum
-        for i in range(1000):
-            tn = T[i]
-            alpha = (1 + 4.5*(tn/To)**p)/(1 +(tn/To)**3)
-            Sah[i] = S*Ao*alpha/(R/Io)
-            Sav[i] = 2/3 * S*Ao*alpha/(R/Io)
-
-        # Plot spectrum
-        ax.plot(T, Sah, linestyle='--', label='NCh433 Horizontal')
-        ax.plot(T, Sav, linestyle='--', label='NCh433 Vertical')
-        return ax
-    """
