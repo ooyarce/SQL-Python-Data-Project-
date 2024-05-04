@@ -308,6 +308,9 @@ def run_main_sql_simulations(
         A list of strings with the stations. The function will iterate over each station in
         the list.
     """
+    # Errors management
+    errors = {}
+    
     # Start the timer to measure the execution time
     start_time = time.time()
     
@@ -349,11 +352,24 @@ def run_main_sql_simulations(
                         else:
                             print("Error in python code:", file=sys.stderr)
                             print(result.stderr, file=sys.stderr)
+                            errors[f'{sim_type}_{structure}_{rup}_{station}'] = -1
                     except Exception as e:
                         print(f"Error executing {path_to_paste}: {e}", file=sys.stderr)
+                        errors[f'{sim_type}_{structure}_{rup}_{station}'] = type(e).__name__
                     print('====================================================\n')
     end_time = time.time()
-    print(f"Total execution time: {end_time - start_time} seconds.")
+    time.sleep(1)
+    print(f"Total execution time: {end_time - start_time} seconds.\n")
+    
+    # Print errors with corresponding simulation parameters
+    if errors:
+        print("Errors occurred during execution:")
+        for key, error in errors.items():
+            print(f"- {key}\n")
+
+    else:
+        print("No errors occurred during execution.")
+
 
 def copy_paste_file(origin:Path, destination:Path):
     """
