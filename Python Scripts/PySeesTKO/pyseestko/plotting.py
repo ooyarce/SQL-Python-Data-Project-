@@ -26,7 +26,7 @@ def plotConfig(title:str, x = 19.2, y = 10.8, dpi = 100):
 def plotStatisticByReplicas(df:pd.DataFrame, statistic:str, title:str, ylabel:str,  x = 19.2, y = 10.8, dpi = 100):
     """
     This function plots the mean values of the replicas of the dataframe.
-    It is supossed to use the query.getCummStatisticalDFs() functions to get the dataframes.
+    It is supossed to use the getCummStatisticalDFs() functions to get the dataframes.
     So, df is supossed to have only a story as index, and the cummulative value of the drifts or spectra
     over the replicas as columns.
     As a example, the df could be like this:
@@ -87,6 +87,56 @@ def plotStatisticByReplicas(df:pd.DataFrame, statistic:str, title:str, ylabel:st
     plt.grid(True)
     plt.show()
     return fig, ax
+
+#NOTE:DEPRECATED
+def plotValidation(drifts_df_lst, spectra_df_lst, base_shear_df_lst):
+    # DRIFTS
+    mean_drift_x_df, mean_drift_y_df, mean_drift_df = getReplicaCummStatisticDriftDFs(drifts_df_lst, statistic='mean')
+    std_drift_x_df, std_drift_y_df, std_drift_df    = getReplicaCummStatisticDriftDFs(drifts_df_lst, statistic='std')
+
+    # Plot the mean drifts
+    fig1, ax = plotStatisticByReplicas(df=mean_drift_x_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Drift X')
+    fig2, ax = plotStatisticByReplicas(df=mean_drift_y_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Drift Y')
+    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Drift X.png')
+    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Drift Y.png')
+
+    # Plot the std drifts
+    fig1, ax = plotStatisticByReplicas(df=std_drift_x_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]', title='Number of replicas vs Std Drift X')
+    fig2, ax = plotStatisticByReplicas(df=std_drift_y_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]', title='Number of replicas vs Std Drift Y')
+    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Drift X.png')
+    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Drift Y.png')
+
+    # SPECTRUMSS
+    mean_spectra_x_df, mean_spectra_y_df, mean_spectra_df = getCummStatisticSpectraDFs(spectra_df_lst, statistic='mean')
+    std_spectra_x_df, std_spectra_y_df, std_spectra_df    = getCummStatisticSpectraDFs(spectra_df_lst, statistic='std')
+
+    # Plot the mean spectra
+    fig1, ax = plotStatisticByReplicas(df=mean_spectra_x_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Spectra X')
+    fig2, ax = plotStatisticByReplicas(df=mean_spectra_y_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Spectra Y')
+    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Spectra X.png')
+    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Spectra Y.png')
+
+    # Plot the std spectra
+    fig1, ax = plotStatisticByReplicas(df=std_spectra_x_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]',title='Number of replicas vs Std Spectra X')
+    fig2, ax = plotStatisticByReplicas(df=std_spectra_y_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]',title='Number of replicas vs Std Spectra Y')
+    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Spectra X.png')
+    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Spectra Y.png')
+
+    # SHEAR BASE
+    max_shear_x_df, max_shear_y_df, max_shear_df = getReplicaCummStatisticBaseShearDFs(base_shear_df_lst, statistic='mean')
+
+    # Plot the mean base shear
+    fig1, ax = plotStatisticByReplicas(df=max_shear_x_df, statistic='mean', ylabel='Base Shear [kN]', title='Number of replicas vs Mean Base Shear X')
+    fig2, ax = plotStatisticByReplicas(df=max_shear_y_df, statistic='mean', ylabel='Base Shear [kN]', title='Number of replicas vs Mean Base Shear Y')
+    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Base Shear X')
+    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Base Shear Y')
+
+    # Plot the std base shear
+    fig1, ax = plotStatisticByReplicas(df=max_shear_x_df, statistic='std', ylabel='Base Shear [kN]', title='Number of replicas vs Std Base Shear X')
+    fig2, ax = plotStatisticByReplicas(df=max_shear_y_df, statistic='std', ylabel='Base Shear [kN]', title='Number of replicas vs Std Base Shear Y')
+    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Base Shear X')
+    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Base Shear Y')
+
 
 
 # ==================================================================================

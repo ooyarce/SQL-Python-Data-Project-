@@ -4,8 +4,9 @@
 from pyseestko.errors import NCh433Error, DataBaseError
 from pathlib          import Path
 from typing           import List
-
 from shutil           import SameFileError
+
+import pandas         as pd
 import numpy          as np
 import importlib.util
 import subprocess
@@ -73,7 +74,7 @@ def getBoxParams(sim_type, sim_keys):
     soil_dim      = '3D'                                  if sim_type != 1 else 'No Soil dimension'
     return box_comments, soil_mat_name, soil_ele_type, mesh_struct, vs30, soil_dim
 
-def get_mappings():
+def getMappings():
     magnitude_mapping = {
         0.0: "Not defined",
         6.5: "6.5 Mw",
@@ -208,7 +209,6 @@ def initialize_ssh_tunnel(server_alive_interval=60):
         raise DataBaseError(f"Error executing a system command: {e}")
     except Exception as e:
         raise DataBaseError(f"Error trying to open cmd: {e}")
-
 
 def folder_size(path:Path, folder_name:str):
     """
@@ -370,7 +370,6 @@ def run_main_sql_simulations(
     else:
         print("No errors occurred during execution.")
 
-
 def copy_paste_file(origin:Path, destination:Path):
     """
     This function copies the file specified in the origin path to the destination path.
@@ -382,6 +381,46 @@ def copy_paste_file(origin:Path, destination:Path):
     # Print that the file was updated
     print('====================================================')
     print(f"File main_sql.py updated in {destination}")
+
+def getCSVNames(sim_types:List[str], nsubs_lst:List[int], iterations:List[int], stations:List[int])-> List[str]:
+    stations         = [f'station_s{i}' for i in stations]  # Generate a list of stations from 'station_s0' to 'station_s8'
+    csv_names        = []
+    for sim_type in sim_types:
+        if sim_type == 1:
+            sim_type = 'FixBase'
+        elif sim_type == 2:
+            sim_type = 'AbsBound'
+        elif sim_type == 3:
+            sim_type = 'DRM'
+            
+        # Iterate over each structure type inside the simulation type folder
+        for structure in nsubs_lst:
+            structure = f'20f{structure}s'
+            
+            # Iterate over each rupture type inside the magnitude folder
+            for rup_iter in iterations:
+                rup = f'rup_bl_{rup_iter}'
+                
+                # Iterate over each station inside the rupture type folder
+                for station in stations:
+                    name = f'{sim_type}_{structure}_{rup}_{station}'
+                    csv_names.append(name)
+    return csv_names
+
+def save_df_to_csv_paths(drifts_df_lst: List[pd.DataFrames], 
+                         spectra_df_lst: List[pd.DataFrames], 
+                         base_shear_df_lst: List[pd.DataFrames], 
+                         csv_names_lst: List[str],
+                         save_csv_drift:Path, 
+                         save_csv_spectra:Path, 
+                         save_csv_b_shear:Path)-> None:
+
+    for i in range(len(drifts_df_lst)):
+        drifts_df_lst[i].to_csv(f'{save_csv_drift}/{csv_names_lst[i]}.csv')
+        spectra_df_lst[i][0].to_csv(f'{save_csv_spectra}/{csv_names_lst[i]}_x.csv')
+        spectra_df_lst[i][1].to_csv(f'{save_csv_spectra}/{csv_names_lst[i]}_y.csv')
+        base_shear_df_lst[i].to_csv(f'{save_csv_b_shear}/{csv_names_lst[i]}.csv')
+    print(f'DataFrames saved to CSV in: \n{save_csv_drift}\n{save_csv_spectra}\nand \n{save_csv_b_shear}.')
 
 
 # ==================================================================================
