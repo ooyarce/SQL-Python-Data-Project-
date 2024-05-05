@@ -1,10 +1,10 @@
 #%% ==================================================================================================
 # ================================== INIT AND CONNECT TO DATABASE ==================================
 # ==================================================================================================
-# Import modules
-from pyseestko.utilities  import get_mappings #type: ignore
-from pyseestko import queries as query        #type: ignore
-from pyseestko.plotting import plotStatisticByReplicas
+# Import modules   
+from pyseestko.utilities  import getMappings, getCSVNames, save_df_to_csv_paths  #type: ignore
+from pyseestko import queries as query                     #type: ignore
+from pathlib import Path
 
 # DataBase user params
 user     = 'omarson'
@@ -16,27 +16,26 @@ database = 'stkodatabase'
 #%% ==================================================================================================
 # ========================================== INPUT PARAMS ==========================================
 # ==================================================================================================
-"""
-sim_types: 1 = FB, 2 = AB, 3 = DRM
-linearity: 1 = Linear, 2 = Non-Linear
-magnitude: Can be '6.5', '6.7', '6.9', '7.0', 0.0 for not defined
-rupture_type: Can be 1 for 'bl', 2 for 'ns' or 3 for 'sn', put 0 for for not defined
-stations: Can be any number from 0 to 9, -1 for not defined
-stories: For the moment, it can be 20 or 55
-nsubs_lst: For the moment, it can be 2 or 4
-"""
-# Define the parameters
-sim_types    = [i for i in range(3,4)]  # 1 = FB, 2 = AB, 3 = DRM
-nsubs_lst    = [i for i in range(4,5)]  # Can be: 2,4
-iterations   = [i for i in range(1,11)] # Can be: {1,2,3,4,5,6,7,8,9,10}
-stations     = [i for i in range(0,1)]  # Can be: {0,1,2,3,4,5,6,7,8,9 }
-
 # Define paths to save the plots
-save_drift       = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Drift Outputs'
-save_spectra     = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Story Spectra Output'
-save_b_shear     = 'C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Base Shear Output'
-windows          = True # True if the OS is Windows, False if Linux
-mag_map, loc_map, rup_map = get_mappings()
+project_path     = Path('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/')
+save_drift       = project_path / 'DataBase-Outputs' / 'Drift Outputs'
+save_spectra     = project_path / 'DataBase-Outputs' / 'Story Spectra Output'
+save_b_shear     = project_path / 'DataBase-Outputs' / 'Base Shear Output'
+save_csv_drift   = project_path / 'DataBase-Outputs' / 'Analysis Output' / 'CSV' / 'Drift'
+save_csv_spectra = project_path / 'DataBase-Outputs' / 'Analysis Output' / 'CSV' / 'Spectra'
+save_csv_b_shear = project_path / 'DataBase-Outputs' / 'Analysis Output' / 'CSV' / 'Base Shear'
+
+# Define the parameters
+sim_types    = [i for i in range(1,4)]  # 1 = FB, 2 = AB, 3 = DRM
+nsubs_lst    = [2, 4]                   # Can be: 2,4  
+iterations   = [i for i in range(1,3)]  # Can be: {1,2,3,4,5,6,7,8,9,10}
+stations     = [i for i in range(0,10)] # Can be: {0,1,2,3,4,5,6,7,8,9 }
+
+# Some extra parameters
+windows      = True  # True if the OS is Windows, False if Linux
+save_results = False # True if you want to save the results, False if not
+mag_map, loc_map, rup_map = getMappings()
+sim_csv_names_lst         = getCSVNames(sim_types, nsubs_lst, iterations, stations)
 
 
 #%% ==================================================================================================
@@ -61,46 +60,13 @@ drifts_df_lst, spectra_df_lst, base_shear_df_lst = query.executeMainQuery(
     save_spectra = save_spectra, 
     save_b_shear = save_b_shear)
 
-
-
-#%% ==================================================================================================
-# ======================================= POST PROCESS DATA ========================================
-# ================================================================================================== 
-# DRIFTS
-mean_drift_x_df, mean_drift_y_df, mean_drift_df = query.getReplicaCummStatisticDriftDFs(drifts_df_lst, statistic='mean')
-std_drift_x_df, std_drift_y_df, std_drift_df    = query.getReplicaCummStatisticDriftDFs(drifts_df_lst, statistic='std')
-
-# Plot the mean drifts
-fig, ax = plotStatisticByReplicas(df=mean_drift_x_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Drift X')
-fig, ax = plotStatisticByReplicas(df=mean_drift_y_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Drift Y')
-
-# Plot the std drifts
-fig, ax = plotStatisticByReplicas(df=std_drift_x_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]', title='Number of replicas vs Std Drift X')
-fig, ax = plotStatisticByReplicas(df=std_drift_y_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]', title='Number of replicas vs Std Drift Y')
-
-
-# SPECTRUMSS
-mean_spectra_x_df, mean_spectra_y_df, mean_spectra_df = query.getCummStatisticSpectraDFs(spectra_df_lst, statistic='mean')
-std_spectra_x_df, std_spectra_y_df, std_spectra_df    = query.getCummStatisticSpectraDFs(spectra_df_lst, statistic='std')
-
-# Plot the mean spectra
-fig, ax = plotStatisticByReplicas(df=mean_spectra_x_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Spectra X')
-fig, ax = plotStatisticByReplicas(df=mean_spectra_y_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Spectra Y')
-
-# Plot the std spectra
-fig, ax = plotStatisticByReplicas(df=std_spectra_x_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]',title='Number of replicas vs Std Spectra X')
-fig, ax = plotStatisticByReplicas(df=std_spectra_y_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]',title='Number of replicas vs Std Spectra Y')
-
-# SHEAR BASE
-
-
-#%% ================================================================================================
-# ===================================== TEST MEAN AND VARIANCE =====================================
-# ==================================================================================================
-
-
-# Plot the mean base shear
-
-# Plot the std base shear
-
-# %%
+# Backup the dataframes of drifts, spectra and base shear into folders and csv
+if save_results:
+    save_df_to_csv_paths(
+        drifts_df_lst     = drifts_df_lst, 
+        spectra_df_lst    = spectra_df_lst, 
+        base_shear_df_lst = base_shear_df_lst, 
+        csv_names_lst     = sim_csv_names_lst,
+        save_csv_drift    = save_csv_drift,
+        save_csv_spectra  = save_csv_spectra,
+        save_csv_b_shear  = save_csv_b_shear)

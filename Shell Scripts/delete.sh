@@ -19,11 +19,11 @@ for j in $(seq 1 3);do
         rm import_h5py.py
 
         # Results
-    	rm -rf Accelerations/*
-    	rm -rf Displacements/*
-    	rm -rf Reactions/*
-        cd ..
-        
+	rm -rf Accelerations/*
+	rm -rf Displacements/*
+	rm -rf Reactions/*
+
+	cd ..
     done
     cd ..
 done

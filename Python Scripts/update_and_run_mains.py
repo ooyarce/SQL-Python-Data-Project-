@@ -10,11 +10,11 @@ from pyseestko import utilities as pyutl # type: ignore
 # Define new_main_sql_path
 
 # Define the simulation types, structure types, rupture iterations and stations
-sim_types        = ['DRM']         # Options are 'FixBase', 'AbsBound', 'DRM' and 'Validations 
-structure_types  = ['20f2s', '20f4s']                     # Options are '20f2s', '20f4s' 
-rupture_iters    = [i for i in range(1, 11) ]              # Options are 'bl', 'ns', 'sn' and iter in range(11)
+sim_types        = ['FixBase', 'AbsBound', 'DRM']          # Options are 'FixBase', 'AbsBound', 'DRM' and 'Validations 
+structure_types  = ['20f2s', '20f4s']                      # Options are '20f2s', '20f4s' 
+rupture_iters    = [i for i in range(1, 3) ]               # Options are 'bl', 'ns', 'sn' and iter in range(11)
 stations         = [f'station_s{i}' for i in range(0,10)]  # Generate a list of stations from 'station_s0' to 'station_s8'
-Validate         = True
+Validate         = False
 
 # Define the root path and the files to delete
 if Validate:
