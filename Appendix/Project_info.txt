@@ -15,6 +15,10 @@ To start up the DataBase:
 To check the DataBase status:
 	-> sudo systemctl status mysql.service
 
+To cancel some simulations in squeue:
+	-> i = <id oldest simulation>
+	->  while [ $i -le <id newest simulation> ]; do   scancel $i;   i=$((i+1)); done
+
 
 ================================================================================================
 ====================================== CURRENT PROJECT STATE ===================================
