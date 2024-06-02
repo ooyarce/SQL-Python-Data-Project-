@@ -59,7 +59,7 @@ class ModelInfo:
             print("---------------------------------------------|")
         self.accelerations, self.acce_nodes  = self.give_accelerations()
         self.displacements, self.displ_nodes = self.give_displacements()
-        self.reactions, self.reaction_nodes  = self.give_reactions() if sim_type==1 else (None, None)
+        #self.reactions, self.reaction_nodes  = self.give_reactions() if sim_type==1 else (None, None)
 
         if self.verbose:
             print('\n---------------------------------------------|')

@@ -5,6 +5,7 @@ from pyseestko.db_manager import DataBaseManager        #type: ignore
 from pyseestko.plotting   import Plotting               #type: ignore
 from pyseestko.utilities  import NCh433_2012            #type: ignore
 from pyseestko.utilities  import initialize_ssh_tunnel  #type: ignore
+from pyseestko.utilities  import checkMainQueryInput  #type: ignore
 from pathlib              import Path
 from typing               import List, Dict, Tuple 
 import pandas as pd
@@ -21,7 +22,7 @@ def executeMainQuery(
     stations    : List[int], 
     iterations  : List[int], 
     nsubs_lst   : List[int], 
-    mag_map     : Dict[int, str], 
+    mag_map     : Dict[float, str], 
     loc_map     : Dict[int, str], 
     rup_map     : Dict[int, str], 
     user        : str, 
@@ -38,7 +39,7 @@ def executeMainQuery(
     save_spectra: str  = None, 
     save_b_shear: str  = None, 
     windows     : bool = True
-    ) -> Tuple[List[pd.DataFrame], List[pd.DataFrame], List[pd.DataFrame]]:
+    ) -> Tuple[Dict[str, pd.DataFrame], Dict[str, List[pd.DataFrame]], Dict[str, pd.DataFrame]]:
     """
     This function will execute the main query to get the results from the database
     The logic is the following:
@@ -82,11 +83,15 @@ def executeMainQuery(
     This is mean to be used for statistical analysis, so this is the main fuction to access to the specific data
     and then analyze it with diverse statistical methods such as ANOVA, POWER ANALYSIS OR MANOVA.
     """
+   
+    # Map the sim_types
+    checkMainQueryInput(sim_types, nsubs_lst, iterations, stations)
+    sim_type_map = {1: 'FixBase', 2: 'AbsBound', 3: 'DRM'}
     
     # Iterative params
-    drifts_df_lst     = []
-    spectra_df_lst    = []
-    base_shear_df_lst = []
+    drifts_df_dict     = {}
+    spectra_df_dict    = {}
+    base_shear_df_dict = {}
 
     # Iterate over the subs, then over the sim_type and then over the stations so we can get all the results
     for sim_type in sim_types:
@@ -111,12 +116,14 @@ def executeMainQuery(
                                                                     save_spectra, 
                                                                     save_b_shear, 
                                                                     structure_weight)
-                    # Append the results to the lists
-                    drifts_df_lst.append(drift)
-                    spectra_df_lst.append(spectra)
-                    base_shear_df_lst.append(base_shear)
+                    # Append the results to the dicts
+                    sim_type_name = sim_type_map[sim_type]
+                    sim_name = f'{sim_type_name}_20f{nsubs}s_rup_bl_{iteration}_s{station}'
+                    drifts_df_dict[sim_name]     = drift
+                    spectra_df_dict[sim_name]    = spectra
+                    base_shear_df_dict[sim_name] = base_shear
     print('Done!')
-    return drifts_df_lst, spectra_df_lst, base_shear_df_lst
+    return drifts_df_dict, spectra_df_dict, base_shear_df_dict
 
 def getDriftDFs(drifts_df_lst:List[pd.DataFrame]):
     """

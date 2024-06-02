@@ -3,7 +3,7 @@
 # ==================================================================================
 from pyseestko.errors import NCh433Error, DataBaseError
 from pathlib          import Path
-from typing           import List
+from typing           import List, Dict
 from shutil           import SameFileError
 
 import pandas         as pd
@@ -102,7 +102,30 @@ def getMappings():
         3: "South-North"}
     return magnitude_mapping, location_mapping, ruptures_mapping
 
-
+def checkMainQueryInput(sim_types, nsubs_lst, iterations, stations):
+    # Check if sim_types is a list that have only integers in {1,2,3}
+    if not all([isinstance(sim_type, int) for sim_type in sim_types]):
+        raise ValueError('All the elements in sim_types must be integers')
+    if not all([sim_type in [1,2,3] for sim_type in sim_types]):
+        raise ValueError('All the elements in sim_types must be in {1,2,3}')    
+    
+    # Check that the stations are integers and in the range of 0 to 9
+    if not all([isinstance(station, int) for station in stations]):
+        raise ValueError('All the elements in stations must be integers')
+    if not all([station in range(0,10) for station in stations]):
+        raise ValueError('All the elements in stations must be in the range of 0 to 9')
+    
+    # Check that the iterations are integers and in the range of 1 to 3
+    if not all([isinstance(iteration, int) for iteration in iterations]):
+        raise ValueError('All the elements in iterations must be integers')
+    if not all([iteration in range(1,11) for iteration in iterations]):
+        raise ValueError('All the elements in iterations must be in the range of 1 to 10')
+    
+    # Check that the nsubs_lst are integers and in the range of 2 to 4
+    if not all([isinstance(nsubs, int) for nsubs in nsubs_lst]):
+        raise ValueError('All the elements in nsubs_lst must be integers')
+    if not all([nsubs in [2,4] for nsubs in nsubs_lst]):
+        raise ValueError('All the elements in nsubs_lst must be in {2,4}')
 
 
 
@@ -270,17 +293,7 @@ def run_main_sql_simulations(
     structure_types   : List[str],
     rupture_iters     : List[int],
     stations          : List[str],
-    files_to_delete    :list=[
-                        "analysis_steps.tcl",
-                        "elements.tcl",
-                        "main.tcl",
-                        "materials.tcl",
-                        "nodes.tcl",
-                        "sections.tcl",
-                        "*.mpco",
-                        "*.mpco.cdata",
-                        "import_h5py.py",
-                        "input.h5drm"]
+    files_to_delete    :list=[]
     ) -> None:
     """
     This function updates the main_sql.py file in the specified path and runs the simulation
@@ -407,19 +420,20 @@ def getCSVNames(sim_types:List[str], nsubs_lst:List[int], iterations:List[int], 
                     csv_names.append(name)
     return csv_names
 
-def save_df_to_csv_paths(drifts_df_lst: List[pd.DataFrames], 
-                         spectra_df_lst: List[pd.DataFrames], 
-                         base_shear_df_lst: List[pd.DataFrames], 
-                         csv_names_lst: List[str],
+def save_df_to_csv_paths(drifts_df_dict: Dict[str, pd.DataFrame], 
+                         spectra_df_dict: Dict[str, List[pd.DataFrame]], 
+                         base_shear_df_dict: Dict[str, pd.DataFrame], 
                          save_csv_drift:Path, 
                          save_csv_spectra:Path, 
                          save_csv_b_shear:Path)-> None:
 
-    for i in range(len(drifts_df_lst)):
-        drifts_df_lst[i].to_csv(f'{save_csv_drift}/{csv_names_lst[i]}.csv')
-        spectra_df_lst[i][0].to_csv(f'{save_csv_spectra}/{csv_names_lst[i]}_x.csv')
-        spectra_df_lst[i][1].to_csv(f'{save_csv_spectra}/{csv_names_lst[i]}_y.csv')
-        base_shear_df_lst[i].to_csv(f'{save_csv_b_shear}/{csv_names_lst[i]}.csv')
+    for df_name, df in drifts_df_dict.items():
+        df.to_csv(f'{save_csv_drift}/{df_name}.csv')
+    for df_name, df_list in spectra_df_dict.items():
+        df_list[0].to_csv(f'{save_csv_spectra}/{df_name}_x.csv')
+        df_list[1].to_csv(f'{save_csv_spectra}/{df_name}_y.csv')
+    for df_name, df in base_shear_df_dict.items():
+        df.to_csv(f'{save_csv_b_shear}/{df_name}.csv')
     print(f'DataFrames saved to CSV in: \n{save_csv_drift}\n{save_csv_spectra}\nand \n{save_csv_b_shear}.')
 
 

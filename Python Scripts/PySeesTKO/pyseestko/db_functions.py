@@ -507,14 +507,14 @@ class ModelSimulation:
         # Convert Data to JSON format and reduce the size of the data
         timeseries = pickle.dumps(self.timeseries[::self._jump])
 
-        if self._sim_type == 1:
-            df = self.react_mdf.sum(axis=1)
-            matrixes = [df.xs(dir, level='Dir') for dir in ['x', 'y', 'z']]
-            matrixes = [pickle.dumps(matrix.iloc[::self._jump]) for matrix in matrixes]
+        #if self._sim_type == 1:
+        #    df = self.react_mdf.sum(axis=1)
+        #    matrixes = [df.xs(dir, level='Dir') for dir in ['x', 'y', 'z']]
+        #    matrixes = [pickle.dumps(matrix.iloc[::self._jump]) for matrix in matrixes]
 
-        else:
-            matrixes = self._computeBaseShearByAccelerations()[0]
-            matrixes = [pickle.dumps(matrix[::self._jump]) for matrix in matrixes]
+        #else:
+        matrixes = self._computeBaseShearByAccelerations()[0]
+        matrixes = [pickle.dumps(matrix[::self._jump]) for matrix in matrixes]
 
         # Upload results to the database
         insert_query = "INSERT INTO structure_base_shear (TimeSeries, ShearX, ShearY, ShearZ, Units) VALUES (%s,%s,%s,%s,%s)"
@@ -534,15 +534,15 @@ class ModelSimulation:
         units = kwargs.get("max_bs_units", self._max_bs_units)
 
         # Get max base shear
-        if self._sim_type == 1:
-            df = self.react_mdf.sum(axis=1)
-            shear_x_ss = df.xs('x', level='Dir').abs().max()
-            shear_y_ss = df.xs('y', level='Dir').abs().max()
-            shear_z_ss = df.xs('z', level='Dir').abs().max()
-        else:
-            shear_x_ss = self._computeBaseShearByAccelerations()[1][0]
-            shear_y_ss = self._computeBaseShearByAccelerations()[1][1]
-            shear_z_ss = self._computeBaseShearByAccelerations()[1][2]
+        #if self._sim_type == 1:
+        #    df = self.react_mdf.sum(axis=1)
+        #    shear_x_ss = df.xs('x', level='Dir').abs().max()
+        #    shear_y_ss = df.xs('y', level='Dir').abs().max()
+        #    shear_z_ss = df.xs('z', level='Dir').abs().max()
+        #else:
+        shear_x_ss = self._computeBaseShearByAccelerations()[1][0]
+        shear_y_ss = self._computeBaseShearByAccelerations()[1][1]
+        shear_z_ss = self._computeBaseShearByAccelerations()[1][2]
 
         # Upload results to the database
         insert_query = ("INSERT INTO structure_max_base_shear ("
@@ -637,7 +637,7 @@ class ModelSimulation:
     # ==================================================================================
     # LOAD SIMULATION INFORMATION AND DATA POST PROCESSING IN PANDAS DATAFRAMES
     # ==================================================================================
-    def loadModelInfo(self, main_path,verbose=True):
+    def loadModelInfo(self, main_path, verbose=True):
         # Initialize Model Info
         self.model_info = ModelInfo(main_path, sim_type=self._sim_type,verbose=verbose)
         self.path       = main_path.parent
@@ -670,8 +670,8 @@ class ModelSimulation:
 
         # Get memort by results
         folder_names = ["Accelerations", "Displacements", "PartitionsInfo"]
-        if self._sim_type == 1:
-            folder_names.append("Reactions")
+        #if self._sim_type == 1:
+        #    folder_names.append("Reactions")
 
         # Calcular el tamaño en paralelo
         with ThreadPoolExecutor() as executor:
@@ -937,7 +937,7 @@ class ModelSimulation:
         This function is used to compute the nodes accelerations DataFrame.
         """
         # Initialize parameters
-        if self._sim_type !=1:
+        if self._sim_type in [1 , 2, 3]: # != 1
             multi_index = pd.MultiIndex.from_product([self.timeseries,  ['x', 'y', 'z']], names=['Time Step', 'Dir'])
             nodes_react_df = pd.DataFrame([], index=multi_index)
             nodes_react_df = nodes_react_df.round(2)
