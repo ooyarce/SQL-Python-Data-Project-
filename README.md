@@ -29,4 +29,4 @@ All input and output data will be stored in a MySQL database that I designed acc
   <img src="https://i.imgur.com/Jc7UpO5.png" >
 </div>
 
-In the final steps, I will perform statistical analysis on the results to identify potential issues and use machine learning techniques to predict the results of interest.
+In the final steps, I will perform statistical analysis on the results to identify potential issues and factor parameters the results of interest.
