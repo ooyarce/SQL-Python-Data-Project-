@@ -1,13 +1,15 @@
 # ==================================================================================
 # IMPORT LIBRARIES
 # ==================================================================================
-from pyseestko.errors import NCh433Error, DataBaseError
-from pathlib          import Path
-from typing           import List, Dict
-from shutil           import SameFileError
+from pyseestko.errors        import NCh433Error, DataBaseError
+from pathlib                 import Path
+from typing                  import List, Dict
+from shutil                  import SameFileError
+from statsmodels.formula.api import ols
 
-import pandas         as pd
-import numpy          as np
+import statsmodels.api as sm
+import pandas          as pd
+import numpy           as np
 import importlib.util
 import subprocess
 import logging
@@ -16,8 +18,6 @@ import time
 import math
 import sys
 import re
-
-
 
 
 # ==================================================================================
@@ -102,31 +102,21 @@ def getMappings():
         3: "South-North"}
     return magnitude_mapping, location_mapping, ruptures_mapping
 
-def checkMainQueryInput(sim_types, nsubs_lst, iterations, stations):
-    # Check if sim_types is a list that have only integers in {1,2,3}
-    if not all([isinstance(sim_type, int) for sim_type in sim_types]):
-        raise ValueError('All the elements in sim_types must be integers')
-    if not all([sim_type in [1,2,3] for sim_type in sim_types]):
-        raise ValueError('All the elements in sim_types must be in {1,2,3}')    
+def getDriftResultsDF(
+    sim_type_lst   : List[str],
+    nsubs_lst      : List[str],
+    iteration_lst  : List[str],
+    station_lst    : List[str],
+    max_drift_lst: List[float]):
     
-    # Check that the stations are integers and in the range of 0 to 9
-    if not all([isinstance(station, int) for station in stations]):
-        raise ValueError('All the elements in stations must be integers')
-    if not all([station in range(0,10) for station in stations]):
-        raise ValueError('All the elements in stations must be in the range of 0 to 9')
-    
-    # Check that the iterations are integers and in the range of 1 to 3
-    if not all([isinstance(iteration, int) for iteration in iterations]):
-        raise ValueError('All the elements in iterations must be integers')
-    if not all([iteration in range(1,11) for iteration in iterations]):
-        raise ValueError('All the elements in iterations must be in the range of 1 to 10')
-    
-    # Check that the nsubs_lst are integers and in the range of 2 to 4
-    if not all([isinstance(nsubs, int) for nsubs in nsubs_lst]):
-        raise ValueError('All the elements in nsubs_lst must be integers')
-    if not all([nsubs in [2,4] for nsubs in nsubs_lst]):
-        raise ValueError('All the elements in nsubs_lst must be in {2,4}')
-
+    drift_df = pd.DataFrame({
+                    'Sim_Type'  : sim_type_lst,
+                    'Nsubs'     : nsubs_lst,
+                    'Iteration' : iteration_lst,
+                    'Station'   : station_lst,
+                    'Mean_Drift': max_drift_lst})
+    drift_df['Zone']  = drift_df['Station'].apply(assignZonesToStationsInDF)
+    return drift_df
 
 
 # ==================================================================================
@@ -436,6 +426,45 @@ def save_df_to_csv_paths(drifts_df_dict: Dict[str, pd.DataFrame],
         df.to_csv(f'{save_csv_b_shear}/{df_name}.csv')
     print(f'DataFrames saved to CSV in: \n{save_csv_drift}\n{save_csv_spectra}\nand \n{save_csv_b_shear}.')
 
+def checkMainQueryInput(sim_types, nsubs_lst, iterations, stations, save_drift, save_spectra, save_b_shear):
+    # Check if 3 save paths are not None, if all of 3 are None raise an error
+    if all([save_drift is None, save_spectra is None, save_b_shear is None]):
+        raise ValueError('At least one of the save paths must be different from None')
+    
+    # Check if sim_types is a list that have only integers in {1,2,3}
+    if not all([isinstance(sim_type, int) for sim_type in sim_types]):
+        raise ValueError('All the elements in sim_types must be integers')
+    if not all([sim_type in [1,2,3] for sim_type in sim_types]):
+        raise ValueError('All the elements in sim_types must be in {1,2,3}')    
+    
+    # Check that the stations are integers and in the range of 0 to 9
+    if not all([isinstance(station, int) for station in stations]):
+        raise ValueError('All the elements in stations must be integers')
+    if not all([station in range(0,10) for station in stations]):
+        raise ValueError('All the elements in stations must be in the range of 0 to 9')
+    
+    # Check that the iterations are integers and in the range of 1 to 3
+    if not all([isinstance(iteration, int) for iteration in iterations]):
+        raise ValueError('All the elements in iterations must be integers')
+    if not all([iteration in range(1,11) for iteration in iterations]):
+        raise ValueError('All the elements in iterations must be in the range of 1 to 10')
+    
+    # Check that the nsubs_lst are integers and in the range of 2 to 4
+    if not all([isinstance(nsubs, int) for nsubs in nsubs_lst]):
+        raise ValueError('All the elements in nsubs_lst must be integers')
+    if not all([nsubs in [2,4] for nsubs in nsubs_lst]):
+        raise ValueError('All the elements in nsubs_lst must be in {2,4}')
+
+def assignZonesToStationsInDF(station):
+    zone_mapping = {
+        's1': 'zone1', 's2': 'zone1', 's3': 'zone1',
+        's4': 'zone2', 's5': 'zone2', 's6': 'zone2',
+        's7': 'zone3', 's8': 'zone3', 's9': 'zone3'
+    }
+    if zone_mapping[station] == 's0':
+        return zone_mapping[station]
+    return zone_mapping[station]
+
 
 # ==================================================================================
 # ================================ MATH FUNCTIONS ==================================
@@ -486,7 +515,13 @@ def pwl(vector_a, w, chi,step=0.04):
         up_t[i + 1] = A1 * ui + B1 * vi + C1 * pi + D1 * pi1
     return u_t, up_t
 
-
+def perfomDriftAnova(df, sim_case:str, num_subs:str, stats:List[str], zone:str, direction:str):
+    filt_df  = df[(df['Sim_Type'] == sim_case) & (df['Nsubs'] == num_subs) & (df['Station'].isin(stats))]
+    model_lm = ols('Mean_Drift ~ C(Iteration)', data=filt_df).fit()
+    anova    = sm.stats.anova_lm(model_lm, typ=2)
+    print(f"ANOVA de Modelos Lineales - Zona {zone} - {direction}")
+    print(anova)
+    return model_lm, anova
 
 
 # ==================================================================================

@@ -138,7 +138,6 @@ def plotValidation(drifts_df_lst, spectra_df_lst, base_shear_df_lst):
     fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Base Shear Y')
 
 
-
 # ==================================================================================
 # PLOTTING METRICS CLASS
 # ==================================================================================
@@ -176,7 +175,7 @@ class Plotting:
             self, sim_type:int,
             stories:int, nsubs:int,
             magnitude:float, iteration:int,
-            rupture:int, station:int):
+            rupture:int, station:int, show_plots:bool = True):
         sim_type_map = {
             1: 'FB',
             2: 'AB',
@@ -195,7 +194,10 @@ class Plotting:
         self.station   = station
         self.nsubs     = nsubs
         self.save_path = Path('')
-
+        if not show_plots:
+            plt.switch_backend('agg')
+        else:
+            plt.switch_backend('module://matplotlib_inline.backend_inline')
 
         self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}'
         self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type}{self.iteration} | Station {self.station} | {self.stories} stories - {self.nsubs} subs'
@@ -215,9 +217,10 @@ class Plotting:
         self.save_path.mkdir(parents=True, exist_ok=True)
         full_save_path = self.save_path / f'{self.file_name}.{file_type}'
         fig.savefig(full_save_path, dpi=100)
-        plt.show()
-
-
+        # Mostrar figura solo si el backend no es 'Agg'
+        if plt.get_backend() != 'agg':
+            plt.show()
+        plt.close(fig)  # Asegúrate de cerrar la figura para liberar memoria
 
 
     # ==================================================================================
