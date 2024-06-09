@@ -176,7 +176,7 @@ class Plotting:
             self, sim_type:int,
             stories:int, nsubs:int,
             magnitude:float, iteration:int,
-            rupture:int, station:int):
+            rupture:int, station:int, show_plots:bool = True):
         sim_type_map = {
             1: 'FB',
             2: 'AB',
@@ -195,7 +195,10 @@ class Plotting:
         self.station   = station
         self.nsubs     = nsubs
         self.save_path = Path('')
-
+        if not show_plots:
+            plt.switch_backend('agg')
+        else:
+            plt.switch_backend('module://matplotlib_inline.backend_inline')
 
         self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}'
         self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type}{self.iteration} | Station {self.station} | {self.stories} stories - {self.nsubs} subs'
@@ -203,29 +206,43 @@ class Plotting:
         self.spectrums_title = f'Story PSa plot | {self.id}'
         self.base_shear_ss_title = f'Base Shear Plot | {self.id}'
 
-    def plotConfig(self, title:str, x = 19.2, y = 10.8, dpi = 100):
-        fig = plt.figure(num=1, figsize=(x, y), dpi=dpi)
-        ax = fig.add_subplot(1, 1, 1)
-        y = None
-        ax.grid(True)
-        ax.set_title(title)
-        return fig, ax, y
+    def plotConfig(self, title:str, x = 19.2, y = 10.8, dpi = 100, grid:bool=False):
+        """
+        This function is used to configure the plot eather for a single metric or for a 
+        grid metrics plot. Bewware that if you turn grid in on the plot will be a 3x3 grid
+        and the axes will be returned as a 3x3 numpy array. That implies that you will have 
+        to add plots in a way of axes[0,0].plot() instead of ax.plot().
+        """
+        if grid:
+            fig, axes = plt.subplots(3, 3, figsize=(x, y), dpi=dpi)
+            for ax in axes.flatten():
+                ax.grid(True)
+            fig.suptitle(title)  # Título para la figura completa
+            return fig, axes
+        else:
+            fig = plt.figure(num=1, figsize=(x, y), dpi=dpi)
+            ax = fig.add_subplot(1, 1, 1)
+            ax.grid(True)
+            ax.set_title(title)
+            return fig, ax
 
     def plotSave(self, fig, file_type = 'png'):
         self.save_path.mkdir(parents=True, exist_ok=True)
         full_save_path = self.save_path / f'{self.file_name}.{file_type}'
         fig.savefig(full_save_path, dpi=100)
-        plt.show()
-
-
+        # Mostrar figura solo si el backend no es 'Agg'
+        if plt.get_backend() != 'agg':
+            plt.show()
+        plt.close(fig)  # Asegúrate de cerrar la figura para liberar memoria
 
 
     # ==================================================================================
     # PLOT METRICS FUNCTIONS
     # ==================================================================================
-    def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.008 ):
+    def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.008,
+                       ax:plt.Axes=None, save_fig:bool=True):
         # Input params
-        fig, ax, y = self.plotConfig(self.drift_title)
+        fig, ax = self.plotConfig(self.drift_title) if ax is None else (ax.figure, ax)
         ax.set_yticks(range(1, self.stories))
         ax.set_xlabel('Interstory Drift Ratio (Drift/Story Height)')
         ax.set_ylabel('Story')
@@ -245,12 +262,13 @@ class Plotting:
         ax.axvline(x=0.002, color='black', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Limit - 5.9.2 = 0.002')
 
         ax.legend()
-        self.plotSave(fig)
+        if save_fig:
+            self.plotSave(fig)
         return ax
 
     def plotLocalStoriesSpectrums(self,
                             accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int],
-                            plot:bool=True, ax:Optional[plt.Axes]=None, soften:bool=False):   #linestyle:str='--'
+                            save_fig:bool=True, ax:plt.Axes=None, soften:bool=False):   #linestyle:str='--'
         # Init params
         self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{direction.upper()}'
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
@@ -263,10 +281,12 @@ class Plotting:
         if len(stories_lst) > len(colors):   raise PlottingError(f'Not enough colors for the number of stories! Current: {len(stories_lst)}\n Try adding less stories.')
 
         # Plot config
-        if ax is None: fig, ax, _ = self.plotConfig(self.spectrums_title)
-        else:
-            self.spectrums_title = f'{method} {self.spectrums_title}'
-            fig = ax.figure
+        fig, ax = self.plotConfig(self.spectrums_title) if ax is None else (ax.figure, ax)
+        self.spectrums_title = f'{method} {self.spectrums_title}' if ax is None else self.spectrums_title
+        #if ax is None: fig, ax = self.plotConfig(self.spectrums_title)
+        #else:
+        #    self.spectrums_title = f'{method} {self.spectrums_title}'
+        #    fig = ax.figure
         ax.set_xlabel('T (s)')
         ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)')
         nu = 0.05
@@ -304,7 +324,7 @@ class Plotting:
         #NOTE: This is just an implementation to correct the pos of the comments in plot
         #adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
         ax.legend()
-        if plot:
+        if save_fig:
             self.plotSave(fig)
         return ax, spa_df
 
@@ -313,7 +333,7 @@ class Plotting:
         if dir_ not in ['x','X','y','Y']: raise ValueError(f'dir must be x, y! Current: {dir}')
         self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{dir_.upper()}'
 
-        fig, ax, _ = self.plotConfig(self.base_shear_ss_title)
+        fig, ax  = self.plotConfig(self.base_shear_ss_title)
         ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1')
         ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=2, alpha = 0.9, label=None)
 
