@@ -328,12 +328,13 @@ class Plotting:
             self.plotSave(fig)
         return ax, spa_df
 
-    def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmin:float, Qmax:float, dir_:str):
+    def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmin:float, Qmax:float, dir_:str, ax: plt.Axes=None,
+                              save_fig:bool=True):
         # Input params
         if dir_ not in ['x','X','y','Y']: raise ValueError(f'dir must be x, y! Current: {dir}')
         self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{dir_.upper()}'
 
-        fig, ax  = self.plotConfig(self.base_shear_ss_title)
+        fig, ax  = self.plotConfig(self.base_shear_ss_title) if ax is None else (ax.figure, ax)
         ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1')
         ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=2, alpha = 0.9, label=None)
 
@@ -341,5 +342,6 @@ class Plotting:
         ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')
         ax.plot(time, time_shear_fma, label='Method: F=ma')
         ax.legend()
-        self.plotSave(fig)
+        if save_fig:
+            self.plotSave(fig)
 
