@@ -2,14 +2,15 @@
 # IMPORT LIBRARIES
 # ==================================================================================
 # Objects
+from matplotlib.ticker   import FuncFormatter
 from matplotlib          import pyplot as plt
 from pathlib             import Path
-from typing              import Optional
+from typing              import Union, Tuple
+from numpy.typing        import NDArray
 from scipy.signal        import savgol_filter  # Para suavizado
 from pyseestko.errors    import PlottingError
 from pyseestko.utilities import pwl
 from typing              import List
-
 # Packages
 import pandas as pd
 import numpy  as np
@@ -175,8 +176,9 @@ class Plotting:
     def __init__(
             self, sim_type:int,
             stories:int, nsubs:int,
-            magnitude:float, iteration:int,
-            rupture:int, station:int, show_plots:bool = True):
+            magnitude:float, iteration:int, rupture:int, station:int, 
+            show_plots:bool = True, dpi:int = 100, grid:bool = False, file_type:str = 'png'
+            ):
         sim_type_map = {
             1: 'FB',
             2: 'AB',
@@ -187,34 +189,65 @@ class Plotting:
             2: 'NS',
             3: 'SN'
         }
-        self.sim_type  = sim_type_map.get(sim_type)
-        self.stories   = stories
-        self.magnitude = magnitude
-        self.iteration = iteration
-        self.rup_type  = rup_type_map.get(rupture)
-        self.station   = station
-        self.nsubs     = nsubs
-        self.save_path = Path('')
+        # Main atributtes
+        self.x_direction = None
+        self.direction   = None
+        self.dpi         = dpi
+        self.file_type   = file_type
+        self.sim_type    = sim_type_map.get(sim_type)
+        self.stories     = stories
+        self.magnitude   = magnitude
+        self.iteration   = iteration
+        self.rup_type    = rup_type_map.get(rupture)
+        self.station     = station
+        self.nsubs       = nsubs
+        
+        # Grey scale for the plots when grid is true
+        self.gray_scale_1 = ['#111111', '#333333', '#555555', '#777777', '#999999']
+        
+        # Plot config
         if not show_plots:
             plt.switch_backend('agg')
         else:
             plt.switch_backend('module://matplotlib_inline.backend_inline')
-
-        self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}'
-        self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type}{self.iteration} | Station {self.station} | {self.stories} stories - {self.nsubs} subs'
+        
+        # Grid params
+        self.grid    = grid
+        self.grid_id = None
+        self.xlim_sup = None
+        
+        # Plot and files names
+        self.save_path           = Path('')
+        self.file_name           = None
+        self.id                  = None
+        self.drift_title         = None
+        self.spectrums_title     = None
+        self.base_shear_ss_title = None
+    
+    def setup_direction(self, x_direction:bool=True):
+        self.x_direction = x_direction
+        self.direction = 'X' if x_direction else 'Y'
+        self.id        = f'{self.sim_type} | {self.stories} stories - {self.nsubs} subs - {self.direction}dir' if self.grid else f'{self.sim_type} |  {self.magnitude}Mw | Station {self.station} | {self.stories} stories - {self.nsubs} subs - {self.direction}dir'
+        self.file_name = f'{self.sim_type}_20f{self.nsubs}_{self.direction}' if self.grid else f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{self.direction}'
         self.drift_title     = f'Drift per story plot | {self.id}'
         self.spectrums_title = f'Story PSa plot | {self.id}'
         self.base_shear_ss_title = f'Base Shear Plot | {self.id}'
-
-    def plotConfig(self, title:str, x = 19.2, y = 10.8, dpi = 100, grid:bool=False):
+        
+    def plotConfig(self, title:str, x = 19.2, y = 10.8):
         """
         This function is used to configure the plot eather for a single metric or for a 
         grid metrics plot. Bewware that if you turn grid in on the plot will be a 3x3 grid
         and the axes will be returned as a 3x3 numpy array. That implies that you will have 
         to add plots in a way of axes[0,0].plot() instead of ax.plot().
         """
-        if grid:
-            fig, axes = plt.subplots(3, 3, figsize=(x, y), dpi=dpi)
+        plt.rcParams.update({
+            "text.usetex": True,  # Habilitar LaTeX
+            "font.size": 13,      # Tamaño de fuente por defecto (puedes cambiar a 12 si lo prefieres)
+            "font.family": "serif",  # Usar una fuente serif que es típica en documentos LaTeX
+            "text.latex.preamble": r'\usepackage{amsmath}'  # Opcional: paquete extra de LaTeX para matemáticas
+        })
+        if self.grid:
+            fig, axes = plt.subplots(3, 3, figsize=(x, y), dpi=self.dpi)
             for ax in axes.flatten():
                 ax.grid(True)
             fig.suptitle(title)  # Título para la figura completa
@@ -226,49 +259,89 @@ class Plotting:
             ax.set_title(title)
             return fig, ax
 
-    def plotSave(self, fig, file_type = 'png'):
+    def plotSave(self, fig):
         self.save_path.mkdir(parents=True, exist_ok=True)
-        full_save_path = self.save_path / f'{self.file_name}.{file_type}'
+        full_save_path = self.save_path / f'{self.file_name}.{self.file_type}'
         fig.savefig(full_save_path, dpi=100)
         # Mostrar figura solo si el backend no es 'Agg'
         if plt.get_backend() != 'agg':
             plt.show()
         plt.close(fig)  # Asegúrate de cerrar la figura para liberar memoria
 
-
     # ==================================================================================
     # PLOT METRICS FUNCTIONS
     # ==================================================================================
+    def to_per_mil(self, x, pos):
+        return f'{x * 1000:.0f}'
+    def to_empty(self, x, pos):
+        return ''
+    def to_equal(self, x, pos):
+        return f'{x}'
+    
     def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.008,
-                       ax:plt.Axes=None, save_fig:bool=True):
+                       axes:plt.Axes|NDArray[plt.Axes]=None, save_fig:bool=True, legend:bool=True, fig_size: tuple[float, float]=(19.2, 10.8), line_color = None
+                       )->plt.Axes|NDArray[plt.Axes]:
         # Input params
-        fig, ax = self.plotConfig(self.drift_title) if ax is None else (ax.figure, ax)
-        ax.set_yticks(range(1, self.stories))
-        ax.set_xlabel('Interstory Drift Ratio (Drift/Story Height)')
-        ax.set_ylabel('Story')
-        ax.set_xlim(xlim_inf, xlim_sup)
+        ax = axes
+        if self.grid:
+            color_1 = self.gray_scale_1[self.iteration-1]
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        
+        # Plot config
+        fig, axes = self.plotConfig(self.drift_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        
+        ## Setup X 
+        formatter1 = FuncFormatter(self.to_per_mil) 
+        formatter2 = FuncFormatter(self.to_empty)
+        formatter3 = FuncFormatter(self.to_equal)
+        ax.xaxis.set_major_formatter(formatter1) if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter2)
+        ax.set_xlabel('Interstory Drift Ratio (Drift/Story Height)‰') if self.station in [8] else ax.set_xlabel('')
+        ax.set_ylim(1, self.stories)
 
-        # Plot corner drift
-        y = [i for i in range(1, self.stories+1)]
-        ax.set_yticks(y)
-        ax.plot(max_corner_x, y, label='max_corner_x', color='red')
-        ax.plot(max_center_x, y, label='max_center_x',linestyle='--', color='green')
-
+        # Setup Y axis
+        ax.set_yticks([1,5,10,15,20]) #if self.station in [1,4,7] else ax.set_yticks([])
+        ax.yaxis.set_major_formatter(formatter3) if self.station in [1,4,7] else ax.yaxis.set_major_formatter(formatter2)
+        ax.set_ylabel('Story') if self.station in [4] else ax.set_ylabel('')
+        
+        # Set local title 
+        ax.set_title(f'Station {self.station}')
+        
         # Plot center drift
-        ax.plot(max_corner_y, y, label='max_corner_y', color='blue')
-        ax.plot(max_center_y, y, label='max_center_y',linestyle='--', color='orange')
-
+        y = [i for i in range(1, self.stories+1)]
+        if self.x_direction:
+            current_xlim_sup = max(list(max_center_x)) + 0.0005 
+            self.xlim_sup = current_xlim_sup if self.station in [1] and current_xlim_sup > self.xlim_sup
+            ax.set_xlim(xlim_inf, self.xlim_sup)
+            color = color_1 if self.grid and not line_color else 'red'
+            ax.plot(max_center_x, y, label='max_corner_x', color=color, linewidth=0.5, markersize=5)
+        else:
+            ax.set_xlim(xlim_inf, self.xlim_sup)
+            color = color_1 if self.grid and not line_color else 'blue'
+            ax.plot(max_center_y, y, label='max_center_y', color=color, linewidth=0.5, markersize=5)
+        
         # Plot NCH433 limits
-        ax.axvline(x=0.002, color='black', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Limit - 5.9.2 = 0.002')
+        ax.axvline(x=0.002, color='black', linestyle='--', linewidth=0.55, alpha = 0.9, label='NCh433 Limit - 5.9.2 = 0.002')
 
-        ax.legend()
+        # Set legend and save fig if needed
+        if legend:
+            handles, labels = axes[0, 0].get_legend_handles_labels()
+            fig.legend(handles, labels)
         if save_fig:
+            fig.tight_layout()
             self.plotSave(fig)
-        return ax
+        return axes
 
     def plotLocalStoriesSpectrums(self,
                             accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int],
-                            save_fig:bool=True, ax:plt.Axes=None, soften:bool=False):   #linestyle:str='--'
+                            save_fig:bool=True, ax:plt.Axes=None, soften:bool=False
+                            )->Tuple[plt.Axes, pd.DataFrame]:   #linestyle:str='--'
         # Init params
         self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{direction.upper()}'
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
@@ -344,4 +417,5 @@ class Plotting:
         ax.legend()
         if save_fig:
             self.plotSave(fig)
+        return ax
 
