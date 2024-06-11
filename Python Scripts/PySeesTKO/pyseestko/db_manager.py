@@ -11,7 +11,7 @@ class DataBaseManager:
     """
     This class is used to manage the connection to the database.
     """
-    def __init__(self, user: str, password: str, host: str, database: str):
+    def __init__(self, user: str, password: str, host: str, database: str, verbose:bool = True):
         self.cnx = mysql.connector.connect(user=user,
                                            password=password,
                                            host=host,

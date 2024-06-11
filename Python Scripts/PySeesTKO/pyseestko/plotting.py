@@ -2,14 +2,15 @@
 # IMPORT LIBRARIES
 # ==================================================================================
 # Objects
+from matplotlib.ticker   import FuncFormatter
 from matplotlib          import pyplot as plt
 from pathlib             import Path
-from typing              import Optional
+from typing              import Union, Tuple
+from numpy.typing        import NDArray
 from scipy.signal        import savgol_filter  # Para suavizado
 from pyseestko.errors    import PlottingError
 from pyseestko.utilities import pwl
 from typing              import List
-
 # Packages
 import pandas as pd
 import numpy  as np
@@ -175,8 +176,9 @@ class Plotting:
     def __init__(
             self, sim_type:int,
             stories:int, nsubs:int,
-            magnitude:float, iteration:int,
-            rupture:int, station:int):
+            magnitude:float, iteration:int, rupture:int, station:int, 
+            show_plots:bool = True, dpi:int = 100, grid:bool = False, file_type:str = 'png'
+            ):
         sim_type_map = {
             1: 'FB',
             2: 'AB',
@@ -187,94 +189,189 @@ class Plotting:
             2: 'NS',
             3: 'SN'
         }
-        self.sim_type  = sim_type_map.get(sim_type)
-        self.stories   = stories
-        self.magnitude = magnitude
-        self.iteration = iteration
-        self.rup_type  = rup_type_map.get(rupture)
-        self.station   = station
-        self.nsubs     = nsubs
-        self.save_path = Path('')
-
-
-        self.file_name       = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}'
-        self.id              = f'{self.sim_type} |  {self.magnitude} | {self.rup_type}{self.iteration} | Station {self.station} | {self.stories} stories - {self.nsubs} subs'
+        # Main atributtes
+        self.x_direction = None
+        self.direction   = None
+        self.dpi         = dpi
+        self.file_type   = file_type
+        self.sim_type    = sim_type_map.get(sim_type)
+        self.stories     = stories
+        self.magnitude   = magnitude
+        self.iteration   = iteration
+        self.rup_type    = rup_type_map.get(rupture)
+        self.station     = station
+        self.nsubs       = nsubs
+        
+        # Grey scale for the plots when grid is true
+        self.gray_scale_1 = ['#111111', '#333333', '#555555', '#777777', '#999999']
+        
+        # Plot config
+        if not show_plots:
+            plt.switch_backend('agg')
+        else:
+            plt.switch_backend('module://matplotlib_inline.backend_inline')
+        
+        # Grid params
+        self.grid     = grid
+        self.grid_id  = None
+        
+        # Plot and files names
+        self.save_path           = Path('')
+        self.file_name           = None
+        self.id                  = None
+        self.drift_title         = None
+        self.spectrums_title     = None
+        self.base_shear_ss_title = None
+    
+    def setup_direction(self, x_direction:bool=True):
+        self.x_direction = x_direction
+        self.direction = 'X' if x_direction else 'Y'
+        self.id        = f'{self.sim_type} | {self.stories} stories - {self.nsubs} subs - {self.direction}dir' if self.grid else f'{self.sim_type} |  {self.magnitude}Mw | Station {self.station} | {self.stories} stories - {self.nsubs} subs - {self.direction}dir'
+        self.file_name = f'{self.sim_type}_20f{self.nsubs}_{self.direction}' if self.grid else f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{self.direction}'
         self.drift_title     = f'Drift per story plot | {self.id}'
         self.spectrums_title = f'Story PSa plot | {self.id}'
         self.base_shear_ss_title = f'Base Shear Plot | {self.id}'
+        
+    def plotConfig(self, title:str, x = 19.2, y = 10.8):
+        """
+        This function is used to configure the plot eather for a single metric or for a 
+        grid metrics plot. Bewware that if you turn grid in on the plot will be a 3x3 grid
+        and the axes will be returned as a 3x3 numpy array. That implies that you will have 
+        to add plots in a way of axes[0,0].plot() instead of ax.plot().
+        """
+        plt.rcParams.update({
+            "text.usetex": True,  # Habilitar LaTeX
+            "font.size": 13,      # Tamaño de fuente por defecto (puedes cambiar a 12 si lo prefieres)
+            "font.family": "serif",  # Usar una fuente serif que es típica en documentos LaTeX
+            "text.latex.preamble": r'\usepackage{amsmath}'  # Opcional: paquete extra de LaTeX para matemáticas
+        })
+        if self.grid:
+            fig, axes = plt.subplots(3, 3, figsize=(x, y), dpi=self.dpi)
+            for ax in axes.flatten():
+                ax.grid(True)
+            fig.suptitle(title)  # Título para la figura completa
+            return fig, axes
+        else:
+            fig = plt.figure(num=1, figsize=(x, y), dpi=self.dpi)
+            ax = fig.add_subplot(1, 1, 1)
+            ax.grid(True)
+            ax.set_title(title)
+            return fig, ax
 
-    def plotConfig(self, title:str, x = 19.2, y = 10.8, dpi = 100):
-        fig = plt.figure(num=1, figsize=(x, y), dpi=dpi)
-        ax = fig.add_subplot(1, 1, 1)
-        y = None
-        ax.grid(True)
-        ax.set_title(title)
-        return fig, ax, y
-
-    def plotSave(self, fig, file_type = 'png'):
+    def plotSave(self, fig):
         self.save_path.mkdir(parents=True, exist_ok=True)
-        full_save_path = self.save_path / f'{self.file_name}.{file_type}'
+        full_save_path = self.save_path / f'{self.file_name}.{self.file_type}'
         fig.savefig(full_save_path, dpi=100)
-        plt.show()
-
-
-
+        # Mostrar figura solo si el backend no es 'Agg'
+        if plt.get_backend() != 'agg':
+            plt.show()
+        plt.close(fig)  # Asegúrate de cerrar la figura para liberar memoria
 
     # ==================================================================================
     # PLOT METRICS FUNCTIONS
     # ==================================================================================
-    def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.008 ):
-        # Input params
-        fig, ax, y = self.plotConfig(self.drift_title)
-        ax.set_yticks(range(1, self.stories))
-        ax.set_xlabel('Interstory Drift Ratio (Drift/Story Height)')
-        ax.set_ylabel('Story')
-        ax.set_xlim(xlim_inf, xlim_sup)
+    def to_per_mil(self, x, pos):
+        return f'{x * 1000:.0f}'
+    def to_empty(self, x, pos):
+        return ''
+    def to_equal(self, x, pos):
+        return f'{x}'
+    
+    def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.002,
+                       axes:plt.Axes|NDArray[plt.Axes]=None, save_fig:bool=True, legend:bool=True, fig_size: tuple[float, float]=(19.2, 10.8), line_color = None
+                       )->plt.Axes|NDArray[plt.Axes]:
+        # Plot config
+        ax = axes
+        if self.grid:
+            color_1 = self.gray_scale_1[self.iteration-1]
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        fig, axes = self.plotConfig(self.drift_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        
+        # Setup X 
+        formatter1 = FuncFormatter(self.to_per_mil) 
+        formatter2 = FuncFormatter(self.to_empty)
+        formatter3 = FuncFormatter(self.to_equal)
+        ax.xaxis.set_major_formatter(formatter1) if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter2)
+        ax.set_xlabel('Interstory Drift Ratio (Drift/Story Height)‰') if self.station in [8] else ax.set_xlabel('')
+        ax.set_xlim(xlim_inf, xlim_sup) if self.station == 1 and self.iteration == 1 else ax.set_xlim(xlim_inf, axes[0, 0].get_xlim()[1])
 
-        # Plot corner drift
-        y = [i for i in range(1, self.stories+1)]
-        ax.set_yticks(y)
-        ax.plot(max_corner_x, y, label='max_corner_x', color='red')
-        ax.plot(max_center_x, y, label='max_center_x',linestyle='--', color='green')
-
+        # Setup Y axis
+        ax.set_yticks([1,5,10,15,20]) #if self.station in [1,4,7] else ax.set_yticks([])
+        ax.yaxis.set_major_formatter(formatter3) if self.station in [1,4,7] else ax.yaxis.set_major_formatter(formatter2)
+        ax.set_ylabel('Story') if self.station in [4] else ax.set_ylabel('')
+        ax.set_ylim(1, self.stories)
+        
+        # Set local title 
+        ax.set_title(f'Station {self.station}')
+        
         # Plot center drift
-        ax.plot(max_corner_y, y, label='max_corner_y', color='blue')
-        ax.plot(max_center_y, y, label='max_center_y',linestyle='--', color='orange')
-
+        y = [i for i in range(1, self.stories+1)]
+        if self.x_direction:
+            candidate = np.array(max_center_x).max() + 0.0005 if self.station == 1 else 0
+            ax.set_xlim(xlim_inf, candidate) if candidate > axes[0,0].get_xlim()[1] else ax.set_xlim(xlim_inf, axes[0,0].get_xlim()[1])
+            color = color_1 if self.grid and not line_color else 'red'
+            ax.plot(max_center_x, y, label='max_center_x', color=color, linewidth=0.5, markersize=5)
+        else:
+            candidate = np.array(max_center_y).max() + 0.0005 if self.station == 1 else 0
+            ax.set_xlim(xlim_inf, candidate) if candidate > axes[0,0].get_xlim()[1] else ax.set_xlim(xlim_inf, axes[0,0].get_xlim()[1])
+            color = color_1 if self.grid and not line_color else 'blue'
+            ax.plot(max_center_y, y, label='max_center_y', color=color, linewidth=0.5, markersize=5)
+        
         # Plot NCH433 limits
-        ax.axvline(x=0.002, color='black', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Limit - 5.9.2 = 0.002')
+        ax.axvline(x=0.002, color='black', linestyle='--', linewidth=0.55, alpha = 0.9, label='NCh433 Limit - 5.9.2 = 0.002')
 
-        ax.legend()
-        self.plotSave(fig)
-        return ax
+        # Set legend and save fig if needed
+        if legend:
+            handles, labels = axes[0, 0].get_legend_handles_labels()
+            fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
+
+        if save_fig:
+            fig.tight_layout()
+            self.plotSave(fig)
+        return axes
 
     def plotLocalStoriesSpectrums(self,
-                            accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int],
-                            plot:bool=True, ax:Optional[plt.Axes]=None, soften:bool=False):   #linestyle:str='--'
+                            accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int], 
+                            save_fig:bool=True, axes:plt.Axes=None, fig_size:tuple[float, float]=(19.2, 10.8)
+                            )->Tuple[plt.Axes, pd.DataFrame]:   #linestyle:str='--'
         # Init params
-        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{direction.upper()}'
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
         line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
-        texts          = []
-        method         = self.sim_type
         
         # Check input and raise errors
         if direction not in ['x', 'y', 'z']: raise PlottingError(f'Dir must be x, y or z! Current: {direction}')
         if len(stories_lst) > len(colors):   raise PlottingError(f'Not enough colors for the number of stories! Current: {len(stories_lst)}\n Try adding less stories.')
 
         # Plot config
-        if ax is None: fig, ax, _ = self.plotConfig(self.spectrums_title)
-        else:
-            self.spectrums_title = f'{method} {self.spectrums_title}'
-            fig = ax.figure
-        ax.set_xlabel('T (s)')
-        ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)')
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        fig, axes = self.plotConfig(self.spectrums_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+       
+        # Setup axis
+        formatter = FuncFormatter(self.to_empty)
+        ax.set_xlabel('T (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter)
+        ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)') if self.station in [4] else ax.set_ylabel('')
+        
+        # Make plot spectrum
         nu = 0.05
         T = np.linspace(0.003, 2, 1000)
         w  = 2 * np.pi / np.array(T)
         spa_lst = []
-        
-        # Make plot spectrum
         for i, story in enumerate(stories_lst):
             # Setup color and linestyle
             color = colors[i % len(colors)]
@@ -282,44 +379,108 @@ class Plotting:
 
             # Obtain the spectrum
             df = accel_df[story_nodes_df.loc[story].index].copy()
-            df.loc[:,'Average'] = df.mean(axis=1)
+            df.loc[:,'Average'] = df.mean(axis=1) # We use the acceleration in the center of mass
             adir = df.xs(direction, level='Dir')['Average'][::16]
             Spe = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [pwl(adir.values, wi, nu)]]
             Spe = np.array(Spe)
             spa_lst.append(Spe)
 
-            # Soften the spectrum
-            if soften and len(Spe) > 50: Spe = savgol_filter(Spe, 51, 3)
-
             # Write the maximum values of the spectrum
-            max_value = max(Spe)
-            max_index = np.argmax(Spe)
-            annotation = ax.annotate(f'{max_value:.2f}', xy=(T[max_index], max_value), textcoords="offset points", xytext=(0,10), ha='center')
-            texts.append(annotation)
-            ax.plot(T, Spe, label=f'Story {story}', linestyle=line_style, color=color)
+            ax.plot(T, Spe, label=f'Story {story}', alpha=0.1, linestyle=line_style, color=color, linewidth=0.5)
 
         # Compute df
-        spa_df = pd.DataFrame({f'Story {story}': spa for story, spa in zip(stories_lst, spa_lst)}, index=T)
-        
-        #NOTE: This is just an implementation to correct the pos of the comments in plot
-        #adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
-        ax.legend()
-        if plot:
-            self.plotSave(fig)
-        return ax, spa_df
+        spa_df = pd.DataFrame({f'Story {story} {direction}': spa for story, spa in zip(stories_lst, spa_lst)}, index=T)
 
-    def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmin:float, Qmax:float, dir_:str):
+    
+        if save_fig:
+            self.plotSave(fig)
+        return axes, spa_df
+    
+    def plotMeanStoriesSpectrums(self,
+                            mean_spectras:pd.DataFrame, direction:str, stories_lst:list[int], 
+                            save_fig:bool=True, axes:plt.Axes=None,
+                            fig_size:tuple[float, float]=(19.2, 10.8)
+                            )->Tuple[plt.Axes, pd.DataFrame]:   #linestyle:str='--'
+        # Init params
+        colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
+        line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
+        
+        # Check input and raise errors
+        if direction not in ['x', 'y', 'z']: raise PlottingError(f'Dir must be x, y or z! Current: {direction}')
+        if len(stories_lst) > len(colors):   raise PlottingError(f'Not enough colors for the number of stories! Current: {len(stories_lst)}\n Try adding less stories.')
+
+        # Plot config
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        fig, axes = self.plotConfig(self.spectrums_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+       
+        # Setup axis
+        formatter = FuncFormatter(self.to_empty)
+        ax.set_xlabel('T (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter)
+        ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)') if self.station in [4] else ax.set_ylabel('')
+        
+        # Make plot spectrum
+        T = np.linspace(0.003, 2, 1000)
+        spa_lst = []
+        for i, story in enumerate(stories_lst):
+            # Setup color and linestyle
+            color = colors[i % len(colors)]
+            line_style = line_styles[i % len(line_styles)]
+
+            # Obtain the spectrum
+            df = mean_spectras[f'Story {story} {direction}'].copy()
+            df.loc[:,'Mean'] = df.mean(axis=1) # We use the acceleration in the center of mass
+            Spe = np.array(df['Mean'])
+            spa_lst.append(Spe)
+
+            # Write the maximum values of the spectrum
+            ax.plot(T, Spe, label=f'Story {story}', linestyle=line_style, color=color, linewidth=0.5)
+
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        fig.legend(handles[-5:], labels[-5:], loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
+        
+        if save_fig:
+            self.plotSave(fig)
+        
+    
+    def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmax:float, dir_:str, axes: plt.Axes=None,
+                              save_fig:bool=True, fig_size:tuple[float, float]=(19.2, 10.8), mean=False):
         # Input params
         if dir_ not in ['x','X','y','Y']: raise ValueError(f'dir must be x, y! Current: {dir}')
-        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{dir_.upper()}'
 
-        fig, ax, _ = self.plotConfig(self.base_shear_ss_title)
-        ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1')
-        ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=2, alpha = 0.9, label=None)
+        # Plot config
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        fig, axes = self.plotConfig(self.base_shear_ss_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+            
+        ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=0.5, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1') if not mean and self.iteration == 1 else None
+        ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=0.5, alpha = 0.9, label=None) if not mean and self.iteration == 1 else None
 
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')
-        ax.plot(time, time_shear_fma, label='Method: F=ma')
-        ax.legend()
-        self.plotSave(fig)
+        formatter = FuncFormatter(self.to_empty)
+        ax.set_xlabel('Time (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter)
+        ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')  if self.station in [4] else ax.set_ylabel('')
+        
+        alpha = 0.1 if not mean else 1
+        ax.plot(time, time_shear_fma, label='Shear Base Series', color='blue', linewidth=0.5, alpha=alpha)
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        fig.legend(handles[-5:], labels[-5:], loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
+        if save_fig:
+            self.plotSave(fig)
+        return axes
 
