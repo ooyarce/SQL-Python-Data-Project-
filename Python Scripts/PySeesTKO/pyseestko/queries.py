@@ -56,7 +56,7 @@ def executeMainQuery(
     windows     : bool = True,
     project_path: Path = git_path/ 'DataBase-Outputs',
     verbose     : bool = True,
-    ) -> Tuple[Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame], 
+    ) -> Tuple[Tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame], 
                Dict[str, List[pd.DataFrame]], Dict[str, pd.DataFrame]]:
     """
     This function will execute the main query to get the results from the database
@@ -112,20 +112,12 @@ def executeMainQuery(
     
     # -------------------------------------- EXECUTE THE MAIN QUERY ---------------------------------
     # Iterate over the simulation types
-    if not grid:
-        drifts_df_dict, spectra_df_dict, base_shear_df_dict = queryMetricsInSinglePlots(
-            sim_types, stations, iterations, nsubs_lst, mag_map, loc_map, rup_map, project_path, pbar,
-            user, password, host, database, 
-            save_drift, save_spectra, save_b_shear, show_plots, fig_size, xlim_sup, dpi, file_type,
-            linearity, stories, magnitude, rupture_type, 
-            windows, verbose)
-    else:
-        drifts_df_dict, spectra_df_dict, base_shear_df_dict = queryMetricsInGridPlots(
-            sim_types, stations, iterations, nsubs_lst, mag_map, loc_map, rup_map, project_path, pbar,
-            user, password, host, database, 
-            save_drift, save_spectra, save_b_shear, show_plots, fig_size, xlim_sup, dpi, file_type,
-            linearity, stories, magnitude, rupture_type, 
-            windows, verbose)
+    drifts_df_dict, spectra_df_dict, base_shear_df_dict = queryMetricsInGridPlots(
+        sim_types, stations, iterations, nsubs_lst, mag_map, loc_map, rup_map, project_path, pbar,
+        user, password, host, database, 
+        save_drift, save_spectra, save_b_shear, show_plots, fig_size, xlim_sup, dpi, file_type,
+        linearity, stories, magnitude, rupture_type, 
+        windows, verbose)
     pbar.close()
     print('Done!')
     
@@ -138,8 +130,8 @@ def executeMainQuery(
                              save_csv_drift, save_csv_spectra, save_csv_b_shear)
     
     # -------------------------------------- RETURN THE RESULTS --------------------------------------
-    drift_tple      = None
-    spectra_tple    = None
+    drift_tple      = (None, None, None, None, None)
+    spectra_tple    = (None, None)
     base_shear_tple = None
     
     # Compute Drift Results
@@ -157,7 +149,7 @@ def executeMainQuery(
                                             [df['Max x'].mean() for df in drifts_df_dict.values()])
         drift_df_mean_y = getDriftResultsDF(sim_type_lst, nsubs_lst, iteration_lst, station_lst, 
                                             [df['Max y'].mean() for df in drifts_df_dict.values()])
-        drift_tple = (drift_df_max_x, drift_df_max_y, drift_df_mean_x, drift_df_mean_y)
+        drift_tple = (drifts_df_dict, drift_df_max_x, drift_df_max_y, drift_df_mean_x, drift_df_mean_y)
         
     return drift_tple, spectra_df_dict, base_shear_df_dict
 
@@ -297,11 +289,9 @@ def queryMetricsInGridPlots(
             structure_weight = 22241.3 if nsubs == 4 else 18032.3
             
             # Drift params
-            drift_axes    = [np.full((3, 3), None), np.full((3, 3), None)]
-            mean_drifts_x = []
-            mean_drifts_y = []
-            spectra_axes = None
-            shear_ax     = None
+            drift_axes      = [np.full((3, 3), None), np.full((3, 3), None)]
+            spectra_axes    = [np.full((3, 3), None), np.full((3, 3), None)]
+            base_shear_axes = [np.full((3, 3), None), np.full((3, 3), None)]
             print(f'Processing: {sim_type_map[sim_type]}, {nsubs} subs')
             for station in stations:
                 for iteration in iterations:
@@ -323,8 +313,9 @@ def queryMetricsInGridPlots(
                     # Get the results for zone = 'Las Condes', soil_category = 'B' and importance = 2
                     drift, spectra, base_shear, axes = query.getAllResults(save_drift, save_spectra, save_b_shear, 
                                                                 structure_weight, xlim_sup=xlim_sup, verbose=verbose,
-                                                                drift_axes=drift_axes, save_fig=False, fig_size=fig_size)
-                    drift_axes, _, _              = axes # update the axes
+                                                                drift_axes=drift_axes, spectra_axes=spectra_axes, base_shear_axes=base_shear_axes,
+                                                                save_fig=False, fig_size=fig_size)
+                    drift_axes, spectra_axes, base_shear_axes = axes # update the axes
                     
                     # Fill dictionaries
                     sim_type_name                 = sim_type_map[sim_type]
@@ -336,32 +327,57 @@ def queryMetricsInGridPlots(
                     # -------------------------------------- PLOT THE RESULTS ---------------------------------
                     # Add plot of mean drifts  
                     if iteration == iterations[-1]:
-                        mean_drifts_x = pd.concat([df['CM x'] for df in list(drifts_df_dict.values())[-5:]], axis=1).mean(axis=1).values
-                        mean_drifts_y = pd.concat([df['CM y'] for df in list(drifts_df_dict.values())[-5:]], axis=1).mean(axis=1).values
-                        plotter.setup_direction(x_direction=True)
-                        plotter.plotModelDrift([], mean_drifts_x, [], [],
-                                                xlim_sup = xlim_sup, 
-                                                axes     = drift_axes[0], 
-                                                legend   = False, 
-                                                save_fig = save_fig,
-                                                fig_size = fig_size,
-                                                line_color = 'red')
-                        plotter.setup_direction(x_direction=False)
-                        plotter.plotModelDrift([], [], [], mean_drifts_y,
-                                                xlim_sup = xlim_sup, 
-                                                axes     = drift_axes[1], 
-                                                legend   = False, 
-                                                save_fig = save_fig,
-                                                fig_size = fig_size,
-                                                line_color = 'blue')
-                    
-                    # -------------------------------------- APPEND THE RESULTS ---------------------------------
-                    
+                        # Plot mean drift
+                        _plotMeanDriftColor(drifts_df_dict, plotter, xlim_sup, drift_axes, save_fig, fig_size) if save_drift else None
+                        
+                        # Plot mean spectra
+                        _plotMeanSpectraColor(spectra_df_dict, plotter, spectra_axes, save_fig, fig_size) if save_spectra else None         
+                        
+                        _plotMeanBaseShearColor(base_shear_df_dict, plotter, base_shear_axes, save_fig, fig_size) if save_b_shear else None
                     
                     # Update tqdm
                     pbar.update(1)
     return drifts_df_dict, spectra_df_dict, base_shear_df_dict
 
+
+def _plotMeanDriftColor(drifts_df_dict: Dict[str, pd.DataFrame], plotter: Plotting, xlim_sup:float, drift_axes:plt.Axes, save_fig:bool, fig_size:bool):
+    mean_drifts_x = pd.concat([df['CM x'] for df in list(drifts_df_dict.values())[-5:]], axis=1).mean(axis=1).values
+    mean_drifts_y = pd.concat([df['CM y'] for df in list(drifts_df_dict.values())[-5:]], axis=1).mean(axis=1).values
+    plotter.setup_direction(x_direction=True)
+    plotter.plotModelDrift([], mean_drifts_x, [], [],
+                            xlim_sup = xlim_sup, 
+                            axes     = drift_axes[0], 
+                            legend   = False, 
+                            save_fig = save_fig,
+                            fig_size = fig_size,
+                            line_color = 'red')
+    plotter.setup_direction(x_direction=False)
+    plotter.plotModelDrift([], [], [], mean_drifts_y,
+                            xlim_sup = xlim_sup, 
+                            axes     = drift_axes[1], 
+                            legend   = False, 
+                            save_fig = save_fig,
+                            fig_size = fig_size,
+                            line_color = 'blue')
+    
+def _plotMeanSpectraColor(spectra_df_dict: Dict[str, pd.DataFrame], plotter: Plotting, spectra_axes:plt.Axes, save_fig:bool, fig_size:bool):
+    columns_x = [f'Story {story} x' for story in [1,5,10,15,20]]
+    columns_y = [f'Story {story} y' for story in [1,5,10,15,20]]
+    mean_spectras_x = pd.concat([df[columns_x] for df in list(spectra_df_dict.values())[-5:]], axis=1)
+    mean_spectras_y = pd.concat([df[columns_y] for df in list(spectra_df_dict.values())[-5:]], axis=1)
+    plotter.setup_direction(x_direction=True)
+    plotter.plotMeanStoriesSpectrums(mean_spectras_x, 'x', [1,5,10,15,20], save_fig, spectra_axes[0], fig_size)
+    plotter.setup_direction(x_direction=False)
+    plotter.plotMeanStoriesSpectrums(mean_spectras_y, 'y', [1,5,10,15,20], save_fig, spectra_axes[1], fig_size)
+    
+def _plotMeanBaseShearColor(base_shear_df_dict: Dict[str, pd.DataFrame], plotter: Plotting, spectra_axes:plt.Axes, save_fig:bool, fig_size:bool):
+    mean_base_shear_x = pd.concat([df['Shear X'] for df in list(base_shear_df_dict.values())[-5:]], axis=1).mean(axis=1)
+    mean_base_shear_y = pd.concat([df['Shear Y'] for df in list(base_shear_df_dict.values())[-5:]], axis=1).mean(axis=1)
+    plotter.setup_direction(x_direction=True)
+    plotter.plotShearBaseOverTime(mean_base_shear_x.index, mean_base_shear_x.values, 0, 'x', spectra_axes[0], save_fig, fig_size, mean=True)
+    plotter.setup_direction(x_direction=False)
+    plotter.plotShearBaseOverTime(mean_base_shear_y.index, mean_base_shear_y.values, 0, 'y', spectra_axes[1], save_fig, fig_size, mean=True)
+    
 def getDriftDFs(drifts_df_lst:List[pd.DataFrame]):
     """
     This function will get the drifts dataframes of the x and y directions
@@ -702,7 +718,7 @@ class ProjectQueries:
         xlim_sup         :float = 0.008,
         drift_axes       :plt.Axes = None,
         spectra_axes     :plt.Axes = None,
-        shear_ax         :plt.Axes = None,
+        base_shear_axes  :plt.Axes = None,
         save_fig         :bool     = True,
         fig_size         :Tuple[float, float] = (19.2, 10.8),
         # Optional params
@@ -717,6 +733,7 @@ class ProjectQueries:
         drift_results_df      = None
         spectra_results_df    = None
         base_shear_results_df = None
+        xlim_sup              = 0.0001
         
         # ===================================================================================================
         # ==================================== QUERY THE DRIFT PER FLOOR ====================================
@@ -760,11 +777,24 @@ class ProjectQueries:
             # Plot the data
             self.plotter.save_path = Path(save_spectra)
             stories_lst = [1,5,10,15,20]
-            spectra_axes_x, spa_x_df = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'x', stories_lst, soften=False)
-            spectra_axes_y, spa_y_df = self.plotter.plotLocalStoriesSpectrums(accel_df, story_nodes_df, 'y', stories_lst, soften=False)
-            spectra_axes = [spectra_axes_x, spectra_axes_y]
+            # Generate spectra direction X plot
+            self.plotter.setup_direction(x_direction=True)
+            spectra_axes_x, spa_x_df = self.plotter.plotLocalStoriesSpectrums(
+                                            accel_df, story_nodes_df, 'x', stories_lst, 
+                                            axes= spectra_axes[0],
+                                            save_fig = save_fig,
+                                            fig_size = fig_size)
+            
+            # Generate spectra direction Y plot
+            self.plotter.setup_direction(x_direction=False)
+            spectra_axes_y, spa_y_df = self.plotter.plotLocalStoriesSpectrums(
+                                            accel_df, story_nodes_df, 'y', stories_lst, 
+                                            axes = spectra_axes[1],
+                                            save_fig = save_fig,
+                                            fig_size = fig_size)
             # Convert to df where the index is the period
-            spectra_results_df = [spa_x_df, spa_y_df]
+            spectra_axes = (spectra_axes_x, spectra_axes_y)
+            spectra_results_df = pd.concat([spa_x_df, spa_y_df], axis=1)
 
         # ===================================================================================================
         # ======================================= QUERY THE BASE SHEAR ======================================
@@ -780,17 +810,35 @@ class ProjectQueries:
 
             # Plot the data
             self.plotter.save_path = Path(save_b_shear)
-            shear_ax = self.plotter.plotShearBaseOverTime(time_series, shear_x, Qmin, Qmax, 'x')
-            shear_ax = self.plotter.plotShearBaseOverTime(time_series, shear_y, Qmin, Qmax, 'y')
+            shear_axes_x = self.plotter.plotShearBaseOverTime(
+                                        time           = time_series, 
+                                        time_shear_fma = shear_x, 
+                                        Qmax           = Qmax, 
+                                        dir_           = 'x', 
+                                        axes           = base_shear_axes[0],
+                                        save_fig       = save_fig,
+                                        fig_size       = fig_size,
+                                        mean           = False
+                                        )
+            shear_axes_y = self.plotter.plotShearBaseOverTime(
+                                        time           = time_series, 
+                                        time_shear_fma = shear_y, 
+                                        Qmax           = Qmax, 
+                                        dir_           = 'y', 
+                                        axes           = base_shear_axes[1],
+                                        save_fig       = save_fig,
+                                        fig_size       = fig_size,
+                                        mean           = False
+                                        )
             base_shear_results_df = pd.DataFrame({'Shear X': shear_x, 
                                                   'Shear Y': shear_y, 
                                                   'Shear Z': shear_z}, 
                                                  index=time_series).rename_axis('Time Step')
-
+            base_shear_axes = (shear_axes_x, shear_axes_y)
         # ===================================================================================================
         # =========================================== END QUERIES ===========================================
         # ===================================================================================================
-        axes = drift_axes, spectra_axes, shear_ax
+        axes = drift_axes, spectra_axes, base_shear_axes
         end_time = time.time()
         self.close_connection()
         if verbose:

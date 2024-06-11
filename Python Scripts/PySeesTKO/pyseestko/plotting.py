@@ -212,9 +212,8 @@ class Plotting:
             plt.switch_backend('module://matplotlib_inline.backend_inline')
         
         # Grid params
-        self.grid    = grid
-        self.grid_id = None
-        self.xlim_sup = None
+        self.grid     = grid
+        self.grid_id  = None
         
         # Plot and files names
         self.save_path           = Path('')
@@ -253,7 +252,7 @@ class Plotting:
             fig.suptitle(title)  # Título para la figura completa
             return fig, axes
         else:
-            fig = plt.figure(num=1, figsize=(x, y), dpi=dpi)
+            fig = plt.figure(num=1, figsize=(x, y), dpi=self.dpi)
             ax = fig.add_subplot(1, 1, 1)
             ax.grid(True)
             ax.set_title(title)
@@ -278,18 +277,16 @@ class Plotting:
     def to_equal(self, x, pos):
         return f'{x}'
     
-    def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.008,
+    def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.002,
                        axes:plt.Axes|NDArray[plt.Axes]=None, save_fig:bool=True, legend:bool=True, fig_size: tuple[float, float]=(19.2, 10.8), line_color = None
                        )->plt.Axes|NDArray[plt.Axes]:
-        # Input params
+        # Plot config
         ax = axes
         if self.grid:
             color_1 = self.gray_scale_1[self.iteration-1]
             row = (self.station - 1) // 3
             col = (self.station - 1) % 3 
             ax  = axes[row, col]
-        
-        # Plot config
         fig, axes = self.plotConfig(self.drift_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
         ax = axes
         if self.grid:
@@ -297,18 +294,19 @@ class Plotting:
             col = (self.station - 1) % 3 
             ax  = axes[row, col]
         
-        ## Setup X 
+        # Setup X 
         formatter1 = FuncFormatter(self.to_per_mil) 
         formatter2 = FuncFormatter(self.to_empty)
         formatter3 = FuncFormatter(self.to_equal)
         ax.xaxis.set_major_formatter(formatter1) if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter2)
         ax.set_xlabel('Interstory Drift Ratio (Drift/Story Height)‰') if self.station in [8] else ax.set_xlabel('')
-        ax.set_ylim(1, self.stories)
+        ax.set_xlim(xlim_inf, xlim_sup) if self.station == 1 and self.iteration == 1 else ax.set_xlim(xlim_inf, axes[0, 0].get_xlim()[1])
 
         # Setup Y axis
         ax.set_yticks([1,5,10,15,20]) #if self.station in [1,4,7] else ax.set_yticks([])
         ax.yaxis.set_major_formatter(formatter3) if self.station in [1,4,7] else ax.yaxis.set_major_formatter(formatter2)
         ax.set_ylabel('Story') if self.station in [4] else ax.set_ylabel('')
+        ax.set_ylim(1, self.stories)
         
         # Set local title 
         ax.set_title(f'Station {self.station}')
@@ -316,13 +314,13 @@ class Plotting:
         # Plot center drift
         y = [i for i in range(1, self.stories+1)]
         if self.x_direction:
-            current_xlim_sup = max(list(max_center_x)) + 0.0005 
-            self.xlim_sup = current_xlim_sup if self.station in [1] and current_xlim_sup > self.xlim_sup
-            ax.set_xlim(xlim_inf, self.xlim_sup)
+            candidate = np.array(max_center_x).max() + 0.0005 if self.station == 1 else 0
+            ax.set_xlim(xlim_inf, candidate) if candidate > axes[0,0].get_xlim()[1] else ax.set_xlim(xlim_inf, axes[0,0].get_xlim()[1])
             color = color_1 if self.grid and not line_color else 'red'
-            ax.plot(max_center_x, y, label='max_corner_x', color=color, linewidth=0.5, markersize=5)
+            ax.plot(max_center_x, y, label='max_center_x', color=color, linewidth=0.5, markersize=5)
         else:
-            ax.set_xlim(xlim_inf, self.xlim_sup)
+            candidate = np.array(max_center_y).max() + 0.0005 if self.station == 1 else 0
+            ax.set_xlim(xlim_inf, candidate) if candidate > axes[0,0].get_xlim()[1] else ax.set_xlim(xlim_inf, axes[0,0].get_xlim()[1])
             color = color_1 if self.grid and not line_color else 'blue'
             ax.plot(max_center_y, y, label='max_center_y', color=color, linewidth=0.5, markersize=5)
         
@@ -332,42 +330,48 @@ class Plotting:
         # Set legend and save fig if needed
         if legend:
             handles, labels = axes[0, 0].get_legend_handles_labels()
-            fig.legend(handles, labels)
+            fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
+
         if save_fig:
             fig.tight_layout()
             self.plotSave(fig)
         return axes
 
     def plotLocalStoriesSpectrums(self,
-                            accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int],
-                            save_fig:bool=True, ax:plt.Axes=None, soften:bool=False
+                            accel_df:pd.DataFrame, story_nodes_df:pd.DataFrame, direction:str, stories_lst:list[int], 
+                            save_fig:bool=True, axes:plt.Axes=None, fig_size:tuple[float, float]=(19.2, 10.8)
                             )->Tuple[plt.Axes, pd.DataFrame]:   #linestyle:str='--'
         # Init params
-        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{direction.upper()}'
         colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
         line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
-        texts          = []
-        method         = self.sim_type
         
         # Check input and raise errors
         if direction not in ['x', 'y', 'z']: raise PlottingError(f'Dir must be x, y or z! Current: {direction}')
         if len(stories_lst) > len(colors):   raise PlottingError(f'Not enough colors for the number of stories! Current: {len(stories_lst)}\n Try adding less stories.')
 
         # Plot config
-        fig, ax = self.plotConfig(self.spectrums_title) if ax is None else (ax.figure, ax)
-        self.spectrums_title = f'{method} {self.spectrums_title}' if ax is None else self.spectrums_title
-        #if ax is None: fig, ax = self.plotConfig(self.spectrums_title)
-        #else:
-        #    self.spectrums_title = f'{method} {self.spectrums_title}'
-        #    fig = ax.figure
-        ax.set_xlabel('T (s)')
-        ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)')
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        fig, axes = self.plotConfig(self.spectrums_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+       
+        # Setup axis
+        formatter = FuncFormatter(self.to_empty)
+        ax.set_xlabel('T (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter)
+        ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)') if self.station in [4] else ax.set_ylabel('')
+        
+        # Make plot spectrum
         nu = 0.05
         T = np.linspace(0.003, 2, 1000)
         w  = 2 * np.pi / np.array(T)
         spa_lst = []
-        
-        # Make plot spectrum
         for i, story in enumerate(stories_lst):
             # Setup color and linestyle
             color = colors[i % len(colors)]
@@ -375,47 +379,108 @@ class Plotting:
 
             # Obtain the spectrum
             df = accel_df[story_nodes_df.loc[story].index].copy()
-            df.loc[:,'Average'] = df.mean(axis=1)
+            df.loc[:,'Average'] = df.mean(axis=1) # We use the acceleration in the center of mass
             adir = df.xs(direction, level='Dir')['Average'][::16]
             Spe = [max(max(u_x), abs(min(u_x))) * wi**2 for wi in w for u_x, _ in [pwl(adir.values, wi, nu)]]
             Spe = np.array(Spe)
             spa_lst.append(Spe)
 
-            # Soften the spectrum
-            if soften and len(Spe) > 50: Spe = savgol_filter(Spe, 51, 3)
-
             # Write the maximum values of the spectrum
-            max_value = max(Spe)
-            max_index = np.argmax(Spe)
-            annotation = ax.annotate(f'{max_value:.2f}', xy=(T[max_index], max_value), textcoords="offset points", xytext=(0,10), ha='center')
-            texts.append(annotation)
-            ax.plot(T, Spe, label=f'Story {story}', linestyle=line_style, color=color)
+            ax.plot(T, Spe, label=f'Story {story}', alpha=0.1, linestyle=line_style, color=color, linewidth=0.5)
 
         # Compute df
-        spa_df = pd.DataFrame({f'Story {story}': spa for story, spa in zip(stories_lst, spa_lst)}, index=T)
-        
-        #NOTE: This is just an implementation to correct the pos of the comments in plot
-        #adjust_text(texts, arrowprops=dict(arrowstyle='->', color='blue'), ax=ax)
-        ax.legend()
+        spa_df = pd.DataFrame({f'Story {story} {direction}': spa for story, spa in zip(stories_lst, spa_lst)}, index=T)
+
+    
         if save_fig:
             self.plotSave(fig)
-        return ax, spa_df
+        return axes, spa_df
+    
+    def plotMeanStoriesSpectrums(self,
+                            mean_spectras:pd.DataFrame, direction:str, stories_lst:list[int], 
+                            save_fig:bool=True, axes:plt.Axes=None,
+                            fig_size:tuple[float, float]=(19.2, 10.8)
+                            )->Tuple[plt.Axes, pd.DataFrame]:   #linestyle:str='--'
+        # Init params
+        colors         = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown']
+        line_styles    = ['-', '--', '-.', ':']  # Diferentes estilos de línea
+        
+        # Check input and raise errors
+        if direction not in ['x', 'y', 'z']: raise PlottingError(f'Dir must be x, y or z! Current: {direction}')
+        if len(stories_lst) > len(colors):   raise PlottingError(f'Not enough colors for the number of stories! Current: {len(stories_lst)}\n Try adding less stories.')
 
-    def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmin:float, Qmax:float, dir_:str, ax: plt.Axes=None,
-                              save_fig:bool=True):
+        # Plot config
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        fig, axes = self.plotConfig(self.spectrums_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+       
+        # Setup axis
+        formatter = FuncFormatter(self.to_empty)
+        ax.set_xlabel('T (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter)
+        ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)') if self.station in [4] else ax.set_ylabel('')
+        
+        # Make plot spectrum
+        T = np.linspace(0.003, 2, 1000)
+        spa_lst = []
+        for i, story in enumerate(stories_lst):
+            # Setup color and linestyle
+            color = colors[i % len(colors)]
+            line_style = line_styles[i % len(line_styles)]
+
+            # Obtain the spectrum
+            df = mean_spectras[f'Story {story} {direction}'].copy()
+            df.loc[:,'Mean'] = df.mean(axis=1) # We use the acceleration in the center of mass
+            Spe = np.array(df['Mean'])
+            spa_lst.append(Spe)
+
+            # Write the maximum values of the spectrum
+            ax.plot(T, Spe, label=f'Story {story}', linestyle=line_style, color=color, linewidth=0.5)
+
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        fig.legend(handles[-5:], labels[-5:], loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
+        
+        if save_fig:
+            self.plotSave(fig)
+        
+    
+    def plotShearBaseOverTime(self, time:np.ndarray, time_shear_fma:list[float], Qmax:float, dir_:str, axes: plt.Axes=None,
+                              save_fig:bool=True, fig_size:tuple[float, float]=(19.2, 10.8), mean=False):
         # Input params
         if dir_ not in ['x','X','y','Y']: raise ValueError(f'dir must be x, y! Current: {dir}')
-        self.file_name = f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{dir_.upper()}'
 
-        fig, ax  = self.plotConfig(self.base_shear_ss_title) if ax is None else (ax.figure, ax)
-        ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=2, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1')
-        ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=2, alpha = 0.9, label=None)
+        # Plot config
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+        fig, axes = self.plotConfig(self.base_shear_ss_title, x=fig_size[0], y=fig_size[1]) if ax is None else (ax.figure, axes)
+        ax = axes
+        if self.grid:
+            row = (self.station - 1) // 3
+            col = (self.station - 1) % 3 
+            ax  = axes[row, col]
+            
+        ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=0.5, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1') if not mean and self.iteration == 1 else None
+        ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=0.5, alpha = 0.9, label=None) if not mean and self.iteration == 1 else None
 
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')
-        ax.plot(time, time_shear_fma, label='Method: F=ma')
-        ax.legend()
+        formatter = FuncFormatter(self.to_empty)
+        ax.set_xlabel('Time (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter)
+        ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')  if self.station in [4] else ax.set_ylabel('')
+        
+        alpha = 0.1 if not mean else 1
+        ax.plot(time, time_shear_fma, label='Shear Base Series', color='blue', linewidth=0.5, alpha=alpha)
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        fig.legend(handles[-5:], labels[-5:], loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
         if save_fig:
             self.plotSave(fig)
-        return ax
+        return axes
 
