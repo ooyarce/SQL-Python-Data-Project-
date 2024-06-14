@@ -118,6 +118,46 @@ def getDriftResultsDF(
     drift_df['Zone']  = drift_df['Station'].apply(assignZonesToStationsInDF)
     return drift_df
 
+def getSpectraResultsDF(
+    sim_type_lst   : List[str],
+    nsubs_lst      : List[str],
+    iteration_lst  : List[str],
+    station_lst    : List[str],
+    spectra_df_dict: Dict[str, pd.DataFrame],
+    ):
+    max_spectra_lst_x = [(df.iloc[:,:5]).mean().max() for df in spectra_df_dict.values()]
+    max_spectra_lst_y = [(df.iloc[:,5:]).mean().max() for df in spectra_df_dict.values()]
+    spectra_df = pd.DataFrame({
+                    'Sim_Type'  : sim_type_lst,
+                    'Nsubs'     : nsubs_lst,
+                    'Iteration' : iteration_lst,
+                    'Station'   : station_lst,
+                    'Max_Spectra_X': max_spectra_lst_x,
+                    'Max_Spectra_Y': max_spectra_lst_y
+                    })
+    spectra_df['Zone'] = spectra_df['Station'].apply(assignZonesToStationsInDF)
+    return spectra_df
+    
+def getSBaseResultsDF(
+    sim_type_lst      : List[str],
+    nsubs_lst         : List[str],
+    iteration_lst     : List[str],
+    station_lst       : List[str],
+    base_shear_df_dict: Dict[str, pd.DataFrame]
+    ):
+    mean_base_shear_lst_x = [abs(df['Shear X'].mean()) for df in base_shear_df_dict.values()]
+    mean_base_shear_lst_y = [abs(df['Shear Y'].mean()) for df in base_shear_df_dict.values()]
+    base_shear_df = pd.DataFrame({
+                    'Sim_Type'  : sim_type_lst,
+                    'Nsubs'     : nsubs_lst,
+                    'Iteration' : iteration_lst,
+                    'Station'   : station_lst,
+                    'BShear_X'  : mean_base_shear_lst_x,
+                    'BShear_Y'  : mean_base_shear_lst_y
+                    })
+    base_shear_df['Zone'] = base_shear_df['Station'].apply(assignZonesToStationsInDF)
+    return base_shear_df
+
 
 # ==================================================================================
 # =============================== UTILITY FUNCTIONS ================================
