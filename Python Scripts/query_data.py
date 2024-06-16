@@ -61,7 +61,7 @@ drifts_df_dict, spectra_df_dict, base_shear_df_dict = query.executeMainQuery(
     # Save params
     save_drift   = False,
     save_spectra = False,
-    save_b_shear = True,
+    save_b_shear = False,
     save_results = save_csvs,
     # Plot params
     show_plots   = show_plots,
@@ -85,49 +85,7 @@ winsound.Beep(1000, 500)
 # --------------------------------------- DRIFT ----------------------------------------
 # Compute Drift Results
 if all(isinstance(value, pd.DataFrame) for value in drifts_df_dict.values()):
-    sim_type_lst  = [key.split('_')[0] for key in drifts_df_dict.keys()]
-    nsubs_lst     = [key.split('_')[1] for key in drifts_df_dict.keys()]
-    iteration_lst = [key.split('_')[4] for key in drifts_df_dict.keys()]
-    station_lst   = [key.split('_')[5] for key in drifts_df_dict.keys()]
-
-    drift_df = pd.DataFrame({
-                    'Sim_Type'  : sim_type_lst,
-                    'Nsubs'     : nsubs_lst,
-                    'Iteration' : iteration_lst,
-                    'Station'   : station_lst})
-
-    dfx = pd.DataFrame([df['CM x'] for df in drifts_df_dict.values()])
-    dfy = pd.DataFrame([df['CM y'] for df in drifts_df_dict.values()])
-    dfy = dfy.reset_index()
-    dfx = dfx.reset_index()
-    dfy = dfy.iloc[:,1:]
-    dfx = dfx.iloc[:,1:]
-    drift_df_x = pd.concat([drift_df, dfx], axis=1)
-    drift_df_y = pd.concat([drift_df, dfy], axis=1)
-    rename_dict = {
-        1  : 's1',
-        2  : 's2',
-        3  : 's3',
-        4  : 's4',
-        5  : 's5',
-        6  : 's6',
-        7  : 's7',
-        8  : 's8',
-        9  : 's9',
-        10 : 's10',
-        11 : 's11',
-        12 : 's12',
-        13 : 's13',
-        14 : 's14',
-        15 : 's15',
-        16 : 's16',
-        17 : 's17',
-        18 : 's18',
-        19 : 's19',
-        20 : 's20',
-    }
-    drift_df_x = drift_df_x.rename(columns=rename_dict).copy()[['Sim_Type', 'Nsubs', 'Iteration', 'Station', 's1','s5','s10','s15','s20']]
-    drift_df_y = drift_df_y.rename(columns=rename_dict).copy()[['Sim_Type', 'Nsubs', 'Iteration', 'Station', 's1','s5','s10','s15','s20']]
+    drift_df_x, drift_df_y = getDriftResultsDF(drifts_df_dict)
 else:
     drift_df_x = pd.read_csv(project_path / 'drift_per_story_X_df.csv', index_col=0)
     drift_df_y = pd.read_csv(project_path / 'drift_per_story_Y_df.csv', index_col=0)
@@ -136,43 +94,7 @@ else:
 # --------------------------------------- SPECTRUM ----------------------------------------
 # We will have the acceleration at the period equal to mode 3 = 0.83s
 if all(isinstance(value, pd.DataFrame) for value in spectra_df_dict.values()):
-    sim_type_lst  = [key.split('_')[0] for key in spectra_df_dict.keys()]
-    nsubs_lst     = [key.split('_')[1] for key in spectra_df_dict.keys()]
-    iteration_lst = [key.split('_')[4] for key in spectra_df_dict.keys()]
-    station_lst   = [key.split('_')[5] for key in spectra_df_dict.keys()]
-    spectra_df = pd.DataFrame({
-                    'Sim_Type'  : sim_type_lst,
-                    'Nsubs'     : nsubs_lst,
-                    'Iteration' : iteration_lst,
-                    'Station'   : station_lst,})
-    spectra_df['Zone']  = spectra_df['Station'].apply(assignZonesToStationsInDF)
-    columns_x = ['Story 1 x', 'Story 5 x', 'Story 10 x', 'Story 15 x', 'Story 20 x']
-    columns_y = ['Story 1 y', 'Story 5 y', 'Story 10 y', 'Story 15 y', 'Story 20 y']
-
-    dfx = pd.DataFrame([df[columns_x].iloc[416] for df in spectra_df_dict.values()])
-    dfy = pd.DataFrame([df[columns_y].iloc[416] for df in spectra_df_dict.values()])
-    dfy = dfy.reset_index()
-    dfx = dfx.reset_index()
-    dfy = dfy.iloc[:,1:]
-    dfx = dfx.iloc[:,1:]
-    spectra_df_x = pd.concat([spectra_df, dfx], axis=1)
-    spectra_df_y = pd.concat([spectra_df, dfy], axis=1)
-    rename_dict = {
-        'Story 1 x'  : 's1',
-        'Story 5 x'  : 's5',
-        'Story 10 x' : 's10',
-        'Story 15 x' : 's15',
-        'Story 20 x' : 's20',
-    }
-    spectra_df_x = spectra_df_x.rename(columns=rename_dict)
-    rename_dict = {
-        'Story 1 y'  : 's1',
-        'Story 5 y'  : 's5',
-        'Story 10 y' : 's10',
-        'Story 15 y' : 's15',
-        'Story 20 y' : 's20',
-    }
-    spectra_df_y = spectra_df_y.rename(columns=rename_dict)
+    spectra_df_x, spectra_df_y = getSpectraResultsDF(spectra_df_dict)
 
 else:
     spectra_df_x = pd.read_csv(project_path / 'spectra_per_story_X_df.csv', index_col=0)
@@ -181,25 +103,10 @@ else:
 #%% Compute Base Shear Results
 # --------------------------------------- BASE SHEAR ----------------------------------------
 if all(isinstance(value, pd.DataFrame) for value in base_shear_df_dict.values()):
-    sim_type_lst  = [key.split('_')[0] for key in base_shear_df_dict.keys()]
-    nsubs_lst     = [key.split('_')[1] for key in base_shear_df_dict.keys()]
-    iteration_lst = [key.split('_')[4] for key in base_shear_df_dict.keys()]
-    station_lst   = [key.split('_')[5] for key in base_shear_df_dict.keys()]
-    base_shear_df = pd.DataFrame({
-                    'Sim_Type'  : sim_type_lst,
-                    'Nsubs'     : nsubs_lst,
-                    'Iteration' : iteration_lst,
-                    'Station'   : station_lst,})
-    dfx = pd.DataFrame([df['Shear X'].abs().max() for df in base_shear_df_dict.values()], columns=['MaxShearX'])
-    dfy = pd.DataFrame([df['Shear Y'].abs().max() for df in base_shear_df_dict.values()], columns=['MaxShearY'])
-    dfy = dfy.reset_index()
-    dfx = dfx.reset_index()
-    dfy = dfy.iloc[:,1:]
-    dfx = dfx.iloc[:,1:]
-    base_shear_df_x = pd.concat([base_shear_df, dfx], axis=1)
-    base_shear_df_y = pd.concat([base_shear_df, dfy], axis=1)
+    base_shear_df_x, base_shear_df_y = getSBaseResultsDF(base_shear_df_dict)
 else:
     base_shear_df_x = pd.read_csv(project_path / 'max_base_shear_X_df.csv', index_col=0)
     base_shear_df_y = pd.read_csv(project_path / 'max_base_shear_Y_df.csv', index_col=0)
 
-# %%
+# %% ========================================== ANOVA ==========================================
+
