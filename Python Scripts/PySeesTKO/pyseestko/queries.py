@@ -325,7 +325,7 @@ def _plotMeanDriftColor(drifts_df_dict: Dict[str, pd.DataFrame], plotter: Plotti
     plotter.plotModelDrift([], mean_drifts_x, [], [],
                             xlim_sup = xlim_sup, 
                             axes     = drift_axes[0], 
-                            legend   = False, 
+                            legend   = True, 
                             save_fig = save_fig,
                             fig_size = fig_size,
                             line_color = 'red')
@@ -333,7 +333,7 @@ def _plotMeanDriftColor(drifts_df_dict: Dict[str, pd.DataFrame], plotter: Plotti
     plotter.plotModelDrift([], [], [], mean_drifts_y,
                             xlim_sup = xlim_sup, 
                             axes     = drift_axes[1], 
-                            legend   = False, 
+                            legend   = True, 
                             save_fig = save_fig,
                             fig_size = fig_size,
                             line_color = 'blue')
@@ -360,7 +360,7 @@ def _plotMeanBaseShearColor(base_shear_df_dict: Dict[str, pd.DataFrame], plotter
                 axes           = base_shear_axes[0], 
                 save_fig       = save_fig, 
                 fig_size       = fig_size, 
-                leyend         = False,
+                leyend         = True,
                 mean           = True)
     plotter.setup_direction(x_direction=False)
     plotter.plotShearBaseOverTime(
@@ -371,7 +371,7 @@ def _plotMeanBaseShearColor(base_shear_df_dict: Dict[str, pd.DataFrame], plotter
                 axes           = base_shear_axes[1], 
                 save_fig       = save_fig, 
                 fig_size       = fig_size, 
-                leyend         = False,
+                leyend         = True,
                 mean           = True)
     
 def getDriftDFs(drifts_df_lst:List[pd.DataFrame]):
@@ -798,10 +798,11 @@ class ProjectQueries:
         if save_b_shear is not None:
             # Init the query
             time_series, shear_x, shear_y, shear_z = self.base_shear()
+            shear_x = list(np.array(shear_x) / 2.6)
+            shear_y = list(np.array(shear_y) / 2.8)
 
             # Init plot params
             nch  = NCh433_2012(zone, soil_category, importance)
-            Qmin = nch.computeMinBaseShear_c6_3_7_1(structure_weight)
             Qmax = nch.computeMaxBaseShear_c6_3_7_2(structure_weight)
 
             # Plot the data
