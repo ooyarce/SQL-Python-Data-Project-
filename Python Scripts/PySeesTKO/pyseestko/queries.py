@@ -127,14 +127,7 @@ def executeMainQuery(
         save_df_to_csv_paths(drifts_df_dict, spectra_df_dict,base_shear_df_dict,
                              save_csv_drift, save_csv_spectra, save_csv_b_shear)
     
-    # -------------------------------------- RETURN THE RESULTS --------------------------------------
-    drift_tple      = (None, None, None, None, None)
-    spectra_tple    = (None, None)
-    base_shear_tple = (None, None)
-    
-
-        
-    return drift_tple, spectra_tple, base_shear_tple
+    return drifts_df_dict, spectra_df_dict, base_shear_df_dict
 
 def queryMetricsInSinglePlots(
     # Params
