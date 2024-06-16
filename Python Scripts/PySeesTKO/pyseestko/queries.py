@@ -272,49 +272,58 @@ def queryMetricsInGridPlots(
             print(f'Processing: {sim_type_map[sim_type]}, {nsubs} subs')
             for station in stations:
                 for iteration in iterations:
-                    # -------------------------------------- INITIALIZATION -----------------------------------------
-                    # Init the classes
-                    save_fig = True if station == stations[-1] and iteration == iterations[-1] else False
-                    plotter = Plotting(sim_type, stories,                    # The class that plots the data
-                                    nsubs, magnitude,
-                                    iteration, rupture_type,
-                                    station, show_plots=show_plots, grid=True, dpi=dpi, file_type=file_type)
-                    query   = ProjectQueries(user, password, host, database, sim_type, linearity,
-                                            mag_map.get(magnitude,    'None'),
-                                            rup_map.get(rupture_type, 'None'), 
-                                            iteration,
-                                            loc_map.get(station,      'None'),
-                                            stories, nsubs, plotter, windows=windows, verbose=verbose) 
-                     
-                    # -------------------------------------- EXECUTE THE MAIN QUERY ---------------------------------
-                    # Get the results for zone = 'Las Condes', soil_category = 'B' and importance = 2
-                    drift, spectra, base_shear, axes = query.getAllResults(save_drift, save_spectra, save_b_shear, 
-                                                                structure_weight, xlim_sup=xlim_sup, verbose=verbose,
-                                                                drift_axes=drift_axes, spectra_axes=spectra_axes, base_shear_axes=base_shear_axes,
-                                                                save_fig=False, fig_size=fig_size)
-                    drift_axes, spectra_axes, base_shear_axes = axes # update the axes
-                    
-                    # Fill dictionaries
-                    sim_type_name                 = sim_type_map[sim_type]
-                    sim_name                      = f'{sim_type_name}_20f{nsubs}s_rup_bl_{iteration}_s{station}'
-                    drifts_df_dict[sim_name]     = drift
-                    spectra_df_dict[sim_name]    = spectra
-                    base_shear_df_dict[sim_name] = base_shear
-                    
-                    # -------------------------------------- PLOT THE RESULTS ---------------------------------
-                    # Add plot of mean drifts  
-                    if iteration == iterations[-1]:
-                        # Plot mean drift
-                        _plotMeanDriftColor(drifts_df_dict, plotter, xlim_sup, drift_axes, save_fig, fig_size) if save_drift else None
+                    if not all([save_drift==False, save_spectra==False, save_b_shear==False]):
+                        # -------------------------------------- INITIALIZATION -----------------------------------------
+                        # Init the classes
+                        save_fig = True if station == stations[-1] and iteration == iterations[-1] else False
+                        plotter = Plotting(sim_type, stories,                    # The class that plots the data
+                                        nsubs, magnitude,
+                                        iteration, rupture_type,
+                                        station, show_plots=show_plots, grid=True, dpi=dpi, file_type=file_type)
+                        query   = ProjectQueries(user, password, host, database, sim_type, linearity,
+                                                mag_map.get(magnitude,    'None'),
+                                                rup_map.get(rupture_type, 'None'), 
+                                                iteration,
+                                                loc_map.get(station,      'None'),
+                                                stories, nsubs, plotter, windows=windows, verbose=verbose) 
                         
-                        # Plot mean spectra
-                        _plotMeanSpectraColor(spectra_df_dict, plotter, spectra_axes, save_fig, fig_size) if save_spectra else None         
+                        # -------------------------------------- EXECUTE THE MAIN QUERY ---------------------------------
+                        # Get the results for zone = 'Las Condes', soil_category = 'B' and importance = 2
+                        drift, spectra, base_shear, axes = query.getAllResults(save_drift, save_spectra, save_b_shear, 
+                                                                    structure_weight, xlim_sup=xlim_sup, verbose=verbose,
+                                                                    drift_axes=drift_axes, spectra_axes=spectra_axes, base_shear_axes=base_shear_axes,
+                                                                    save_fig=False, fig_size=fig_size)
+                        drift_axes, spectra_axes, base_shear_axes = axes # update the axes
                         
-                        # Plot mean base shear
-                        _plotMeanBaseShearColor(base_shear_df_dict, plotter, base_shear_axes, save_fig, fig_size, Qmax) if save_b_shear else None
-                    
-                    # Update tqdm
-                    pbar.update(1)
+                        # Fill dictionaries
+                        sim_type_name                = sim_type_map[sim_type]
+                        sim_name                     = f'{sim_type_name}_20f{nsubs}s_rup_bl_{iteration}_s{station}'
+                        drifts_df_dict[sim_name]     = drift
+                        spectra_df_dict[sim_name]    = spectra
+                        base_shear_df_dict[sim_name] = base_shear
+                                            
+                        # -------------------------------------- PLOT THE RESULTS ---------------------------------
+                        # Add plot of mean drifts  
+                        if iteration == iterations[-1]:
+                            # Plot mean drift
+                            _plotMeanDriftColor(drifts_df_dict, plotter, xlim_sup, drift_axes, save_fig, fig_size) if save_drift else None
+                            
+                            # Plot mean spectra
+                            _plotMeanSpectraColor(spectra_df_dict, plotter, spectra_axes, save_fig, fig_size) if save_spectra else None         
+                            
+                            # Plot mean base shear
+                            _plotMeanBaseShearColor(base_shear_df_dict, plotter, base_shear_axes, save_fig, fig_size, Qmax) if save_b_shear else None
+                        
+                        # Update tqdm
+                        pbar.update(1)
+                    else:
+                        pbar.update(1)
+                        sim_type_name                = sim_type_map[sim_type]
+                        sim_name                     = f'{sim_type_name}_20f{nsubs}s_rup_bl_{iteration}_s{station}'
+                        drifts_df_dict[sim_name]     = None
+                        spectra_df_dict[sim_name]    = None
+                        base_shear_df_dict[sim_name] = None
+                        continue
     return drifts_df_dict, spectra_df_dict, base_shear_df_dict
 
 

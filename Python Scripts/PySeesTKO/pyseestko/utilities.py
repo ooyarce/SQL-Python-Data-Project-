@@ -102,61 +102,112 @@ def getMappings():
         3: "South-North"}
     return magnitude_mapping, location_mapping, ruptures_mapping
 
-def getDriftResultsDF(
-    sim_type_lst   : List[str],
-    nsubs_lst      : List[str],
-    iteration_lst  : List[str],
-    station_lst    : List[str],
-    max_drift_lst: List[float]):
-    
+def getDriftResultsDF(drifts_df_dict):
+    sim_type_lst  = [key.split('_')[0] for key in drifts_df_dict.keys()]
+    nsubs_lst     = [key.split('_')[1] for key in drifts_df_dict.keys()]
+    iteration_lst = [key.split('_')[4] for key in drifts_df_dict.keys()]
+    station_lst   = [key.split('_')[5] for key in drifts_df_dict.keys()]
+
     drift_df = pd.DataFrame({
                     'Sim_Type'  : sim_type_lst,
                     'Nsubs'     : nsubs_lst,
                     'Iteration' : iteration_lst,
-                    'Station'   : station_lst,
-                    'Mean_Drift': max_drift_lst})
-    drift_df['Zone']  = drift_df['Station'].apply(assignZonesToStationsInDF)
-    return drift_df
+                    'Station'   : station_lst})
 
-def getSpectraResultsDF(
-    sim_type_lst   : List[str],
-    nsubs_lst      : List[str],
-    iteration_lst  : List[str],
-    station_lst    : List[str],
-    spectra_df_dict: Dict[str, pd.DataFrame],
-    ):
-    max_spectra_lst_x = [(df.iloc[:,:5]).mean().max() for df in spectra_df_dict.values()]
-    max_spectra_lst_y = [(df.iloc[:,5:]).mean().max() for df in spectra_df_dict.values()]
+    dfx = pd.DataFrame([df['CM x'] for df in drifts_df_dict.values()])
+    dfy = pd.DataFrame([df['CM y'] for df in drifts_df_dict.values()])
+    dfy = dfy.reset_index()
+    dfx = dfx.reset_index()
+    dfy = dfy.iloc[:,1:]
+    dfx = dfx.iloc[:,1:]
+    drift_df_x = pd.concat([drift_df, dfx], axis=1)
+    drift_df_y = pd.concat([drift_df, dfy], axis=1)
+    rename_dict = {
+        1  : 's1',
+        2  : 's2',
+        3  : 's3',
+        4  : 's4',
+        5  : 's5',
+        6  : 's6',
+        7  : 's7',
+        8  : 's8',
+        9  : 's9',
+        10 : 's10',
+        11 : 's11',
+        12 : 's12',
+        13 : 's13',
+        14 : 's14',
+        15 : 's15',
+        16 : 's16',
+        17 : 's17',
+        18 : 's18',
+        19 : 's19',
+        20 : 's20',
+    }
+    drift_df_x = drift_df_x.rename(columns=rename_dict).copy()[['Sim_Type', 'Nsubs', 'Iteration', 'Station', 's1','s5','s10','s15','s20']]
+    drift_df_y = drift_df_y.rename(columns=rename_dict).copy()[['Sim_Type', 'Nsubs', 'Iteration', 'Station', 's1','s5','s10','s15','s20']]
+    return drift_df_x, drift_df_y
+
+def getSpectraResultsDF(spectra_df_dict):
+    sim_type_lst  = [key.split('_')[0] for key in spectra_df_dict.keys()]
+    nsubs_lst     = [key.split('_')[1] for key in spectra_df_dict.keys()]
+    iteration_lst = [key.split('_')[4] for key in spectra_df_dict.keys()]
+    station_lst   = [key.split('_')[5] for key in spectra_df_dict.keys()]
     spectra_df = pd.DataFrame({
                     'Sim_Type'  : sim_type_lst,
                     'Nsubs'     : nsubs_lst,
                     'Iteration' : iteration_lst,
-                    'Station'   : station_lst,
-                    'Max_Spectra_X': max_spectra_lst_x,
-                    'Max_Spectra_Y': max_spectra_lst_y
-                    })
-    spectra_df['Zone'] = spectra_df['Station'].apply(assignZonesToStationsInDF)
-    return spectra_df
+                    'Station'   : station_lst,})
+    spectra_df['Zone']  = spectra_df['Station'].apply(assignZonesToStationsInDF)
+    columns_x = ['Story 1 x', 'Story 5 x', 'Story 10 x', 'Story 15 x', 'Story 20 x']
+    columns_y = ['Story 1 y', 'Story 5 y', 'Story 10 y', 'Story 15 y', 'Story 20 y']
+
+    dfx = pd.DataFrame([df[columns_x].iloc[416] for df in spectra_df_dict.values()])
+    dfy = pd.DataFrame([df[columns_y].iloc[416] for df in spectra_df_dict.values()])
+    dfy = dfy.reset_index()
+    dfx = dfx.reset_index()
+    dfy = dfy.iloc[:,1:]
+    dfx = dfx.iloc[:,1:]
+    spectra_df_x = pd.concat([spectra_df, dfx], axis=1)
+    spectra_df_y = pd.concat([spectra_df, dfy], axis=1)
+    rename_dict = {
+        'Story 1 x'  : 's1',
+        'Story 5 x'  : 's5',
+        'Story 10 x' : 's10',
+        'Story 15 x' : 's15',
+        'Story 20 x' : 's20',
+    }
+    spectra_df_x = spectra_df_x.rename(columns=rename_dict)
+    rename_dict = {
+        'Story 1 y'  : 's1',
+        'Story 5 y'  : 's5',
+        'Story 10 y' : 's10',
+        'Story 15 y' : 's15',
+        'Story 20 y' : 's20',
+    }
+    spectra_df_y = spectra_df_y.rename(columns=rename_dict)
     
-def getSBaseResultsDF(
-    sim_type_lst      : List[str],
-    nsubs_lst         : List[str],
-    iteration_lst     : List[str],
-    station_lst       : List[str],
-    base_shear_df_dict: Dict[str, pd.DataFrame]
-    ):
-    mean_base_shear_lst_x = [abs(df['Shear X'].mean()) for df in base_shear_df_dict.values()]
-    mean_base_shear_lst_y = [abs(df['Shear Y'].mean()) for df in base_shear_df_dict.values()]
+    return spectra_df_x, spectra_df_y
+    
+def getSBaseResultsDF(base_shear_df_dict):
+    sim_type_lst  = [key.split('_')[0] for key in base_shear_df_dict.keys()]
+    nsubs_lst     = [key.split('_')[1] for key in base_shear_df_dict.keys()]
+    iteration_lst = [key.split('_')[4] for key in base_shear_df_dict.keys()]
+    station_lst   = [key.split('_')[5] for key in base_shear_df_dict.keys()]
     base_shear_df = pd.DataFrame({
                     'Sim_Type'  : sim_type_lst,
                     'Nsubs'     : nsubs_lst,
                     'Iteration' : iteration_lst,
-                    'Station'   : station_lst,
-                    'BShear_X'  : mean_base_shear_lst_x,
-                    'BShear_Y'  : mean_base_shear_lst_y
-                    })
-    base_shear_df['Zone'] = base_shear_df['Station'].apply(assignZonesToStationsInDF)
-    return base_shear_df
+                    'Station'   : station_lst,})
+    dfx = pd.DataFrame([df['Shear X'].abs().max() for df in base_shear_df_dict.values()], columns=['MaxShearX'])
+    dfy = pd.DataFrame([df['Shear Y'].abs().max() for df in base_shear_df_dict.values()], columns=['MaxShearY'])
+    dfy = dfy.reset_index()
+    dfx = dfx.reset_index()
+    dfy = dfy.iloc[:,1:]
+    dfx = dfx.iloc[:,1:]
+    base_shear_df_x = pd.concat([base_shear_df, dfx], axis=1)
+    base_shear_df_y = pd.concat([base_shear_df, dfy], axis=1)
+    return base_shear_df_x, base_shear_df_y
 
 
 # ==================================================================================
