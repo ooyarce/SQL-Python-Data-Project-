@@ -226,11 +226,11 @@ class Plotting:
     def setup_direction(self, x_direction:bool=True):
         self.x_direction = x_direction
         self.direction = 'X' if x_direction else 'Y'
-        self.id        = f'{self.sim_type} | {self.stories} stories - {self.nsubs} subs - {self.direction}dir' if self.grid else f'{self.sim_type} |  {self.magnitude}Mw | Station {self.station} | {self.stories} stories - {self.nsubs} subs - {self.direction}dir'
+        self.id        = f'{self.sim_type} - {self.stories} stories - {self.nsubs} subs - {self.direction}dir' if self.grid else f'{self.sim_type} -  {self.magnitude}Mw - Station {self.station} - {self.stories} stories - {self.nsubs} subs - {self.direction}dir'
         self.file_name = f'{self.sim_type}_20f{self.nsubs}_{self.direction}' if self.grid else f'{self.sim_type}_{self.magnitude}_{self.rup_type}{self.iteration}_s{self.station}_{self.direction}'
-        self.drift_title     = f'Drift per story Plot | {self.id}'
-        self.spectrums_title = f'Story PSa Plot | {self.id}'
-        self.base_shear_ss_title = f'Base Shear Plot | {self.id}'
+        self.drift_title     = f'Drift Plot - {self.id}'
+        self.spectrums_title = f'Story PSa Plot - {self.id}'
+        self.base_shear_ss_title = f'Base Shear Plot - {self.id}'
         
     def plotConfig(self, title:str, x = 19.2, y = 10.8):
         """
@@ -276,7 +276,10 @@ class Plotting:
         return ''
     def to_equal(self, x, pos):
         return f'{x}'
-    
+    def to_int(self, x, pos):
+        return f'{int(x)}'
+    def to_dot_mil(self, x, pos):
+        return f'{(int(x/1000))}'
     def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.002,
                        axes:plt.Axes|NDArray[plt.Axes]=None, save_fig:bool=True, legend:bool=True, fig_size: tuple[float, float]=(19.2, 10.8), line_color = None
                        )->plt.Axes|NDArray[plt.Axes]:
@@ -319,23 +322,26 @@ class Plotting:
             color = color_1 if self.grid and not line_color else 'red'
             linewidth = 0.5 if self.grid and not line_color else 0.6
             marker = 'v'    if line_color else None
-            ax.plot(max_center_x, y, label='max_center_x', marker=marker, color=color, linewidth=0.5, markersize=2)
+            label = 'Iter.Drift' if not line_color else 'Mean Iter.Drift'
+            ax.plot(max_center_x, y, label=label, marker=marker, color=color, linewidth=0.5, markersize=2)
         else:
             candidate = np.array(max_center_y).max() + 0.0005 if self.station == 1  else 0
             ax.set_xlim(xlim_inf, candidate) if candidate > axes[0,0].get_xlim()[1] else ax.set_xlim(xlim_inf, axes[0,0].get_xlim()[1])
             color = color_1 if self.grid and not line_color else 'blue'
             linewidth = 0.5 if self.grid and not line_color else 0.6
             marker = 'd'    if line_color else None
-            ax.plot(max_center_y, y, label='max_center_y', marker=marker, color=color, linewidth=linewidth, markersize=2)
+            label = 'Iter.Drift' if not line_color else 'Mean Iter.Drift'
+            ax.plot(max_center_y, y, label=label, marker=marker, color=color, linewidth=linewidth, markersize=2)
         
         # Plot NCH433 limits
-        ax.axvline(x=0.002, color='black', linestyle='--', linewidth=0.55, alpha = 0.9, label='NCh433 Limit - 5.9.2 = 0.002')
+        ax.axvline(x=0.002, color='black', linestyle='--', linewidth=0.55, alpha = 0.9, label='NCh433 Limit=0.002')
 
         # Set legend and save fig if needed
         if legend:
             handles, labels = axes[0, 0].get_legend_handles_labels()
-            fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
-
+            fig.legend([handles[-4], handles[-2], handles[-1]], [labels[-4], labels[-2], labels[-1]], 
+                       loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure, fontsize='small')
+            
         if save_fig:
             fig.tight_layout()
             self.plotSave(fig)
@@ -397,7 +403,6 @@ class Plotting:
         # Compute df
         spa_df = pd.DataFrame({f'Story {story} {direction}': spa for story, spa in zip(stories_lst, spa_lst)}, index=T)
 
-    
         if save_fig:
             self.plotSave(fig)
         return axes, spa_df
@@ -432,10 +437,12 @@ class Plotting:
         ax.set_title(f'Station {self.station}')
 
         # Setup axis
-        formatter = FuncFormatter(self.to_empty)
-        ax.set_xlabel('T (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter)
+        formatter1 = FuncFormatter(self.to_empty)
+        formatter2 = FuncFormatter(self.to_int)
+        ax.set_xlabel('T (s)') if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter1)
         ax.set_ylabel(f'Acceleration in {direction.upper()} (m/s/s)') if self.station in [4] else ax.set_ylabel('')
-
+        ax.yaxis.set_major_formatter(formatter2)
+        
         # Make plot spectrum
         T = np.linspace(0.003, 2, 1000)
         spa_lst = []
@@ -483,33 +490,30 @@ class Plotting:
         
         # Plot
         alpha = 0.1 if not mean else 1
-        ax.plot(time, time_shear_fma, label='Shear Base Series', color='blue', linewidth=0.5, alpha=alpha)
-        ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=0.5, alpha = 0.9, label='NCh433 Qmax - 6.3.7.1') 
+        ax.plot(time, time_shear_fma, label='Shear Base', color='blue', linewidth=0.5, alpha=alpha)
+        ax.axhline(y=Qmax,  color='red', linestyle='--', linewidth=0.5, alpha = 0.9, label='NCh433 Qmax') 
         ax.axhline(y=-Qmax, color='red', linestyle='--', linewidth=0.5, alpha = 0.9, label=None) 
         
         # Setup axis
         formatter1 = FuncFormatter(self.to_empty)
         formatter2 = FuncFormatter(self.to_equal)
+        formatter3 = FuncFormatter(self.to_dot_mil)
         ax.set_ylim(ylim_inf, ylim_sup) if self.station ==1 and self.iteration == 1 else ax.set_ylim(axes[0, 0].get_ylim())
         ax.set_xlabel('Time (s)') if self.station in [8] else ax.xaxis.set_major_formatter(formatter1)
-        ax.set_ylabel(f'Shear in {dir_.upper()} direction (kN)')  if self.station in [4] else ax.set_ylabel('')
+        ax.set_ylabel(f'Shear in {dir_.upper()} direction (Mega Newtons)')  if self.station in [4] else ax.set_ylabel('')
         ax.xaxis.set_major_formatter(formatter2) if self.station in [7,8,9] else ax.xaxis.set_major_formatter(formatter1)
-        ax.yaxis.set_major_formatter(formatter2) if self.station in [1,4,7] else ax.yaxis.set_major_formatter(formatter1)
-
-        # Update lim negative if candidate is less than the current limit
-        #candidate_neg = np.array(time_shear_fma).min() - 1000 if self.station == 1 else 0
-        #ax.set_ylim(candidate_neg, axes[0,0].get_ylim()[1]) if candidate_neg < axes[0,0].get_ylim()[0] else ax.set_ylim(axes[0,0].get_ylim()[0], axes[0,0].get_ylim()[1])
-        #candidate_pos = np.array(time_shear_fma).max() + 1000 if self.station == 1 else 0
-        #ax.set_ylim(axes[0,0].get_ylim()[0], candidate_pos) if candidate_pos > axes[0,0].get_ylim()[1] else ax.set_ylim(axes[0,0].get_ylim()[0], axes[0,0].get_ylim()[1])
-        
+        ax.yaxis.set_major_formatter(formatter3) if self.station in [1,4,7] else ax.yaxis.set_major_formatter(formatter1)
+    
         candidate_neg = np.array(time_shear_fma).min() - 1000 if self.station == 1 and mean else 0
         ax.set_ylim(candidate_neg, axes[0,0].get_ylim()[1]) if candidate_neg < axes[0,0].get_ylim()[0] else ax.set_ylim(axes[0,0].get_ylim()[0], axes[0,0].get_ylim()[1])
         candidate_pos = np.array(time_shear_fma).max() + 1000 if self.station == 1 and mean else 0
         ax.set_ylim(axes[0,0].get_ylim()[0], candidate_pos) if candidate_pos > axes[0,0].get_ylim()[1] else ax.set_ylim(axes[0,0].get_ylim()[0], axes[0,0].get_ylim()[1])
         
-        handles, labels = axes[0, 0].get_legend_handles_labels()
         if leyend:
-            fig.legend(handles[-5:], labels[-5:], loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure)
+            handles, labels = axes[0, 0].get_legend_handles_labels()
+            fig.legend([handles[-3], handles[-2]], [labels[-3], labels[-2]], 
+                       loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure, fontsize='small')
+            
         if save_fig:
             self.plotSave(fig)
         return axes
