@@ -2,18 +2,24 @@
 # IMPORT LIBRARIES
 # ==================================================================================
 # Objects
-from matplotlib.ticker   import FuncFormatter
-from matplotlib          import pyplot as plt
-from pathlib             import Path
-from typing              import Union, Tuple
-from numpy.typing        import NDArray
-from scipy.signal        import savgol_filter  # Para suavizado
-from pyseestko.errors    import PlottingError
-from pyseestko.utilities import pwl
-from typing              import List
+from matplotlib.ticker     import FuncFormatter
+from matplotlib            import pyplot as plt
+from pathlib               import Path
+from typing                import Union, Tuple
+from numpy.typing          import NDArray
+from scipy.signal          import savgol_filter  # Para suavizado
+from pyseestko.errors      import PlottingError
+from pyseestko.utilities   import pwl
+from typing                import List
+from sklearn.preprocessing import PowerTransformer
+from scipy.stats           import shapiro, fligner
+
 # Packages
-import pandas as pd
-import numpy  as np
+import statsmodels.api as sm
+import scipy.stats     as stats
+import seaborn         as sns 
+import pandas          as pd
+import numpy           as np
 # ==================================================================================
 # MAIN FUNCTIONS CLASS
 # ==================================================================================
@@ -89,55 +95,129 @@ def plotStatisticByReplicas(df:pd.DataFrame, statistic:str, title:str, ylabel:st
     plt.show()
     return fig, ax
 
-#NOTE:DEPRECATED
-def plotValidation(drifts_df_lst, spectra_df_lst, base_shear_df_lst):
-    # DRIFTS
-    mean_drift_x_df, mean_drift_y_df, mean_drift_df = getReplicaCummStatisticDriftDFs(drifts_df_lst, statistic='mean')
-    std_drift_x_df, std_drift_y_df, std_drift_df    = getReplicaCummStatisticDriftDFs(drifts_df_lst, statistic='std')
 
-    # Plot the mean drifts
-    fig1, ax = plotStatisticByReplicas(df=mean_drift_x_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Drift X')
-    fig2, ax = plotStatisticByReplicas(df=mean_drift_y_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Drift Y')
-    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Drift X.png')
-    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Drift Y.png')
+# Función para verificar supuestos y generar gráficos de normalidad
+def analyze_manova_assumptions(df, dependent_vars, group_vars, project_path, drift=True, xdir=True):
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.size": 13,
+        "font.family": "serif",
+        "text.latex.preamble": r'\usepackage{amsmath}'
+    })
+    
+    # Filtrar solo las columnas de interés
+    df = df[dependent_vars + group_vars]
+    
+    # Transformación de Box-Cox
+    pt = PowerTransformer(method='box-cox', standardize=True)
+    X_transformed = pt.fit_transform(df[dependent_vars])
+    df_transformed = pd.DataFrame(X_transformed, columns=dependent_vars)
+    for group_var in group_vars:
+        df_transformed[group_var] = df[group_var].values
+    
+    # Verificación de normalidad individual con Shapiro-Wilk
+    normality_results = {var: shapiro(X_transformed[:, i]).pvalue for i, var in enumerate(dependent_vars)}
+    
+    # Verificación de homogeneidad de varianzas con Fligner-Killeen
+    df_transformed['combined_factors'] = df_transformed[group_vars].astype(str).agg('-'.join, axis=1)
+    homogeneity_results = {}
+    for var in dependent_vars:
+        grouped_data = [group[var].values for name, group in df_transformed.groupby('combined_factors')]
+        _, p_value = fligner(*grouped_data)
+        homogeneity_results[var] = p_value
+    
+    # Generación de gráficos de normalidad en dos filas y cinco columnas
+    fig, axes = plt.subplots(2, 5, figsize=(9, 5))
+    
+    # Etiquetas de estaciones
+    station_labels = [f'Estación {i}' for i in [1, 5, 10, 15, 20]]
+    
+    for i, var in enumerate(dependent_vars):
+        # Histograma en la primera fila
+        sns.histplot(df_transformed[var], kde=True, ax=axes[0, i])
+        axes[0, i].set_title(f'Histograma de normalidad\n{station_labels[i]}') if i == 2 else axes[0, i].set_title(station_labels[i])
+        axes[0, i].set_xlabel('')
+        axes[0, i].set_ylabel('') if i != 0 else axes[0, i].set_ylabel('Frecuencia')
+        
+        # Q-Q plot en la segunda fila
+        sm.qqplot(df_transformed[var], line='s', ax=axes[1, i])
+        #axes[0, i].set_title(station_labels[i])
+        axes[1, i].set_title(f'Q-Q Plot de normalidad\n{station_labels[i]}') if i == 2 else axes[1, i].set_title(station_labels[i])
+        axes[1, i].set_ylabel('') if i != 0 else axes[1, i].set_ylabel('Cuantiles de la muestra')
+        axes[1, i].set_xlabel('Cuantiles teóricos') if i==2 else axes[1, i].set_xlabel('')
+    
+    plt.tight_layout()
+    plt.show()
+    file_name = 'drift' if drift else 'spectra'
+    xdir = 'x' if xdir else 'y'
+    fig.savefig(project_path / f'manova_supps_{file_name}_{xdir}.pdf', dpi=100)
+    # Resultados en un DataFrame
+    results_df = pd.DataFrame({
+        'Variable': dependent_vars,
+        'Normalidad (p-valor)': list(normality_results.values()),
+        'Homogeneidad (p-valor)': list(homogeneity_results.values())
+    })
+    
+    return results_df
 
-    # Plot the std drifts
-    fig1, ax = plotStatisticByReplicas(df=std_drift_x_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]', title='Number of replicas vs Std Drift X')
-    fig2, ax = plotStatisticByReplicas(df=std_drift_y_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]', title='Number of replicas vs Std Drift Y')
-    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Drift X.png')
-    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Drift Y.png')
 
-    # SPECTRUMSS
-    mean_spectra_x_df, mean_spectra_y_df, mean_spectra_df = getCummStatisticSpectraDFs(spectra_df_lst, statistic='mean')
-    std_spectra_x_df, std_spectra_y_df, std_spectra_df    = getCummStatisticSpectraDFs(spectra_df_lst, statistic='std')
+def analyze_anova_assumptions(df, analysis_columns, project_path):
+    """
+    Realiza un análisis de los supuestos para ANOVA en las columnas especificadas y guarda los resultados en archivos de imagen.
 
-    # Plot the mean spectra
-    fig1, ax = plotStatisticByReplicas(df=mean_spectra_x_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Spectra X')
-    fig2, ax = plotStatisticByReplicas(df=mean_spectra_y_df, statistic='mean', ylabel='Drift', title='Number of replicas vs Mean Spectra Y')
-    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Spectra X.png')
-    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Spectra Y.png')
+    Parameters:
+    df (pd.DataFrame): DataFrame con las columnas 'Sim_Type', 'Nsubs', 'Station', 'Iteration' y columnas de análisis.
+    analysis_columns (list): Lista de las columnas para las cuales se desea realizar el análisis.
+    output_file_prefix (str): Prefijo del nombre del archivo para guardar las imágenes de los resultados.
+    """
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.size": 13,
+        "font.family": "serif",
+        "text.latex.preamble": r'\usepackage{amsmath}'
+    })
 
-    # Plot the std spectra
-    fig1, ax = plotStatisticByReplicas(df=std_spectra_x_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]',title='Number of replicas vs Std Spectra X')
-    fig2, ax = plotStatisticByReplicas(df=std_spectra_y_df, statistic='std', ylabel='Acceleration Spectra[m/s/s]',title='Number of replicas vs Std Spectra Y')
-    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Spectra X.png')
-    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Spectra Y.png')
+    for col in analysis_columns:
+        # Agrupar por Sim_Type, Nsubs y Station, y calcular la media de la columna especificada
+        df_grouped = df.groupby(['Sim_Type', 'Nsubs', 'Station']).agg({col: 'mean'}).reset_index()
+        
+        # Aplicar la transformación Box-Cox
+        df_grouped[f'{col}_boxcox'], fitted_lambda = stats.boxcox(df_grouped[col])
 
-    # SHEAR BASE
-    max_shear_x_df, max_shear_y_df, max_shear_df = getReplicaCummStatisticBaseShearDFs(base_shear_df_lst, statistic='mean')
+        # Verificar normalidad usando la prueba de Shapiro-Wilk
+        shapiro_test = stats.shapiro(df_grouped[f'{col}_boxcox'])
 
-    # Plot the mean base shear
-    fig1, ax = plotStatisticByReplicas(df=max_shear_x_df, statistic='mean', ylabel='Base Shear [kN]', title='Number of replicas vs Mean Base Shear X')
-    fig2, ax = plotStatisticByReplicas(df=max_shear_y_df, statistic='mean', ylabel='Base Shear [kN]', title='Number of replicas vs Mean Base Shear Y')
-    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Base Shear X')
-    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Mean Base Shear Y')
+        # Verificar homocedasticidad usando la prueba de Levene
+        grouped_data = [df_grouped[df_grouped['Sim_Type'] == g][f'{col}_boxcox'].values for g in df_grouped['Sim_Type'].unique()]
+        levene_test = stats.levene(*grouped_data)
 
-    # Plot the std base shear
-    fig1, ax = plotStatisticByReplicas(df=max_shear_x_df, statistic='std', ylabel='Base Shear [kN]', title='Number of replicas vs Std Base Shear X')
-    fig2, ax = plotStatisticByReplicas(df=max_shear_y_df, statistic='std', ylabel='Base Shear [kN]', title='Number of replicas vs Std Base Shear Y')
-    fig1.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Base Shear X')
-    fig2.savefig('C:/Users/oioya/OneDrive - miuandes.cl/Escritorio/Git-Updated/Thesis-Project-Simulation-Data-Analysis/DataBase-Outputs/Analysis Output/Number of replicas vs Std Base Shear Y')
+        # Crear la figura y los ejes
+        fig, ax = plt.subplots(1, 2, figsize=(8, 5))
 
+        # Histograma para los datos transformados con Box-Cox
+        sns.histplot(df_grouped[f'{col}_boxcox'], kde=True, ax=ax[0])
+        ax[0].set_title(f'Histograma de {col}')
+
+        # Gráfico Q-Q para verificar normalidad
+        sm.qqplot(df_grouped[f'{col}_boxcox'], line='s', ax=ax[1])
+        ax[1].set_title(f'Q-Q Plot de {col}')
+
+        # Ajustar la disposición de la figura
+        plt.tight_layout()
+
+        # Guardar la figura como imagen
+        save_path = project_path / f'{col}.pdf'
+        save_path.parent.mkdir(parents=True, exist_ok=True)  # Crear directorio si no existe
+        fig.savefig(save_path, dpi=100)
+        plt.close(fig)
+
+        # Mostrar resultados de las pruebas en consola
+        print(f'fitted_lambda: {fitted_lambda:.3f}')
+        print(f"Resultados de la Prueba de Shapiro-Wilk para {col} (Normalidad)")
+        print(f"Estadístico: {shapiro_test.statistic:.3f}, Valor p: {shapiro_test.pvalue:.3f}\n")
+
+        print(f"Resultados de la Prueba de Levene para {col} (Homocedasticidad)")
+        print(f"Estadístico: {levene_test.statistic:.3f}, Valor p: {levene_test.pvalue:.3f}\n")
 
 
 # ==================================================================================
