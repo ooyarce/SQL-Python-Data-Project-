@@ -1,0 +1,3 @@
+,Variable,fitted_lambda,Shapiro-Wilk Estadístico,Shapiro-Wilk p-Valor,Levene Estadístico,Levene p-Valor
+0,Corte Basal X,-0.24,0.986,0.771,0.328,0.722
+1,Corte Basal Y,-0.131,0.992,0.98,0.578,0.565

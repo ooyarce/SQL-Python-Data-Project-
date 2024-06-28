@@ -209,6 +209,17 @@ def getSBaseResultsDF(base_shear_df_dict):
     base_shear_df_y = pd.concat([base_shear_df, dfy], axis=1)
     return base_shear_df_x, base_shear_df_y
 
+def getGroupedManovaDFs(drift_df_x, drift_df_y, spectra_df_x, spectra_df_y):
+    groupped_drift_x   = drift_df_x.groupby(['Sim_Type', 'Nsubs', 'Station']).agg({'s1':'mean','s5':'mean','s10':'mean','s15':'mean','s20':'mean'})
+    groupped_drift_y   = drift_df_y.groupby(['Sim_Type', 'Nsubs', 'Station']).agg({'s1':'mean','s5':'mean','s10':'mean','s15':'mean','s20':'mean'})
+    groupped_spectra_x = spectra_df_x.groupby(['Sim_Type', 'Nsubs', 'Station']).agg({'s1':'mean','s5':'mean','s10':'mean','s15':'mean','s20':'mean'})
+    groupped_spectra_y = spectra_df_y.groupby(['Sim_Type', 'Nsubs', 'Station']).agg({'s1':'mean','s5':'mean','s10':'mean','s15':'mean','s20':'mean'})
+    groupped_drift_x.reset_index(inplace=True)
+    groupped_drift_y.reset_index(inplace=True)
+    groupped_spectra_x.reset_index(inplace=True)
+    groupped_spectra_y.reset_index(inplace=True)
+
+    return groupped_drift_x, groupped_drift_y, groupped_spectra_x, groupped_spectra_y
 
 # ==================================================================================
 # =============================== UTILITY FUNCTIONS ================================

@@ -1,13 +1,15 @@
 #%% ================================== INIT AND CONNECT TO DATABASE ==================================
 # Import modules
-from pyseestko.utilities  import getMappings, load_module     #type: ignore
-from pyseestko            import queries as query #type: ignore
-from matplotlib           import pyplot  as plt
+from pyseestko            import queries as query             #type: ignore
 from pathlib              import Path
-from pyseestko.utilities  import getDriftResultsDF      #type: ignore
-from pyseestko.utilities  import getSpectraResultsDF    #type: ignore
-from pyseestko.utilities  import getSBaseResultsDF      #type: ignore
-from pyseestko.utilities  import assignZonesToStationsInDF      #type: ignore
+from pyseestko.utilities  import getMappings, load_module     #type: ignore
+from pyseestko.utilities  import getDriftResultsDF            #type: ignore
+from pyseestko.utilities  import getSpectraResultsDF          #type: ignore
+from pyseestko.utilities  import getSBaseResultsDF            #type: ignore
+from pyseestko.utilities  import getGroupedManovaDFs            #type: ignore
+from pyseestko.plotting   import analyze_manova_assumptions   #type: ignore
+from pyseestko.plotting   import analyze_anova_assumptions    #type: ignore
+
 # Temp imports
 import pandas as pd
 import winsound
@@ -60,7 +62,7 @@ drifts_df_dict, spectra_df_dict, base_shear_df_dict = query.executeMainQuery(
     database     = database,
     # Save params
     save_drift   = False,
-    save_spectra = False,
+    save_spectra = True,
     save_b_shear = False,
     save_results = save_csvs,
     # Plot params
@@ -87,8 +89,8 @@ winsound.Beep(1000, 500)
 if all(isinstance(value, pd.DataFrame) for value in drifts_df_dict.values()):
     drift_df_x, drift_df_y = getDriftResultsDF(drifts_df_dict)
 else:
-    drift_df_x = pd.read_csv(project_path / 'drift_per_story_X_df.csv', index_col=0)
-    drift_df_y = pd.read_csv(project_path / 'drift_per_story_Y_df.csv', index_col=0)
+    drift_df_x = pd.read_csv(project_path / 'ANOVA Output' / 'drift_per_story_X_df.csv', index_col=0)
+    drift_df_y = pd.read_csv(project_path / 'ANOVA Output' / 'drift_per_story_Y_df.csv', index_col=0)
 
 #%% Compute Spectra Results
 # --------------------------------------- SPECTRUM ----------------------------------------
@@ -97,16 +99,34 @@ if all(isinstance(value, pd.DataFrame) for value in spectra_df_dict.values()):
     spectra_df_x, spectra_df_y = getSpectraResultsDF(spectra_df_dict)
 
 else:
-    spectra_df_x = pd.read_csv(project_path / 'spectra_per_story_X_df.csv', index_col=0)
-    spectra_df_y = pd.read_csv(project_path / 'spectra_per_story_Y_df.csv', index_col=0)
+    spectra_df_x = pd.read_csv(project_path / 'ANOVA Output' / 'spectra_per_story_X_df.csv', index_col=0)
+    spectra_df_y = pd.read_csv(project_path / 'ANOVA Output' / 'spectra_per_story_Y_df.csv', index_col=0)
 
 #%% Compute Base Shear Results
 # --------------------------------------- BASE SHEAR ----------------------------------------
 if all(isinstance(value, pd.DataFrame) for value in base_shear_df_dict.values()):
     base_shear_df_x, base_shear_df_y = getSBaseResultsDF(base_shear_df_dict)
 else:
-    base_shear_df_x = pd.read_csv(project_path / 'max_base_shear_X_df.csv', index_col=0)
-    base_shear_df_y = pd.read_csv(project_path / 'max_base_shear_Y_df.csv', index_col=0)
+    base_shear_df_x = pd.read_csv(project_path / 'ANOVA Output' / 'max_base_shear_X_df.csv', index_col=0)
+    base_shear_df_y = pd.read_csv(project_path / 'ANOVA Output' / 'max_base_shear_Y_df.csv', index_col=0)
+
 
 # %% ========================================== ANOVA ==========================================
+analyze_anova_assumptions(base_shear_df_x, ['MaxShearX'], project_path=project_path)
+analyze_anova_assumptions(base_shear_df_y, ['MaxShearY'], project_path=project_path)
 
+
+# %% ========================================== MANOVA ==========================================
+# perform MANOVA
+drift_covar_x_df = analyze_manova_assumptions(drift_df_x, ['s1','s5','s10','s15','s20'], ['Sim_Type', 'Nsubs', 'Station'],
+                                      project_path=project_path, drift=True, xdir=True)
+drift_covar_y_df = analyze_manova_assumptions(drift_df_y, ['s1','s5','s10','s15','s20'], ['Sim_Type', 'Nsubs', 'Station'],
+                                        project_path=project_path, drift=True, xdir=False)
+spectra_covar_x_df = analyze_manova_assumptions(spectra_df_x, ['s1','s5','s10','s15','s20'], ['Sim_Type', 'Nsubs', 'Station'],
+                                        project_path=project_path, drift=False, xdir=True)
+spectra_covar_y_df = analyze_manova_assumptions(spectra_df_y, ['s1','s5','s10','s15','s20'], ['Sim_Type', 'Nsubs', 'Station'],
+                                        project_path=project_path, drift=False, xdir=False)
+
+
+
+# %%

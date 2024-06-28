@@ -97,7 +97,13 @@ def plotStatisticByReplicas(df:pd.DataFrame, statistic:str, title:str, ylabel:st
 
 
 # Función para verificar supuestos y generar gráficos de normalidad
-def analyze_manova_assumptions(df, dependent_vars, group_vars, project_path, drift=True, xdir=True):
+def analyze_manova_assumptions(
+    df:pd.DataFrame, 
+    dependent_vars:List[str], 
+    group_vars: List[str], 
+    project_path:Path, 
+    drift:bool=True, 
+    xdir:bool=True):
     plt.rcParams.update({
         "text.usetex": True,
         "font.size": 13,
@@ -146,11 +152,15 @@ def analyze_manova_assumptions(df, dependent_vars, group_vars, project_path, dri
         axes[1, i].set_ylabel('') if i != 0 else axes[1, i].set_ylabel('Cuantiles de la muestra')
         axes[1, i].set_xlabel('Cuantiles teóricos') if i==2 else axes[1, i].set_xlabel('')
     
-    plt.tight_layout()
-    plt.show()
     file_name = 'drift' if drift else 'spectra'
     xdir = 'x' if xdir else 'y'
+    fig_title = f'Métrica de {file_name.capitalize()} en dirección {xdir}'
+    fig.suptitle(fig_title)
+    fig.subplots_adjust(top=2)  # Ajustar el espacio superior para evitar superposición
+    fig.tight_layout()
     fig.savefig(project_path / f'manova_supps_{file_name}_{xdir}.pdf', dpi=100)
+    plt.show()
+    plt.close(fig)
     # Resultados en un DataFrame
     results_df = pd.DataFrame({
         'Variable': dependent_vars,
@@ -160,8 +170,10 @@ def analyze_manova_assumptions(df, dependent_vars, group_vars, project_path, dri
     
     return results_df
 
-
-def analyze_anova_assumptions(df, analysis_columns, project_path):
+def analyze_anova_assumptions(
+    df:pd.DataFrame, 
+    analysis_columns:List[str], 
+    project_path:Path):
     """
     Realiza un análisis de los supuestos para ANOVA en las columnas especificadas y guarda los resultados en archivos de imagen.
 
@@ -189,13 +201,16 @@ def analyze_anova_assumptions(df, analysis_columns, project_path):
 
         # Verificar homocedasticidad usando la prueba de Levene
         grouped_data = [df_grouped[df_grouped['Sim_Type'] == g][f'{col}_boxcox'].values for g in df_grouped['Sim_Type'].unique()]
-        levene_test = stats.levene(*grouped_data)
+        levene_test  = stats.levene(*grouped_data)
 
         # Crear la figura y los ejes
         fig, ax = plt.subplots(1, 2, figsize=(8, 5))
 
         # Histograma para los datos transformados con Box-Cox
         sns.histplot(df_grouped[f'{col}_boxcox'], kde=True, ax=ax[0])
+        name = f'Corte Basal X' if col == 'MaxShearX' else f'Corte Basal Y'
+        xdir = 'x' if col == 'MaxShearX' else 'y'
+        file_name = f'anova_supps_bshear_{xdir}.pdf'
         ax[0].set_title(f'Histograma de {col}')
 
         # Gráfico Q-Q para verificar normalidad
@@ -203,20 +218,22 @@ def analyze_anova_assumptions(df, analysis_columns, project_path):
         ax[1].set_title(f'Q-Q Plot de {col}')
 
         # Ajustar la disposición de la figura
-        plt.tight_layout()
-
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.85)
+        
         # Guardar la figura como imagen
-        save_path = project_path / f'{col}.pdf'
+        save_path = project_path / file_name
         save_path.parent.mkdir(parents=True, exist_ok=True)  # Crear directorio si no existe
+        fig.suptitle(f'{name}')
         fig.savefig(save_path, dpi=100)
         plt.close(fig)
 
         # Mostrar resultados de las pruebas en consola
         print(f'fitted_lambda: {fitted_lambda:.3f}')
-        print(f"Resultados de la Prueba de Shapiro-Wilk para {col} (Normalidad)")
+        print(f"Resultados de la Prueba de Shapiro-Wilk para {name} (Normalidad)")
         print(f"Estadístico: {shapiro_test.statistic:.3f}, Valor p: {shapiro_test.pvalue:.3f}\n")
 
-        print(f"Resultados de la Prueba de Levene para {col} (Homocedasticidad)")
+        print(f"Resultados de la Prueba de Levene para {name} (Homocedasticidad)")
         print(f"Estadístico: {levene_test.statistic:.3f}, Valor p: {levene_test.pvalue:.3f}\n")
 
 
@@ -329,7 +346,7 @@ class Plotting:
             fig, axes = plt.subplots(3, 3, figsize=(x, y), dpi=self.dpi)
             for ax in axes.flatten():
                 ax.grid(True)
-            fig.suptitle(title)  # Título para la figura completa
+            fig.suptitle(title)  # Título para la figura completa            
             return fig, axes
         else:
             fig = plt.figure(num=1, figsize=(x, y), dpi=self.dpi)
@@ -360,6 +377,7 @@ class Plotting:
         return f'{int(x)}'
     def to_dot_mil(self, x, pos):
         return f'{(int(x/1000))}'
+    
     def plotModelDrift(self, max_corner_x: list, max_center_x: list, max_corner_y: list, max_center_y:list, xlim_inf:float = 0.0, xlim_sup:float = 0.002,
                        axes:plt.Axes|NDArray[plt.Axes]=None, save_fig:bool=True, legend:bool=True, fig_size: tuple[float, float]=(19.2, 10.8), line_color = None
                        )->plt.Axes|NDArray[plt.Axes]:
@@ -414,14 +432,16 @@ class Plotting:
             ax.plot(max_center_y, y, label=label, marker=marker, color=color, linewidth=linewidth, markersize=2)
         
         # Plot NCH433 limits
-        ax.axvline(x=0.002, color='black', linestyle='--', linewidth=0.55, alpha = 0.9, label='NCh433 Limit=0.002')
+        color2 = 'blue' if self.x_direction else 'red'
+        ax.axvline(x=0.002, color=color2, linestyle='--', linewidth=0.65, alpha = 0.9, label='NCh433 Limit=0.002') if line_color else None
 
         # Set legend and save fig if needed
         if legend:
+            fig.subplots_adjust(top=0.85)  # Ajustar el espacio superior para evitar superposición
             handles, labels = axes[0, 0].get_legend_handles_labels()
             fig.legend([handles[-4], handles[-2], handles[-1]], [labels[-4], labels[-2], labels[-1]], 
-                       loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure, fontsize='small')
-            
+                       loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure, fontsize='xx-small')
+
         if save_fig:
             fig.tight_layout()
             self.plotSave(fig)
@@ -541,8 +561,10 @@ class Plotting:
             ax.plot(T, Spe, label=f'Story {story}', linestyle=line_style, color=color, linewidth=0.5)
 
         handles, labels = axes[0, 0].get_legend_handles_labels()
-        fig.legend(handles[-5:], labels[-5:], loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure, fontsize='small')
+        fig.legend(handles[-5:], labels[-5:], loc='upper right', bbox_to_anchor=(1, 1), bbox_transform=fig.transFigure, fontsize='x-small')
         
+        # plot a vertical line at the 3rd mode of vibration (T=0.82)
+        ax.axvline(x=0.82, color='black', linestyle='--', linewidth=0.5, alpha = 0.9, label='Torsional Mode')
         if save_fig:
             self.plotSave(fig)
     
