@@ -1,4 +1,4 @@
-# FondeCyT-DataBase
+# FondeCyT-MySQL-DataBase
 These are the codes to create and manage the MySQL database of my Master's Thesis.
 
 ## OpenSees and STKO
